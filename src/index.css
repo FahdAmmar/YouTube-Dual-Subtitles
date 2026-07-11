@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * نظام التصميم (Design Tokens) — القيم بصيغة "R G B" (بدون rgb())
+ * لتمكين Tailwind من التحكم بالشفافية عبر <alpha-value> (انظر tailwind.config.ts)
+ *
+ * الفلسفة اللونية (النسخة الثانية — طراز "كونسول تقني"):
+ * خلفية شبه سوداء تحاكي واجهات لوحات التحكم التقنية، مع لون تمييز
+ * بنفسجي-كهربائي واحد لعناصر الواجهة نفسها (الأزرار، الحدود النشطة،
+ * توهج المقطع المتزامن حالياً)، بينما يبقى الذهبي/الأزرق-المخضر مخصصين
+ * حصراً لتمييز اللغتين داخل نص الترجمة — فصل واضح بين "لون النظام"
+ * و"لون المحتوى" يمنع تشويش المستخدم بين الاثنين.
+ */
+
+:root,
+[data-theme='dark'] {
+  --color-bg: 8 9 12;
+  --color-surface: 14 16 21;
+  --color-surface-elevated: 20 23 29;
+  --color-border: 30 34 42;
+
+  --color-text-primary: 237 238 241;
+  --color-text-secondary: 152 160 175;
+  --color-text-muted: 100 108 122;
+
+  --color-track-a: 232 180 76;
+  --color-track-a-hover: 240 196 104;
+  --color-track-b: 79 199 190;
+  --color-track-b-hover: 95 202 194;
+
+  --color-console: 138 122 246;
+  --color-console-hover: 158 144 249;
+
+  --color-success: 76 175 125;
+  --color-warning: 217 121 31;
+  --color-error: 226 104 91;
+  --color-info: 91 155 213;
+}
+
+[data-theme='light'] {
+  --color-bg: 244 245 248;
+  --color-surface: 255 255 255;
+  --color-surface-elevated: 255 255 255;
+  --color-border: 226 229 235;
+
+  --color-text-primary: 24 27 33;
+  --color-text-secondary: 90 97 110;
+  --color-text-muted: 140 148 161;
+
+  --color-track-a: 169 114 12;
+  --color-track-a-hover: 143 96 8;
+  --color-track-b: 18 132 124;
+  --color-track-b-hover: 14 108 102;
+
+  --color-console: 102 84 226;
+  --color-console-hover: 84 68 199;
+
+  --color-success: 31 143 95;
+  --color-warning: 180 110 10;
+  --color-error: 198 62 51;
+  --color-info: 43 108 176;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg text-text-primary antialiased;
+    font-family: theme('fontFamily.sans');
+  }
+
+  /* حالة تركيز واضحة موحّدة عبر لوحة المفاتيح فقط، دون إزعاج مستخدمي الفأرة */
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-console));
+    outline-offset: 2px;
+  }
+
+  /* تخصيص شريط التمرير ليتناسب مع طراز الكونسول الداكن (متصفحات Chromium) */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--color-border));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--color-console) / 0.5);
+  }
+
+  /* احترام تفضيل تقليل الحركة على مستوى نظام التشغيل (إتاحة الوصول) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
