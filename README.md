@@ -1,7 +1,7 @@
 # 🎬 YouTube Dual Subtitles
 
-![YouTube Dual Subtitles ]
-<img align="center" src="./public/pic.png" width="1000px" height="500px" style="margin:auto"/>
+<!-- Add a real screenshot at ./public/screenshot.png -->
+<img align="center" src="./public/screenshot.png" width="1000px" height="500px" style="margin:auto" alt="YouTube Dual Subtitles" />
 
 A fully client‑side web app for watching any YouTube video with **two synchronized subtitle tracks** in different languages, presented as a console‑style dashboard: video on one side, a live synced transcript panel on the other.
 
@@ -13,6 +13,7 @@ No backend. No database. No API keys. Everything runs in the browser.
   <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion" />
+  <img src="https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
   <img src="https://img.shields.io/badge/Lucide-000000?style=for-the-badge&logo=lucide&logoColor=white" alt="Lucide" />
 </p>
 
@@ -23,23 +24,30 @@ No backend. No database. No API keys. Everything runs in the browser.
 - Near‑black background with electric violet accents for all system chrome
 - Distinct gold / teal colour identity for subtitle track A vs track B
 - Dark / light theme with automatic system preference detection and manual toggle
-- Live transcript panel auto‑scrolls to keep the current segment centred
+- **Resizable sidebar** — hover the divider between video and transcript to reveal a drag handle (mouse or keyboard), width persists across sessions
+- **Collapsible upload panel** — auto‑collapses once both subtitle files are ready, freeing up space for the transcript
+- Fully responsive: fixed‑height dashboard with independent scroll regions on desktop, and a mobile layout where the video stays pinned (`sticky`) at the top with a compact, non‑scrolling "now playing" caption strip underneath it
+- Full RTL/LTR support with automatic per‑line text direction detection
 
 ### 🌐 Dual Subtitle Power
 
 - Upload **any two independent SRT/VTT files** (different sources, different segmentations)
 - Frame‑accurate sync using `O(log n)` binary‑search cue lookup
-- Per‑track manual sync offset (±15s) to correct mistimed files
-- Toggle overlay view: source only, translation only, or both side‑by‑side
-- Export subtitles as SRT – source only, translation only, or merged bilingual file
+- Per‑track manual sync offset (±15s) to correct mistimed files — baked directly into the transcript highlight, so it never drifts from what's burned into the video overlay
+- Live transcript panel with the active segment highlighted in real time, including an animated progress bar tracking position within that exact segment
+- Toggle view mode: source only, translation only, or both side‑by‑side
+- Export subtitles as SRT — source only, translation only, or merged bilingual file
 
 ### 🚀 Technical Highlights
 
 - **Type Safety**: Full TypeScript codebase, strict null checks, shared types across parsing, sync, and UI
-- **Isolated Re‑renders**: Video time is exposed as an imperative getter, only subscriber components update on tick
-- **Performance**: Memoised transcript cards, binary‑search cue matching, 2 MB file size cap
+- **Isolated Re‑renders**: Video time is exposed as an imperative getter via `useSyncExternalStore`; only subscriber components update on tick, and transcript cards are memoized so only the active one re‑renders during playback
+- **Resilient by design**: every external browser/YouTube API call (`matchMedia`, `scrollIntoView`, the Fullscreen API, and the entire YouTube postMessage bridge) is wrapped defensively — a temporary hiccup degrades gracefully instead of crashing the app
+- **Performance**: binary‑search cue matching, 2 MB subtitle file size cap, code‑split settings panel
 - **Security**: XSS‑safe by construction, no `dangerouslySetInnerHTML`, strict URL validation, `youtube-nocookie.com`
-- **Testing**: Automated regression tests (Vitest + Testing Library) that reproduce past crash scenarios
+- **Testing**: automated regression tests (Vitest + Testing Library) that reproduce real past crash scenarios before asserting the fix
+
+---
 
 ## 🏗️ Project Structure
 
@@ -47,9 +55,15 @@ No backend. No database. No API keys. Everything runs in the browser.
 ├── 📁 public
 ├── 📁 src
 │   ├── 📁 __tests__
+│   │   ├── 📁 testHelpers
+│   │   │   └── 📄 mockYouTubePlayer.ts
+│   │   ├── 📄 collapsible-upload-section.test.tsx
+│   │   ├── 📄 flaky-player-bridge.test.tsx
 │   │   ├── 📄 full-workflow.test.tsx
 │   │   ├── 📄 matchmedia-crash.test.tsx
+│   │   ├── 📄 mobile-active-caption.test.tsx
 │   │   ├── 📄 repro.test.tsx
+│   │   ├── 📄 resizable-sidebar.test.tsx
 │   │   └── 📄 setup.ts
 │   ├── 📁 components
 │   │   ├── 📁 console
@@ -62,7 +76,8 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📁 layout
 │   │   │   ├── 📄 AppShell.tsx
 │   │   │   ├── 📄 Footer.tsx
-│   │   │   └── 📄 Header.tsx
+│   │   │   ├── 📄 Header.tsx
+│   │   │   └── 📄 PanelResizeHandle.tsx
 │   │   ├── 📁 settings
 │   │   │   ├── 📄 FontSizeControl.tsx
 │   │   │   ├── 📄 SettingsPanel.tsx
@@ -79,6 +94,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   ├── 📄 Select.tsx
 │   │   │   └── 📄 Slider.tsx
 │   │   └── 📁 video
+│   │       ├── 📄 MobileActiveCaption.tsx
 │   │       ├── 📄 SubtitleOverlay.tsx
 │   │       ├── 📄 VideoControlBar.tsx
 │   │       ├── 📄 VideoStage.tsx
@@ -96,6 +112,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📄 useFullscreen.ts
 │   │   ├── 📄 useLocalStorage.ts
 │   │   ├── 📄 usePlayerTime.ts
+│   │   ├── 📄 useResizableSidebarWidth.ts
 │   │   ├── 📄 useSubtitleTrack.ts
 │   │   ├── 📄 useTheme.ts
 │   │   └── 📄 useYouTubePlayer.ts
@@ -112,7 +129,8 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   └── 📄 sanitize.ts
 │   │   └── 📁 youtube
 │   │       ├── 📄 extractVideoId.ts
-│   │       └── 📄 loadYouTubeIframeAPI.ts
+│   │       ├── 📄 loadYouTubeIframeAPI.ts
+│   │       └── 📄 safePlayerCall.ts
 │   ├── 📁 styles
 │   │   └── 🎨 tokens.css
 │   ├── 📁 types
@@ -125,9 +143,9 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   └── 📄 vite-env.d.ts
 ├── ⚙️ .eslintrc.json
 ├── ⚙️ .gitignore
+├── 📄 LICENSE
 ├── 📝 README.md
 ├── 🌐 index.html
-├── ⚙️ package-lock.json
 ├── ⚙️ package.json
 ├── 📄 postcss.config.js
 ├── 📄 tailwind.config.ts
@@ -148,7 +166,10 @@ npm install
 npm run dev       # http://localhost:5173
 npm run build     # production build → dist/ (fully static)
 npm run lint      # code quality check
+npm run test      # automated regression tests (Vitest + Testing Library)
 ```
+
+> **Windows note:** if `npm run dev` fails with a Rollup/native‑binary error (`Cannot find module @rollup/rollup-win32-x64-msvc`), delete `node_modules` and `package-lock.json`, then run `npm install` again — this regenerates them correctly for your platform.
 
 ---
 
@@ -162,9 +183,9 @@ npm run lint      # code quality check
 ---
 ---
 
-## 📝License
+## 📝 License
 
-- This project is licensed under the MIT License - see the LICENSE file for -details
+- This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details
 
 ---
 
@@ -172,9 +193,9 @@ npm run lint      # code quality check
 
 ## 👏 Acknowledgments
 
-- DummyJSON for the free product API
-- Unsplash for beautiful category images
-- Tailwind CSS for the amazing utility framework
-- React Community for excellent documentation
+- [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference) — the playback engine this app is built around
+- [Lucide](https://lucide.dev/) — the icon set used throughout the interface
+- [IBM Plex](https://www.ibm.com/plex/) — the Sans Arabic and Mono typefaces used for content and console chrome
+- The React, Vite, Tailwind CSS, and Framer Motion communities, whose tools make an app like this possible with zero backend
 
 ---

@@ -1,46 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from '../App'
+import { installMockYouTubeApi, type MockYouTubePlayer } from './testHelpers/mockYouTubePlayer'
 
-class MockPlayer {
-  private time = 0
-  private options: any
-  constructor(elementId: string, options: any) {
-    const el = document.getElementById(elementId)
-    if (!el) throw new Error(`MockPlayer: container #${elementId} not found`)
-    this.options = options
-    setTimeout(() => options.events?.onReady?.({ target: this }), 0)
-  }
-  getDuration() { return 120 }
-  getCurrentTime() { return this.time }
-  setTime(t: number) { this.time = t }
-  getPlayerState() { return 1 }
-  playVideo() {
-    // محاكاة سلوك يوتيوب الحقيقي: تشغيل الفيديو يُصدر onStateChange بحالة PLAYING
-    this.options.events?.onStateChange?.({ data: 1, target: this })
-  }
-  pauseVideo() {}
-  seekTo(seconds: number) { this.time = seconds }
-  mute() {}
-  unMute() {}
-  isMuted() { return false }
-  setVolume() {}
-  getVolume() { return 100 }
-  destroy() {}
-}
-
-let activePlayer: MockPlayer | null = null
+let activePlayer: MockYouTubePlayer | null = null
 
 beforeEach(() => {
   activePlayer = null
-  ;(window as any).YT = {
-    Player: class extends MockPlayer {
-      constructor(elementId: string, options: any) {
-        super(elementId, options)
-        activePlayer = this as unknown as MockPlayer
-      }
-    },
-  }
+  installMockYouTubeApi((player) => {
+    activePlayer = player
+  })
 })
 
 function makeFile(name: string, content: string) {

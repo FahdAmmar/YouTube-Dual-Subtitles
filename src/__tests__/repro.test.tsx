@@ -1,33 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from '../App'
-
-class MockPlayer {
-  constructor(elementId: string, options: any) {
-    const el = document.getElementById(elementId)
-    if (!el) {
-      throw new Error(`MockPlayer: container #${elementId} not found`)
-    }
-    setTimeout(() => {
-      options.events?.onReady?.({ target: this })
-    }, 0)
-  }
-  getDuration() { return 120 }
-  getCurrentTime() { return 0 }
-  getPlayerState() { return 1 }
-  playVideo() {}
-  pauseVideo() {}
-  seekTo() {}
-  mute() {}
-  unMute() {}
-  isMuted() { return false }
-  setVolume() {}
-  getVolume() { return 100 }
-  destroy() {}
-}
+import { installMockYouTubeApi } from './testHelpers/mockYouTubePlayer'
 
 beforeEach(() => {
-  (window as any).YT = { Player: MockPlayer }
+  installMockYouTubeApi()
 })
 
 function makeSrtFile(name: string, content: string) {

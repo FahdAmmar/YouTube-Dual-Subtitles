@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadYouTubeIframeAPI } from '@/lib/youtube/loadYouTubeIframeAPI'
+import { safePlayerCall } from '@/lib/youtube/safePlayerCall'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { YouTubePlayerInstance, YouTubePlayerState } from '@/types/youtube.types'
 
@@ -78,12 +79,12 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
           events: {
             onReady: (event) => {
               setIsReady(true)
-              setDuration(event.target.getDuration())
+              setDuration(safePlayerCall(() => event.target.getDuration(), 0))
             },
             onStateChange: (event) => {
               setPlayerState(event.data)
               if (event.data === YT_PLAYER_STATE.PLAYING) {
-                setDuration(event.target.getDuration())
+                setDuration(safePlayerCall(() => event.target.getDuration(), 0))
               }
             },
             onError: () => {
@@ -98,7 +99,7 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
 
     return () => {
       isCancelled = true
-      playerRef.current?.destroy()
+      safePlayerCall(() => playerRef.current?.destroy(), undefined)
       playerRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,30 +107,44 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
 
   // دالة مستقرة (نفس المرجع بين عمليات إعادة الرسم) تقرأ الوقت الحالي
   // مباشرة من كائن المشغّل دون المرور بحالة React
-  const getCurrentTime = useCallback(() => playerRef.current?.getCurrentTime() ?? 0, [])
+  //
+  // إصلاح حرج (Bug Fix): هذه الدالة بالذات تُمرَّر مباشرة كـ getSnapshot
+  // إلى useSyncExternalStore داخل usePlayerTime، والتي يستدعيها React أثناء
+  // طور الرسم (Render) — أي استثناء غير محمي هنا يصل مباشرة إلى
+  // ErrorBoundary ويستبدل الصفحة بأكملها. بما أن getCurrentTime() تعبر
+  // فعلياً جسر postMessage نحو iframe مستضاف على domain يوتيوب، فهي عرضة
+  // لانقطاعات حقيقية (تقييد تبويب غير نشط، انقطاع شبكة مؤقت...) تزداد
+  // احتمالاً كلما طال زمن التشغيل — وهذا يفسّر تحديداً ظهور الخطأ "بعد
+  // فترة من التشغيل" لا فور بدايته. safePlayerCall يضمن إرجاع آخر سلوك
+  // آمن (0) بدل إسقاط التطبيق كله عند أي فشل مؤقت من هذا النوع
+  const getCurrentTime = useCallback(() => safePlayerCall(() => playerRef.current?.getCurrentTime() ?? 0, 0), [])
 
   const toggleMute = useCallback(() => {
     const player = playerRef.current
     if (!player) return
-    if (player.isMuted()) {
-      player.unMute()
-    } else {
-      player.mute()
-    }
+    safePlayerCall(() => {
+      if (player.isMuted()) {
+        player.unMute()
+      } else {
+        player.mute()
+      }
+    }, undefined)
   }, [])
 
   const setVolume = useCallback((volume: number) => {
     const player = playerRef.current
     if (!player) return
-    player.setVolume(volume)
-    if (volume > 0 && player.isMuted()) player.unMute()
+    safePlayerCall(() => {
+      player.setVolume(volume)
+      if (volume > 0 && player.isMuted()) player.unMute()
+    }, undefined)
   }, [])
 
   const getInitialAudioState = useCallback(() => {
     const player = playerRef.current
     return {
-      isMuted: player?.isMuted() ?? false,
-      volume: player?.getVolume() ?? 100,
+      isMuted: safePlayerCall(() => player?.isMuted() ?? false, false),
+      volume: safePlayerCall(() => player?.getVolume() ?? 100, 100),
     }
   }, [])
 
@@ -139,9 +154,9 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
     playerState,
     isReady,
     loadError,
-    play: () => playerRef.current?.playVideo(),
-    pause: () => playerRef.current?.pauseVideo(),
-    seekTo: (seconds: number) => playerRef.current?.seekTo(seconds, true),
+    play: () => safePlayerCall(() => playerRef.current?.playVideo(), undefined),
+    pause: () => safePlayerCall(() => playerRef.current?.pauseVideo(), undefined),
+    seekTo: (seconds: number) => safePlayerCall(() => playerRef.current?.seekTo(seconds, true), undefined),
     toggleMute,
     setVolume,
     getCurrentTime,

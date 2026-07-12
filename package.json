@@ -13,7 +13,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ai-sdk/xai": "^4.0.10",
+    "ai": "^7.0.22",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
     "framer-motion": "^11.11.17",
     "lucide-react": "^0.454.0",
     "react": "^18.3.1",
