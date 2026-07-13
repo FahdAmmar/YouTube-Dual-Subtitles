@@ -4,6 +4,13 @@ import { safePlayerCall } from '@/lib/youtube/safePlayerCall'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { YouTubePlayerInstance, YouTubePlayerState } from '@/types/youtube.types'
 
+// نطاق سرعة التشغيل المدعوم — يطابق المجموعة القياسية التي يدعمها يوتيوب
+// فعلياً (0.25× إلى 2×)، ويتوافق تماماً مع خطوات ±0.5 المطلوبة من لوحة
+// المفاتيح (1× → 1.5× → 2× والعكس)، فلا حاجة لاستدعاء
+// getAvailablePlaybackRates (غير مدعومة على أي حال لكل الفيديوهات بنفس الشكل)
+export const MIN_PLAYBACK_RATE = 0.25
+export const MAX_PLAYBACK_RATE = 2
+
 export interface UseYouTubePlayerResult {
   /** عنصر الحاوية الذي يجب ربطه بالـ DOM ليحل محله المشغّل */
   containerId: string
@@ -16,6 +23,10 @@ export interface UseYouTubePlayerResult {
   seekTo: (seconds: number) => void
   toggleMute: () => void
   setVolume: (volume: number) => void
+  /** سرعة التشغيل الحالية (1 = طبيعية)، مُدارة كحالة React لأنها تُعرض في الواجهة (شارة السرعة، تلميح لوحة المفاتيح) */
+  playbackRate: number
+  /** يضبط سرعة التشغيل مع تحديد النطاق تلقائياً ضمن [0.25×, 2×] */
+  setPlaybackRate: (rate: number) => void
   /**
    * قراءة الوقت الحالي بشكل فوري (Imperative) دون إحداث إعادة رسم.
    * مصمم عمداً كدالة وليس قيمة حالة (state) — انظر usePlayerTime للتفاصيل
@@ -50,6 +61,7 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
   const [playerState, setPlayerState] = useState<YouTubePlayerState>(YT_PLAYER_STATE.UNSTARTED)
   const [isReady, setIsReady] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [playbackRate, setPlaybackRateState] = useState(1)
 
   useEffect(() => {
     if (!videoId) return
@@ -57,6 +69,10 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
     let isCancelled = false
     setIsReady(false)
     setLoadError(null)
+    // إعادة الضبط لسرعة التشغيل الطبيعية عند تحميل فيديو جديد — سلوك
+    // متوقَّع (مطابق لسلوك يوتيوب نفسه ومعظم مشغّلات الفيديو الأخرى) بدل
+    // توريث سرعة كانت مضبوطة للفيديو السابق
+    setPlaybackRateState(1)
 
     loadYouTubeIframeAPI()
       .then(() => {
@@ -72,7 +88,10 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
             rel: 0,
             modestbranding: 1,
             // إخفاء واجهة تحكم يوتيوب الافتراضية بالكامل لصالح شريط
-            // التحكم المخصص (VideoControlBar) المطابق لتصميم لوحة التحكم
+            // التحكم المخصص (VideoControlBar) المطابق لتصميم لوحة التحكم.
+            // كما يُخلي الساحة تماماً لاختصارات لوحة المفاتيح المخصصة
+            // (useKeyboardShortcuts: مسافة/c/x/f) دون أي تعارض مع اختصارات
+            // يوتيوب الأصلية المدمجة في الـ iframe
             controls: 0,
             disablekb: 1,
           },
@@ -148,6 +167,17 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
     }
   }, [])
 
+  const setPlaybackRate = useCallback((rate: number) => {
+    const clampedRate = Math.min(Math.max(rate, MIN_PLAYBACK_RATE), MAX_PLAYBACK_RATE)
+    const player = playerRef.current
+    if (!player) return
+    safePlayerCall(() => player.setPlaybackRate(clampedRate), undefined)
+    // نحدّث الحالة محلياً فوراً بدل انتظار حدث من يوتيوب (لا يوجد حدث
+    // onPlaybackRateChange في الأنواع المُستخدمة هنا أصلاً — راجع مبدأ
+    // YAGNI في youtube.types.ts)، فتبقى الواجهة متجاوبة فوراً مع كل ضغطة
+    setPlaybackRateState(clampedRate)
+  }, [])
+
   return {
     containerId,
     duration,
@@ -159,6 +189,8 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
     seekTo: (seconds: number) => safePlayerCall(() => playerRef.current?.seekTo(seconds, true), undefined),
     toggleMute,
     setVolume,
+    playbackRate,
+    setPlaybackRate,
     getCurrentTime,
     getInitialAudioState,
   }

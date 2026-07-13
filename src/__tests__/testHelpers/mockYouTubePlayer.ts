@@ -14,6 +14,7 @@ export type MockYouTubePlayerOptions = ConstructorParameters<NonNullable<Window[
  */
 export class MockYouTubePlayer implements YouTubePlayerInstance {
   private time = 0
+  private rate = 1
   private readonly options: MockYouTubePlayerOptions
 
   constructor(elementId: string, options: MockYouTubePlayerOptions) {
@@ -46,7 +47,10 @@ export class MockYouTubePlayer implements YouTubePlayerInstance {
     this.options.events?.onStateChange?.({ data: 1, target: this })
   }
 
-  pauseVideo(): void {}
+  pauseVideo(): void {
+    // محاكاة سلوك يوتيوب الحقيقي: إيقاف الفيديو مؤقتاً يُصدر onStateChange بحالة PAUSED
+    this.options.events?.onStateChange?.({ data: 2, target: this })
+  }
 
   seekTo(seconds: number): void {
     this.time = seconds
@@ -64,6 +68,14 @@ export class MockYouTubePlayer implements YouTubePlayerInstance {
 
   getVolume(): number {
     return 100
+  }
+
+  setPlaybackRate(suggestedRate: number): void {
+    this.rate = suggestedRate
+  }
+
+  getPlaybackRate(): number {
+    return this.rate
   }
 
   destroy(): void {}

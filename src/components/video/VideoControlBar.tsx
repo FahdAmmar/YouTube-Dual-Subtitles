@@ -1,6 +1,8 @@
-import { useState, type ChangeEvent } from 'react'
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize } from 'lucide-react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Gauge } from 'lucide-react'
 import { usePlayerTime } from '@/hooks/usePlayerTime'
+import { cn } from '@/lib/utils/cn'
+import { formatPlaybackRate } from '@/lib/utils/formatPlaybackRate'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { YouTubePlayerState } from '@/types/youtube.types'
 
@@ -16,7 +18,12 @@ interface VideoControlBarProps {
   initialAudioState: { isMuted: boolean; volume: number }
   isFullscreen: boolean
   onToggleFullscreen: () => void
+  playbackRate: number
+  onSetPlaybackRate: (rate: number) => void
 }
+
+/** خيارات سرعة التشغيل القياسية المعروضة في القائمة — تطابق المجموعة الشائعة في يوتيوب نفسه */
+const PLAYBACK_RATE_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 
 /** تنسيق الثواني إلى "دقائق:ثواني" بالأرقام اللاتينية دوماً (معيار عالمي لعدادات الوقت) */
 function formatTime(totalSeconds: number): string {
@@ -33,6 +40,10 @@ function formatTime(totalSeconds: number): string {
  * كما تفعل لوحة الترجمة والنص المتزامن — فهو أحد المكوّنات القليلة التي
  * يُفترض أن تُعاد رسمها بمعدل عالٍ أثناء التشغيل (لتحريك شريط التقدّم)،
  * وهذا الاشتراك معزول هنا تماماً ولا يؤثر على بقية الشجرة (انظر usePlayerTime)
+ *
+ * زر السرعة هنا هو المكافئ المرئي/القابل للنقر لاختصارَي لوحة المفاتيح
+ * c/x (انظر useKeyboardShortcuts في VideoStage) — إتاحة نفس القدرة
+ * لمستخدمي الفأرة/اللمس بدل حصرها في اختصار غير مكتشَف بصرياً
  */
 export function VideoControlBar({
   playerState,
@@ -46,6 +57,8 @@ export function VideoControlBar({
   initialAudioState,
   isFullscreen,
   onToggleFullscreen,
+  playbackRate,
+  onSetPlaybackRate,
 }: VideoControlBarProps) {
   const isPlaying = playerState === YT_PLAYER_STATE.PLAYING
   const currentTime = usePlayerTime(getCurrentTime, isPlaying)
@@ -54,6 +67,20 @@ export function VideoControlBar({
   // الجاهزية، ثم تُدار محلياً لأن يوتيوب لا يرسل أحداثاً عند تغيّر الصوت
   const [isMuted, setIsMuted] = useState(initialAudioState.isMuted)
   const [volume, setVolumeState] = useState(initialAudioState.volume)
+  const [isRateMenuOpen, setIsRateMenuOpen] = useState(false)
+  const rateMenuRef = useRef<HTMLDivElement>(null)
+
+  // إغلاق قائمة السرعة عند النقر خارجها — نمط قياسي لأي قائمة منبثقة
+  useEffect(() => {
+    if (!isRateMenuOpen) return
+    function handlePointerDownOutside(event: PointerEvent) {
+      if (rateMenuRef.current && !rateMenuRef.current.contains(event.target as Node)) {
+        setIsRateMenuOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDownOutside)
+    return () => document.removeEventListener('pointerdown', handlePointerDownOutside)
+  }, [isRateMenuOpen])
 
   function handleSeekChange(event: ChangeEvent<HTMLInputElement>) {
     onSeek(Number(event.target.value))
@@ -69,6 +96,11 @@ export function VideoControlBar({
   function handleToggleMute() {
     setIsMuted((previous) => !previous)
     onToggleMute()
+  }
+
+  function handleSelectRate(rate: number) {
+    onSetPlaybackRate(rate)
+    setIsRateMenuOpen(false)
   }
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0
@@ -133,6 +165,47 @@ export function VideoControlBar({
               aria-label="مستوى الصوت"
               className="h-1 w-14 cursor-pointer appearance-none rounded-full bg-white/25 accent-console sm:w-16"
             />
+          </div>
+
+          <div ref={rateMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setIsRateMenuOpen((previous) => !previous)}
+              aria-label={`سرعة التشغيل الحالية ${formatPlaybackRate(playbackRate)}، اضغط لتغييرها`}
+              aria-expanded={isRateMenuOpen}
+              aria-haspopup="menu"
+              className={cn(
+                'flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm px-1.5 font-mono text-[11px] tabular-nums text-white transition-colors hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+                playbackRate !== 1 && 'text-console',
+              )}
+            >
+              <Gauge size={15} aria-hidden="true" />
+              {formatPlaybackRate(playbackRate)}
+            </button>
+
+            {isRateMenuOpen && (
+              <div
+                role="menu"
+                aria-label="اختيار سرعة التشغيل"
+                className="absolute bottom-full end-0 z-10 mb-2 flex flex-col gap-0.5 rounded-md border border-white/10 bg-black/90 p-1 shadow-elevated backdrop-blur-sm"
+              >
+                {PLAYBACK_RATE_OPTIONS.map((rate) => (
+                  <button
+                    key={rate}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={rate === playbackRate}
+                    onClick={() => handleSelectRate(rate)}
+                    className={cn(
+                      'rounded-sm px-3 py-1 text-start font-mono text-xs tabular-nums text-white/85 transition-colors hover:bg-white/10',
+                      rate === playbackRate && 'text-console',
+                    )}
+                  >
+                    {formatPlaybackRate(rate)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <button

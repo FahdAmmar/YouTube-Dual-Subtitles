@@ -4,6 +4,7 @@ import type { SubtitleDisplaySettings } from '@/types/theme.types'
 export const STORAGE_KEYS = {
   THEME: 'ydc:theme-preference',
   SUBTITLE_SETTINGS: 'ydc:subtitle-display-settings',
+  SUBTITLE_OVERLAY_POSITION: 'ydc:subtitle-overlay-position',
 } as const
 
 /**

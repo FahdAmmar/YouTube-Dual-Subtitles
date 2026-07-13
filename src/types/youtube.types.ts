@@ -30,6 +30,8 @@ export interface YouTubePlayerInstance {
   isMuted(): boolean
   setVolume(volume: number): void
   getVolume(): number
+  setPlaybackRate(suggestedRate: number): void
+  getPlaybackRate(): number
   destroy(): void
 }
 

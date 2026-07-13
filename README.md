@@ -35,8 +35,18 @@ No backend. No database. No API keys. Everything runs in the browser.
 - Frame‑accurate sync using `O(log n)` binary‑search cue lookup
 - Per‑track manual sync offset (±15s) to correct mistimed files — baked directly into the transcript highlight, so it never drifts from what's burned into the video overlay
 - Live transcript panel with the active segment highlighted in real time, including an animated progress bar tracking position within that exact segment
+- **Draggable burned‑in captions** — drag the subtitle bubble anywhere within the video frame (e.g. to avoid covering on‑screen text), constrained to the video's own bounds; double‑click to reset, position persists across sessions
 - Toggle view mode: source only, translation only, or both side‑by‑side
 - Export subtitles as SRT — source only, translation only, or merged bilingual file
+
+### ⌨️ Playback & Keyboard Shortcuts
+
+- `Space` — play / pause
+- `C` — speed up by 0.5× (up to 2×) · `X` — slow down by 0.5× (down to 0.25×)
+- `F` — toggle fullscreen
+- All shortcuts are automatically disabled while typing in any text field, and ignore modifier‑key combos (`Ctrl`/`Cmd`/`Alt`) so they never fight with browser shortcuts
+- Every shortcut has an on‑screen flash indicator (à la YouTube/Netflix) confirming the action, plus a clickable equivalent in the control bar (a speed menu) for mouse/touch users
+- **Not included:** a resolution/quality picker. YouTube [officially discontinued](https://developers.google.com/youtube/iframe_api_reference) programmatic quality control for embeds — `setPlaybackQuality` is a documented no‑op today, so a quality selector here would just be a fake control that does nothing. Quality is fully automatic (adaptive bitrate) on YouTube's side.
 
 ### 🚀 Technical Highlights
 
@@ -58,8 +68,10 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📁 testHelpers
 │   │   │   └── 📄 mockYouTubePlayer.ts
 │   │   ├── 📄 collapsible-upload-section.test.tsx
+│   │   ├── 📄 draggable-subtitle-overlay.test.tsx
 │   │   ├── 📄 flaky-player-bridge.test.tsx
 │   │   ├── 📄 full-workflow.test.tsx
+│   │   ├── 📄 keyboard-shortcuts.test.tsx
 │   │   ├── 📄 matchmedia-crash.test.tsx
 │   │   ├── 📄 mobile-active-caption.test.tsx
 │   │   ├── 📄 repro.test.tsx
@@ -95,6 +107,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   └── 📄 Slider.tsx
 │   │   └── 📁 video
 │   │       ├── 📄 MobileActiveCaption.tsx
+│   │       ├── 📄 PlaybackShortcutToast.tsx
 │   │       ├── 📄 SubtitleOverlay.tsx
 │   │       ├── 📄 VideoControlBar.tsx
 │   │       ├── 📄 VideoStage.tsx
@@ -109,7 +122,9 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   └── 📄 ThemeContext.tsx
 │   ├── 📁 hooks
 │   │   ├── 📄 useActiveCue.ts
+│   │   ├── 📄 useDraggableOverlayPosition.ts
 │   │   ├── 📄 useFullscreen.ts
+│   │   ├── 📄 useKeyboardShortcuts.ts
 │   │   ├── 📄 useLocalStorage.ts
 │   │   ├── 📄 usePlayerTime.ts
 │   │   ├── 📄 useResizableSidebarWidth.ts
@@ -126,6 +141,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   └── 📄 serializeSRT.ts
 │   │   ├── 📁 utils
 │   │   │   ├── 📄 cn.ts
+│   │   │   ├── 📄 formatPlaybackRate.ts
 │   │   │   └── 📄 sanitize.ts
 │   │   └── 📁 youtube
 │   │       ├── 📄 extractVideoId.ts
