@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
 import { Header } from './Header'
 import { Footer } from './Footer'
 import { PanelResizeHandle } from './PanelResizeHandle'
@@ -6,11 +6,13 @@ import { VideoUrlForm } from '@/components/video/VideoUrlForm'
 import { VideoStage } from '@/components/video/VideoStage'
 import { MobileActiveCaption } from '@/components/video/MobileActiveCaption'
 import { ConsolePanel } from '@/components/console/ConsolePanel'
-import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
+import { useVideoPlayer } from '@/hooks/useVideoPlayer'
 import { useSubtitleTrack } from '@/hooks/useSubtitleTrack'
 import { useResizableSidebarWidth } from '@/hooks/useResizableSidebarWidth'
+import { useSidebarPosition, getSidebarFlexOrderClasses } from '@/hooks/useSidebarPosition'
 import { pairCuesIntoSlices } from '@/lib/subtitles/pairCues'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
+import type { VideoSource } from '@/types/video.types'
 import type { ViewMode } from '@/types/theme.types'
 
 // تحميل كسول (Code Splitting) للوحة إعدادات حجم/لون الترجمة: لا يحتاجها
@@ -25,25 +27,46 @@ const SettingsPanel = lazy(() =>
  * المكوّن المنسّق (Orchestrator) الرئيسي للتطبيق
  *
  * تخطيط استجابي بمرحلتين:
- * 1) قبل اختيار فيديو: شاشة إعداد بسيطة في المنتصف (نموذج الرابط فقط)
+ * 1) قبل اختيار فيديو: شاشة إعداد بسيطة في المنتصف (رابط يوتيوب أو رفع
+ *    ملف محلي — كلاهما عبر useVideoPlayer الذي يوحّد التحكم بمصدري
+ *    الفيديو خلف واجهة واحدة، فلا يعرف أي مكوّن لاحق الفرق بينهما)
  * 2) بعد اختيار فيديو: تخطيط لوحة تحكم بعمودين — الفيديو ولوحة الكونسول
  *    الجانبية (النص المتزامن وإدارة الملفات):
  *    - الشاشات الكبيرة (lg+): عمودان جنباً إلى جنب بارتفاع الشاشة كاملاً
  *      مع تمرير داخلي مستقل لكل منطقة، ومقبض سحب بينهما لتغيير عرض
- *      اللوحة الجانبية (useResizableSidebarWidth + PanelResizeHandle)
+ *      اللوحة الجانبية (useResizableSidebarWidth + PanelResizeHandle)،
+ *      وإمكانية تبديل جانب اللوحة الجانبية بالكامل (useSidebarPosition)
  *    - الجوال: الفيديو "مثبّت" (sticky) أعلى الصفحة فيبقى مرئياً دوماً،
  *      يليه مباشرة شريط مدمج بلا تمرير (MobileActiveCaption) يعرض السطر
  *      الحالي فقط، ثم لوحة الكونسول الكاملة بتمرير صفحة طبيعي أسفل ذلك
  */
 export function AppShell() {
-  const [videoId, setVideoId] = useState<string | null>(null)
+  const [videoSource, setVideoSource] = useState<VideoSource | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('both')
 
-  const player = useYouTubePlayer(videoId)
+  const player = useVideoPlayer(videoSource)
   const sourceTrack = useSubtitleTrack('ar', 'العربية')
   const translationTrack = useSubtitleTrack('en', 'الإنجليزية')
-  const sidebar = useResizableSidebarWidth()
+  const sidebarPosition = useSidebarPosition()
+  const sidebar = useResizableSidebarWidth(sidebarPosition.position)
+
+  // اتجاه الصفحة الفعلي (مضبوط في index.html) — يُقرأ مباشرة لأنه لا
+  // يتغيّر ديناميكياً في هذا التطبيق، فلا حاجة لحالة React أو مستمع أحداث
+  const documentDirection = document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr'
+  const flexOrder = getSidebarFlexOrderClasses(sidebarPosition.position, documentDirection)
+
+  // الرجوع لشاشة اختيار الفيديو: يجب تحرير Object URL الخاص بأي ملف
+  // فيديو محلي كان نشطاً (URL.revokeObjectURL) — وإلا يبقى الملف محجوزاً
+  // بالكامل في ذاكرة المتصفح طوال الجلسة حتى لو لم يعد مستخدَماً إطلاقاً
+  const handleChangeVideo = useCallback(() => {
+    setVideoSource((previous) => {
+      if (previous?.type === 'local') {
+        URL.revokeObjectURL(previous.objectUrl)
+      }
+      return null
+    })
+  }, [])
 
   // إعادة بناء قائمة المقاطع الموحّدة فقط عند تغيّر المدخلات الفعلية
   // (المقاطع الخام أو الإزاحة الزمنية)، وليس عند كل نبضة وقت أو تفاعل آخر
@@ -66,7 +89,7 @@ export function AppShell() {
   const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
 
   // المرحلة الأولى: لا يوجد فيديو بعد — شاشة إعداد مركزية بسيطة
-  if (!videoId) {
+  if (!videoSource) {
     return (
       <div className="flex min-h-screen flex-col bg-bg">
         <Header />
@@ -79,7 +102,7 @@ export function AppShell() {
                 شاهد أي فيديو مع ترجمتين متزامنتين، جنباً إلى جنب
               </p>
             </div>
-            <VideoUrlForm onVideoSelected={setVideoId} />
+            <VideoUrlForm onVideoSourceSelected={setVideoSource} />
           </div>
         </main>
         <Footer />
@@ -94,7 +117,10 @@ export function AppShell() {
   // تمرير) يعرض فقط السطر المطابق للحظة الحالية — بدل القائمة الكاملة
   // القابلة للتمرير التي كانت تسحب تمرير الصفحة معها وتُخفي الفيديو. لوحة
   // الكونسول الكاملة (رفع/تنزيل/القائمة الكاملة) تتدفق بعدها بتمرير صفحة
-  // طبيعي، دون أي خطر على ظهور الفيديو بفضل تثبيته.
+  // طبيعي، دون أي خطر على ظهور الفيديو بفضل تثبيته. ترتيب DOM هنا ثابت
+  // دوماً بغض النظر عن sidebarPosition — التبديل البصري يتم فقط عبر
+  // أصناف lg:order-* (flexOrder)، فيبقى ترتيب الجوال الطبيعي (فيديو ثم
+  // شريط مدمج ثم لوحة الكونسول) غير متأثر بتفضيل سطح المكتب إطلاقاً
   //
   // على الشاشات الكبيرة (lg+): عمودان جنباً إلى جنب بارتفاع الشاشة كاملاً،
   // مع مقبض سحب بينهما (PanelResizeHandle) يتيح تغيير عرض اللوحة الجانبية
@@ -103,19 +129,21 @@ export function AppShell() {
       <Header />
 
       <div ref={sidebar.containerRef} className="flex flex-1 flex-col lg:min-h-0 lg:flex-row">
-        <main className="sticky top-0 z-20 flex flex-col bg-bg p-3 sm:p-5 lg:static lg:z-auto lg:flex-1 lg:min-w-0 lg:overflow-y-auto">
+        <main
+          className={`sticky top-0 z-20 flex flex-col bg-bg p-3 sm:p-5 lg:static lg:z-auto lg:flex-1 lg:min-w-0 lg:overflow-y-auto ${flexOrder.video}`}
+        >
           <VideoStage
             player={player}
             sourceTrack={sourceTrack.track}
             translationTrack={translationTrack.track}
             viewMode={viewMode}
-            onChangeVideo={() => setVideoId(null)}
+            onChangeVideo={handleChangeVideo}
           />
         </main>
 
         {/* شريط الجوال المدمج — جزء من الكتلة المثبّتة تحديداً لأنه يلي
             <main> مباشرة في نفس تدفق sticky؛ lg:hidden يمنع أي أثر على
-            تخطيط الشاشات الكبيرة */}
+            تخطيط الشاشات الكبيرة (ولا يحتاج أصناف order لأنه بلا عرض أصلاً هناك) */}
         <MobileActiveCaption
           slices={slices}
           getCurrentTime={player.getCurrentTime}
@@ -131,10 +159,11 @@ export function AppShell() {
           onPointerDown={sidebar.onHandlePointerDown}
           onKeyDown={sidebar.onHandleKeyDown}
           onDoubleClick={sidebar.onHandleDoubleClick}
+          className={flexOrder.handle}
         />
 
         <div
-          className="flex flex-col border-t border-border lg:h-auto lg:w-[var(--sidebar-width)] lg:shrink-0 lg:border-t-0"
+          className={`flex flex-col border-t border-border lg:h-auto lg:w-[var(--sidebar-width)] lg:shrink-0 lg:border-t-0 lg:border-border ${flexOrder.sidebar} ${flexOrder.sidebarBorderClass}`}
           style={{ '--sidebar-width': `${sidebar.width}px` } as React.CSSProperties}
         >
           <ConsolePanel
@@ -151,6 +180,8 @@ export function AppShell() {
             isPlaying={isPlaying}
             onSeek={player.seekTo}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            sidebarPosition={sidebarPosition.position}
+            onToggleSidebarPosition={sidebarPosition.toggle}
           />
         </div>
       </div>

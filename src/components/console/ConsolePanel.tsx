@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react'
+import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight } from 'lucide-react'
 import { ViewModeToggle } from './ViewModeToggle'
 import { SourceFileRow } from './SourceFileRow'
 import { DownloadSubtitles } from './DownloadSubtitles'
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils/cn'
 import type { SubtitleTrackState, TrackOffsetControls } from '@/types/subtitle.types'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import type { ViewMode } from '@/types/theme.types'
+import type { SidebarPosition } from '@/hooks/useSidebarPosition'
 
 interface ConsolePanelProps {
   sourceTrack: SubtitleTrackState
@@ -25,6 +26,8 @@ interface ConsolePanelProps {
   isPlaying: boolean
   onSeek: (seconds: number) => void
   onOpenSettings: () => void
+  sidebarPosition: SidebarPosition
+  onToggleSidebarPosition: () => void
 }
 
 /**
@@ -46,6 +49,8 @@ export function ConsolePanel({
   isPlaying,
   onSeek,
   onOpenSettings,
+  sidebarPosition,
+  onToggleSidebarPosition,
 }: ConsolePanelProps) {
   // طي قسم الرفع/العرض/التنزيل تلقائياً بمجرد جهوزية المسارين معاً، لصالح
   // تفريغ أكبر مساحة ممكنة لقائمة النص المتزامن — وهو الغرض الأساسي من
@@ -67,7 +72,7 @@ export function ConsolePanel({
   }, [bothTracksReady])
 
   return (
-    <aside className="flex h-full min-h-0 flex-col bg-surface lg:border-s lg:border-border">
+    <aside className="flex h-full min-h-0 flex-col bg-surface">
       <div className="flex flex-col gap-3 border-b border-border p-3.5">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-1.5 font-mono text-[11px] font-medium tracking-wide text-text-muted">
@@ -75,6 +80,17 @@ export function ConsolePanel({
             DISPLAY_MODE
           </h2>
           <div className="flex items-center gap-0.5">
+            <IconButton
+              aria-label={
+                sidebarPosition === 'left'
+                  ? 'نقل اللوحة الجانبية إلى يمين الشاشة'
+                  : 'نقل اللوحة الجانبية إلى يسار الشاشة'
+              }
+              onClick={onToggleSidebarPosition}
+              className="hidden h-7 w-7 lg:inline-flex"
+            >
+              <ArrowLeftRight size={13} aria-hidden="true" />
+            </IconButton>
             <IconButton
               aria-label={isUploadSectionExpanded ? 'إخفاء قسم الرفع وإعدادات العرض' : 'إظهار قسم الرفع وإعدادات العرض'}
               aria-expanded={isUploadSectionExpanded}

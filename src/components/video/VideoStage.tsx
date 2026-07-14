@@ -1,13 +1,14 @@
 import { useCallback, useRef, useState } from 'react'
 import { Play, Pause, FastForward, Rewind, Maximize, Minimize } from 'lucide-react'
 import { YouTubePlayerView } from './YouTubePlayerView'
+import { LocalVideoPlayerView } from './LocalVideoPlayerView'
 import { VideoTopBar } from './VideoTopBar'
 import { VideoControlBar } from './VideoControlBar'
 import { SubtitleOverlay } from './SubtitleOverlay'
 import { PlaybackShortcutToast, type PlaybackShortcutFeedback } from './PlaybackShortcutToast'
 import { useFullscreen } from '@/hooks/useFullscreen'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import type { UseYouTubePlayerResult } from '@/hooks/useYouTubePlayer'
+import type { UseVideoPlayerResult } from '@/hooks/useVideoPlayer'
 import { MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE } from '@/hooks/useYouTubePlayer'
 import { formatPlaybackRate } from '@/lib/utils/formatPlaybackRate'
 import type { SubtitleTrackState } from '@/types/subtitle.types'
@@ -15,7 +16,7 @@ import type { ViewMode } from '@/types/theme.types'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 
 interface VideoStageProps {
-  player: UseYouTubePlayerResult
+  player: UseVideoPlayerResult
   sourceTrack: SubtitleTrackState
   translationTrack: SubtitleTrackState
   viewMode: ViewMode
@@ -101,7 +102,20 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
       ref={stageRef}
       className="relative aspect-video w-full overflow-hidden rounded-lg bg-black shadow-elevated"
     >
-      <YouTubePlayerView containerId={player.containerId} isReady={player.isReady} loadError={player.loadError} />
+      {player.renderTarget.type === 'youtube' ? (
+        <YouTubePlayerView
+          containerId={player.renderTarget.containerId}
+          isReady={player.isReady}
+          loadError={player.loadError}
+        />
+      ) : (
+        <LocalVideoPlayerView
+          videoRef={player.renderTarget.videoRef}
+          objectUrl={player.renderTarget.objectUrl}
+          isReady={player.isReady}
+          loadError={player.loadError}
+        />
+      )}
 
       {player.isReady && (
         <>

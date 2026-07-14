@@ -25,9 +25,16 @@ No backend. No database. No API keys. Everything runs in the browser.
 - Distinct gold / teal colour identity for subtitle track A vs track B
 - Dark / light theme with automatic system preference detection and manual toggle
 - **Resizable sidebar** — hover the divider between video and transcript to reveal a drag handle (mouse or keyboard), width persists across sessions
+- **Sidebar side swap** — a dedicated toggle instantly moves the sidebar between the left and right of the video, correctly on any text direction; the choice persists across sessions
 - **Collapsible upload panel** — auto‑collapses once both subtitle files are ready, freeing up space for the transcript
 - Fully responsive: fixed‑height dashboard with independent scroll regions on desktop, and a mobile layout where the video stays pinned (`sticky`) at the top with a compact, non‑scrolling "now playing" caption strip underneath it
 - Full RTL/LTR support with automatic per‑line text direction detection
+
+### 🎬 Two Ways to Watch
+
+- **YouTube URL** — paste any link, works exactly as before
+- **Local video file** — upload a file straight from your device (MP4, WebM, MOV, MKV...); it never leaves the browser (played via a local Object URL, nothing is uploaded to any server)
+- Both paths lead to the *exact same* viewing experience — same custom control bar, same keyboard shortcuts, same dual‑subtitle overlay and transcript panel. A single unified player interface (`useVideoPlayer`) sits in front of both, so no other part of the app needs to know or care which one is active
 
 ### 🌐 Dual Subtitle Power
 
@@ -44,17 +51,19 @@ No backend. No database. No API keys. Everything runs in the browser.
 - `Space` — play / pause
 - `C` — speed up by 0.5× (up to 2×) · `X` — slow down by 0.5× (down to 0.25×)
 - `F` — toggle fullscreen
+- All shortcuts work identically whether watching a YouTube video or a local file
 - All shortcuts are automatically disabled while typing in any text field, and ignore modifier‑key combos (`Ctrl`/`Cmd`/`Alt`) so they never fight with browser shortcuts
 - Every shortcut has an on‑screen flash indicator (à la YouTube/Netflix) confirming the action, plus a clickable equivalent in the control bar (a speed menu) for mouse/touch users
-- **Not included:** a resolution/quality picker. YouTube [officially discontinued](https://developers.google.com/youtube/iframe_api_reference) programmatic quality control for embeds — `setPlaybackQuality` is a documented no‑op today, so a quality selector here would just be a fake control that does nothing. Quality is fully automatic (adaptive bitrate) on YouTube's side.
+- **Not included: a YouTube resolution/quality picker.** YouTube [officially discontinued](https://developers.google.com/youtube/iframe_api_reference) programmatic quality control for embeds — `setPlaybackQuality` and the `vq` load‑time hint are both documented no‑ops today, so a quality selector for YouTube videos here would just be a fake control that does nothing. Quality is fully automatic (adaptive bitrate) on YouTube's side. This doesn't apply to local file uploads, which always play at their native, unmodified quality.
 
 ### 🚀 Technical Highlights
 
 - **Type Safety**: Full TypeScript codebase, strict null checks, shared types across parsing, sync, and UI
+- **Player adapter pattern**: `useYouTubePlayer` and `useLocalVideoPlayer` independently implement the same control‑surface shape; `useVideoPlayer` composes them behind one interface, so `VideoControlBar`, `SubtitleOverlay`, and the keyboard shortcuts hook are entirely source‑agnostic
 - **Isolated Re‑renders**: Video time is exposed as an imperative getter via `useSyncExternalStore`; only subscriber components update on tick, and transcript cards are memoized so only the active one re‑renders during playback
-- **Resilient by design**: every external browser/YouTube API call (`matchMedia`, `scrollIntoView`, the Fullscreen API, and the entire YouTube postMessage bridge) is wrapped defensively — a temporary hiccup degrades gracefully instead of crashing the app
+- **Resilient by design**: every external browser/YouTube/media API call (`matchMedia`, `scrollIntoView`, the Fullscreen API, `HTMLMediaElement.play()`, and the entire YouTube postMessage bridge) is wrapped defensively — a temporary hiccup degrades gracefully instead of crashing the app
 - **Performance**: binary‑search cue matching, 2 MB subtitle file size cap, code‑split settings panel
-- **Security**: XSS‑safe by construction, no `dangerouslySetInnerHTML`, strict URL validation, `youtube-nocookie.com`
+- **Security**: XSS‑safe by construction, no `dangerouslySetInnerHTML`, strict URL validation, `youtube-nocookie.com`; local video files are validated by MIME type/extension and never transmitted anywhere
 - **Testing**: automated regression tests (Vitest + Testing Library) that reproduce real past crash scenarios before asserting the fix
 
 ---
@@ -72,10 +81,13 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📄 flaky-player-bridge.test.tsx
 │   │   ├── 📄 full-workflow.test.tsx
 │   │   ├── 📄 keyboard-shortcuts.test.tsx
+│   │   ├── 📄 local-video-upload.test.tsx
 │   │   ├── 📄 matchmedia-crash.test.tsx
 │   │   ├── 📄 mobile-active-caption.test.tsx
 │   │   ├── 📄 repro.test.tsx
 │   │   ├── 📄 resizable-sidebar.test.tsx
+│   │   ├── 📄 sidebar-position-logic.test.ts
+│   │   ├── 📄 sidebar-position-toggle.test.tsx
 │   │   └── 📄 setup.ts
 │   ├── 📁 components
 │   │   ├── 📁 console
@@ -106,6 +118,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   ├── 📄 Select.tsx
 │   │   │   └── 📄 Slider.tsx
 │   │   └── 📁 video
+│   │       ├── 📄 LocalVideoPlayerView.tsx
 │   │       ├── 📄 MobileActiveCaption.tsx
 │   │       ├── 📄 PlaybackShortcutToast.tsx
 │   │       ├── 📄 SubtitleOverlay.tsx
@@ -126,10 +139,13 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📄 useFullscreen.ts
 │   │   ├── 📄 useKeyboardShortcuts.ts
 │   │   ├── 📄 useLocalStorage.ts
+│   │   ├── 📄 useLocalVideoPlayer.ts
 │   │   ├── 📄 usePlayerTime.ts
 │   │   ├── 📄 useResizableSidebarWidth.ts
+│   │   ├── 📄 useSidebarPosition.ts
 │   │   ├── 📄 useSubtitleTrack.ts
 │   │   ├── 📄 useTheme.ts
+│   │   ├── 📄 useVideoPlayer.ts
 │   │   └── 📄 useYouTubePlayer.ts
 │   ├── 📁 lib
 │   │   ├── 📁 subtitles
@@ -142,16 +158,17 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📁 utils
 │   │   │   ├── 📄 cn.ts
 │   │   │   ├── 📄 formatPlaybackRate.ts
+│   │   │   ├── 📄 safePlayerCall.ts
 │   │   │   └── 📄 sanitize.ts
 │   │   └── 📁 youtube
 │   │       ├── 📄 extractVideoId.ts
-│   │       ├── 📄 loadYouTubeIframeAPI.ts
-│   │       └── 📄 safePlayerCall.ts
+│   │       └── 📄 loadYouTubeIframeAPI.ts
 │   ├── 📁 styles
 │   │   └── 🎨 tokens.css
 │   ├── 📁 types
 │   │   ├── 📄 subtitle.types.ts
 │   │   ├── 📄 theme.types.ts
+│   │   ├── 📄 video.types.ts
 │   │   └── 📄 youtube.types.ts
 │   ├── 📄 App.tsx
 │   ├── 🎨 index.css
@@ -193,6 +210,7 @@ npm run test      # automated regression tests (Vitest + Testing Library)
 
 - No API keys or secrets anywhere — the IFrame Player API requires none.
 - Subtitle files are capped at 2MB and validated by extension before parsing.
+- Local video uploads are validated by MIME type/extension, played via a local `Blob` Object URL, and never transmitted to any server — the file never leaves the browser.
 - Playback runs through `youtube-nocookie.com`.
 - All rendering goes through React's safe text-node escaping — no raw HTML injection path exists for user-supplied content.
 

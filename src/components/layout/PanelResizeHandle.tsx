@@ -9,6 +9,8 @@ interface PanelResizeHandleProps {
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void
   onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void
   onDoubleClick: () => void
+  /** أصناف إضافية اختيارية (مثال: lg:order-* من AppShell عند تبديل موضع اللوحة الجانبية) */
+  className?: string
 }
 
 /**
@@ -29,6 +31,7 @@ export function PanelResizeHandle({
   onPointerDown,
   onKeyDown,
   onDoubleClick,
+  className,
 }: PanelResizeHandleProps) {
   return (
     <div
@@ -42,7 +45,10 @@ export function PanelResizeHandle({
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
       onDoubleClick={onDoubleClick}
-      className="group relative hidden w-2 shrink-0 cursor-col-resize touch-none select-none items-stretch justify-center outline-none lg:flex"
+      className={cn(
+        'group relative hidden w-2 shrink-0 cursor-col-resize touch-none select-none items-stretch justify-center outline-none lg:flex',
+        className,
+      )}
     >
       <div
         className={cn(

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useLocalStorage } from './useLocalStorage'
+import type { SidebarPosition } from './useSidebarPosition'
 
 const STORAGE_KEY = 'dual-subtitles:sidebar-width'
 const DEFAULT_WIDTH = 380
@@ -14,7 +15,7 @@ interface DragState {
   startClientX: number
   startWidth: number
   maxWidth: number
-  /** +1 حين تكون اللوحة الجانبية على يسار الشاشة (كما في الاتجاه RTL الحالي)، -1 حين تكون على اليمين (LTR) — يُحسب مرة واحدة عند بدء السحب */
+  /** +1 حين تكون اللوحة الجانبية على يسار الشاشة فعلياً، -1 حين تكون على اليمين — يُحسب مرة واحدة عند بدء السحب */
   directionSign: 1 | -1
 }
 
@@ -32,17 +33,19 @@ export interface UseResizableSidebarWidthResult {
 }
 
 /**
- * يحسب اتجاه اللوحة الجانبية الفعلي (يسار أم يمين) من اتجاه الصفحة الحالي
- * بدل افتراضه ثابتاً — بما أن ترتيب DOM هو [الفيديو، اللوحة الجانبية] داخل
- * حاوية flex-row، فإن اللوحة الجانبية تقع منطقياً عند "نهاية" الاتجاه:
- * اليسار في RTL، اليمين في LTR. حساب هذا ديناميكياً (بدل تثبيته لـ RTL
- * فقط) يجعل الكود صحيحاً حتى لو دُعمت واجهة LTR مستقبلاً دون أي تعديل هنا
+ * اتجاه السحب المؤثر على العرض: بما أن sidebarPosition يُمثّل الجانب
+ * *الفعلي* على الشاشة (وليس مجرد ترتيب DOM)، فهو يحدد الاتجاه مباشرة
+ * وبشكل قاطع بغض النظر عن اتجاه الصفحة (dir) — انظر getSidebarFlexOrder
+ * في useSidebarPosition.ts حيث يُمتَص التعقيد الخاص بـ dir بالكامل عند
+ * حساب ترتيب flex نفسه، فلا حاجة لإعادة فحص dir هنا مجدداً:
+ * لوحة على يسار الشاشة → السحب نحو اليمين يُوسِّعها (+1)
+ * لوحة على يمين الشاشة → السحب نحو اليمين يُضيِّقها (-1)
  */
-function getSidebarDirectionSign(): 1 | -1 {
-  return document.documentElement.dir === 'rtl' ? 1 : -1
+function getSidebarDirectionSign(sidebarPosition: SidebarPosition): 1 | -1 {
+  return sidebarPosition === 'left' ? 1 : -1
 }
 
-export function useResizableSidebarWidth(): UseResizableSidebarWidthResult {
+export function useResizableSidebarWidth(sidebarPosition: SidebarPosition): UseResizableSidebarWidthResult {
   const [storedWidth, setStoredWidth] = useLocalStorage(STORAGE_KEY, DEFAULT_WIDTH)
   const [width, setWidth] = useState(storedWidth)
   const [isDragging, setIsDragging] = useState(false)
@@ -51,6 +54,10 @@ export function useResizableSidebarWidth(): UseResizableSidebarWidthResult {
   const dragStateRef = useRef<DragState | null>(null)
   const latestWidthRef = useRef(width)
   latestWidthRef.current = width
+  // مرجع لآخر قيمة لموضع اللوحة الجانبية، متاح للمعالجات التي لا تُعاد
+  // بناؤها عند كل تغيّر لهذا الموضع (onHandlePointerDown مثلاً)
+  const sidebarPositionRef = useRef(sidebarPosition)
+  sidebarPositionRef.current = sidebarPosition
 
   const computeMaxWidth = useCallback(() => {
     const containerWidth = containerRef.current?.getBoundingClientRect().width
@@ -81,7 +88,7 @@ export function useResizableSidebarWidth(): UseResizableSidebarWidthResult {
         startClientX: event.clientX,
         startWidth: latestWidthRef.current,
         maxWidth: computeMaxWidth(),
-        directionSign: getSidebarDirectionSign(),
+        directionSign: getSidebarDirectionSign(sidebarPositionRef.current),
       }
       setIsDragging(true)
     },
@@ -97,7 +104,7 @@ export function useResizableSidebarWidth(): UseResizableSidebarWidthResult {
   const onHandleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       const maxWidth = computeMaxWidth()
-      const directionSign = getSidebarDirectionSign()
+      const directionSign = getSidebarDirectionSign(sidebarPositionRef.current)
 
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault()

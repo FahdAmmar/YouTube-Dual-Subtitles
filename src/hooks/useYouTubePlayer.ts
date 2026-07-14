@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadYouTubeIframeAPI } from '@/lib/youtube/loadYouTubeIframeAPI'
-import { safePlayerCall } from '@/lib/youtube/safePlayerCall'
+import { safePlayerCall } from '@/lib/utils/safePlayerCall'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { YouTubePlayerInstance, YouTubePlayerState } from '@/types/youtube.types'
 
