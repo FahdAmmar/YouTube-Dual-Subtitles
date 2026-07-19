@@ -151,6 +151,7 @@ export function AppShell() {
             translationTrack={translationTrack.track}
             viewMode={viewMode}
             onChangeVideo={handleChangeVideo}
+            slices={slices}
           />
         </main>
 

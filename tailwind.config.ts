@@ -4,7 +4,7 @@ import type { Config } from 'tailwindcss'
 // جميع الألوان معرّفة كمتغيرات CSS (انظر src/styles/tokens.css) حتى تعمل
 // بشكل صحيح مع التبديل بين الوضع الداكن والفاتح دون إعادة بناء الأنماط
 export default {
-  darkMode: ['class'],
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {

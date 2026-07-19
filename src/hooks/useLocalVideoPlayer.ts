@@ -20,6 +20,7 @@ export interface UseLocalVideoPlayerResult {
   setPlaybackRate: (rate: number) => void
   getCurrentTime: () => number
   getInitialAudioState: () => { isMuted: boolean; volume: number }
+  getVolume: () => number
 }
 
 /** ترجمة رمز خطأ عنصر <video> القياسي إلى رسالة عربية مفهومة للمستخدم */
@@ -157,6 +158,11 @@ export function useLocalVideoPlayer(objectUrl: string | null): UseLocalVideoPlay
     }
   }, [])
 
+  const getVolume = useCallback(() => {
+    const video = videoRef.current
+    return safePlayerCall(() => Math.round((video?.volume ?? 1) * 100), 100)
+  }, [])
+
   const setPlaybackRate = useCallback((rate: number) => {
     const clampedRate = Math.min(Math.max(rate, MIN_PLAYBACK_RATE), MAX_PLAYBACK_RATE)
     const video = videoRef.current
@@ -179,5 +185,6 @@ export function useLocalVideoPlayer(objectUrl: string | null): UseLocalVideoPlay
     setPlaybackRate,
     getCurrentTime,
     getInitialAudioState,
+    getVolume,
   }
 }

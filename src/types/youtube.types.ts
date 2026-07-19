@@ -32,6 +32,9 @@ export interface YouTubePlayerInstance {
   getVolume(): number
   setPlaybackRate(suggestedRate: number): void
   getPlaybackRate(): number
+  getAvailableQualityLevels(): string[]
+  setPlaybackQuality(quality: string): void
+  getPlaybackQuality(): string
   destroy(): void
 }
 

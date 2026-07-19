@@ -11,6 +11,8 @@ import type { YouTubePlayerInstance, YouTubePlayerState } from '@/types/youtube.
 export const MIN_PLAYBACK_RATE = 0.25
 export const MAX_PLAYBACK_RATE = 2
 
+const DEFAULT_QUALITY_LEVELS = ['hd2160', 'hd1080', 'hd720', 'large', 'medium', 'small', 'tiny', 'auto']
+
 export interface UseYouTubePlayerResult {
   /** عنصر الحاوية الذي يجب ربطه بالـ DOM ليحل محله المشغّل */
   containerId: string
@@ -23,7 +25,7 @@ export interface UseYouTubePlayerResult {
   seekTo: (seconds: number) => void
   toggleMute: () => void
   setVolume: (volume: number) => void
-  /** سرعة التشغيل الحالية (1 = طبيعية)، مُدارة كحالة React لأنها تُعرض في الواجهة (شارة السرعة، تلميح لوحة المفاتيح) */
+  /** سرعة التشغيل الحالية (1 = طبيعية)، مُدارة كحالة React لأنها تُعرض في الواجهة */
   playbackRate: number
   /** يضبط سرعة التشغيل مع تحديد النطاق تلقائياً ضمن [0.25×, 2×] */
   setPlaybackRate: (rate: number) => void
@@ -32,8 +34,16 @@ export interface UseYouTubePlayerResult {
    * مصمم عمداً كدالة وليس قيمة حالة (state) — انظر usePlayerTime للتفاصيل
    */
   getCurrentTime: () => number
-  /** قراءة فورية لحالة الصوت الحالية (تُستخدم لتهيئة شريط التحكم المخصص مرة واحدة عند الجاهزية) */
+  /** قراءة فورية لحالة الصوت الحالية */
   getInitialAudioState: () => { isMuted: boolean; volume: number }
+  /** قراءة فورية لمستوى الصوت الحالي */
+  getVolume: () => number
+  /** مستويات الجودة المتاحة من يوتيوب لهذا الفيديو */
+  qualityLevels: string[]
+  /** مستوى الجودة الحالي */
+  currentQuality: string
+  /** ضبط مستوى الجودة المفضل */
+  setQuality: (quality: string) => void
 }
 
 /**
@@ -62,6 +72,8 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
   const [isReady, setIsReady] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [playbackRate, setPlaybackRateState] = useState(1)
+  const [qualityLevels, setQualityLevels] = useState<string[]>([])
+  const [currentQuality, setCurrentQuality] = useState<string>('auto')
 
   useEffect(() => {
     if (!videoId) return
@@ -96,14 +108,18 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
             disablekb: 1,
           },
           events: {
-            onReady: (event) => {
+              onReady: (event) => {
               setIsReady(true)
               setDuration(safePlayerCall(() => event.target.getDuration(), 0))
+              const levels = safePlayerCall(() => event.target.getAvailableQualityLevels(), [] as string[])
+              setQualityLevels(levels.length > 0 ? levels : DEFAULT_QUALITY_LEVELS)
+              setCurrentQuality(safePlayerCall(() => event.target.getPlaybackQuality(), 'auto'))
             },
             onStateChange: (event) => {
               setPlayerState(event.data)
               if (event.data === YT_PLAYER_STATE.PLAYING) {
                 setDuration(safePlayerCall(() => event.target.getDuration(), 0))
+                setCurrentQuality(safePlayerCall(() => event.target.getPlaybackQuality(), 'auto'))
               }
             },
             onError: () => {
@@ -167,15 +183,24 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
     }
   }, [])
 
+  const getVolume = useCallback(() => {
+    const player = playerRef.current
+    return safePlayerCall(() => player?.getVolume() ?? 100, 100)
+  }, [])
+
   const setPlaybackRate = useCallback((rate: number) => {
     const clampedRate = Math.min(Math.max(rate, MIN_PLAYBACK_RATE), MAX_PLAYBACK_RATE)
     const player = playerRef.current
     if (!player) return
     safePlayerCall(() => player.setPlaybackRate(clampedRate), undefined)
-    // نحدّث الحالة محلياً فوراً بدل انتظار حدث من يوتيوب (لا يوجد حدث
-    // onPlaybackRateChange في الأنواع المُستخدمة هنا أصلاً — راجع مبدأ
-    // YAGNI في youtube.types.ts)، فتبقى الواجهة متجاوبة فوراً مع كل ضغطة
     setPlaybackRateState(clampedRate)
+  }, [])
+
+  const setQuality = useCallback((quality: string) => {
+    const player = playerRef.current
+    if (!player) return
+    safePlayerCall(() => player.setPlaybackQuality(quality), undefined)
+    setCurrentQuality(quality)
   }, [])
 
   return {
@@ -193,5 +218,9 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
     setPlaybackRate,
     getCurrentTime,
     getInitialAudioState,
+    getVolume,
+    qualityLevels,
+    currentQuality,
+    setQuality,
   }
 }

@@ -20,10 +20,29 @@ interface VideoControlBarProps {
   onToggleFullscreen: () => void
   playbackRate: number
   onSetPlaybackRate: (rate: number) => void
+  qualityLevels: string[]
+  currentQuality: string
+  onSetQuality: (quality: string) => void
 }
 
 /** خيارات سرعة التشغيل القياسية المعروضة في القائمة — تطابق المجموعة الشائعة في يوتيوب نفسه */
 const PLAYBACK_RATE_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+
+/** تحويل رمز جودة يوتيوب إلى نص مقروء */
+function formatQuality(quality: string): string {
+  const map: Record<string, string> = {
+    highres: '4K+',
+    hd2160: '4K',
+    hd1080: '1080p',
+    hd720: '720p',
+    large: '480p',
+    medium: '360p',
+    small: '240p',
+    tiny: '144p',
+    auto: 'تلقائي',
+  }
+  return map[quality] ?? quality
+}
 
 /** تنسيق الثواني إلى "دقائق:ثواني" بالأرقام اللاتينية دوماً (معيار عالمي لعدادات الوقت) */
 function formatTime(totalSeconds: number): string {
@@ -59,6 +78,9 @@ export function VideoControlBar({
   onToggleFullscreen,
   playbackRate,
   onSetPlaybackRate,
+  qualityLevels,
+  currentQuality,
+  onSetQuality,
 }: VideoControlBarProps) {
   const isPlaying = playerState === YT_PLAYER_STATE.PLAYING
   const currentTime = usePlayerTime(getCurrentTime, isPlaying)
@@ -68,7 +90,9 @@ export function VideoControlBar({
   const [isMuted, setIsMuted] = useState(initialAudioState.isMuted)
   const [volume, setVolumeState] = useState(initialAudioState.volume)
   const [isRateMenuOpen, setIsRateMenuOpen] = useState(false)
+  const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false)
   const rateMenuRef = useRef<HTMLDivElement>(null)
+  const qualityMenuRef = useRef<HTMLDivElement>(null)
 
   // إغلاق قائمة السرعة عند النقر خارجها — نمط قياسي لأي قائمة منبثقة
   useEffect(() => {
@@ -81,6 +105,18 @@ export function VideoControlBar({
     document.addEventListener('pointerdown', handlePointerDownOutside)
     return () => document.removeEventListener('pointerdown', handlePointerDownOutside)
   }, [isRateMenuOpen])
+
+  // إغلاق قائمة الجودة عند النقر خارجها
+  useEffect(() => {
+    if (!isQualityMenuOpen) return
+    function handlePointerDownOutside(event: PointerEvent) {
+      if (qualityMenuRef.current && !qualityMenuRef.current.contains(event.target as Node)) {
+        setIsQualityMenuOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDownOutside)
+    return () => document.removeEventListener('pointerdown', handlePointerDownOutside)
+  }, [isQualityMenuOpen])
 
   function handleSeekChange(event: ChangeEvent<HTMLInputElement>) {
     onSeek(Number(event.target.value))
@@ -211,6 +247,50 @@ export function VideoControlBar({
               </div>
             )}
           </div>
+
+          {qualityLevels.length > 0 && (
+            <div ref={qualityMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsQualityMenuOpen((previous) => !previous)}
+                aria-label={`جودة الفيديو ${formatQuality(currentQuality)}، اضغط لتغييرها`}
+                aria-expanded={isQualityMenuOpen}
+                aria-haspopup="menu"
+                className={cn(
+                  'flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm px-1.5 font-mono text-[11px] tabular-nums text-white transition-colors hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+                )}
+              >
+                HD
+              </button>
+
+              {isQualityMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label="اختيار جودة الفيديو"
+                  className="absolute bottom-full end-0 z-10 mb-2 flex max-h-60 flex-col gap-0.5 overflow-y-auto rounded-md border border-white/10 bg-black/90 p-1 shadow-elevated backdrop-blur-sm"
+                >
+                  {qualityLevels.map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={level === currentQuality}
+                      onClick={() => {
+                        onSetQuality(level)
+                        setIsQualityMenuOpen(false)
+                      }}
+                      className={cn(
+                        'rounded-sm px-3 py-1 text-start font-mono text-xs tabular-nums text-white/85 transition-colors hover:bg-white/10',
+                        level === currentQuality && 'text-console',
+                      )}
+                    >
+                      {formatQuality(level)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             type="button"

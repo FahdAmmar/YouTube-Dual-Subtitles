@@ -24,6 +24,10 @@ export interface UseVideoPlayerResult {
   setPlaybackRate: (rate: number) => void
   getCurrentTime: () => number
   getInitialAudioState: () => { isMuted: boolean; volume: number }
+  getVolume: () => number
+  qualityLevels: string[]
+  currentQuality: string
+  setQuality: (quality: string) => void
 }
 
 /**
@@ -49,6 +53,9 @@ export function useVideoPlayer(source: VideoSource | null): UseVideoPlayerResult
     return {
       ...localPlayer,
       renderTarget: { type: 'local', videoRef: localPlayer.videoRef, objectUrl: source.objectUrl },
+      qualityLevels: [],
+      currentQuality: 'native',
+      setQuality: () => {},
     }
   }
 

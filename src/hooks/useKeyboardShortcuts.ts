@@ -5,6 +5,11 @@ export interface KeyboardShortcutHandlers {
   onSpeedUp: () => void
   onSlowDown: () => void
   onToggleFullscreen: () => void
+  onResetSpeed: () => void
+  onPrevScene: () => void
+  onNextScene: () => void
+  onVolumeUp: () => void
+  onVolumeDown: () => void
 }
 
 /**
@@ -38,7 +43,17 @@ function isTypingTarget(target: EventTarget | null): boolean {
  */
 export function useKeyboardShortcuts(
   enabled: boolean,
-  { onTogglePlayPause, onSpeedUp, onSlowDown, onToggleFullscreen }: KeyboardShortcutHandlers,
+  {
+    onTogglePlayPause,
+    onSpeedUp,
+    onSlowDown,
+    onToggleFullscreen,
+    onResetSpeed,
+    onPrevScene,
+    onNextScene,
+    onVolumeUp,
+    onVolumeDown,
+  }: KeyboardShortcutHandlers,
 ): void {
   useEffect(() => {
     if (!enabled) return
@@ -49,7 +64,7 @@ export function useKeyboardShortcuts(
 
       switch (event.key) {
         case ' ':
-        case 'Spacebar': // اسم المفتاح في بعض المتصفحات القديمة
+        case 'Spacebar':
           event.preventDefault()
           onTogglePlayPause()
           break
@@ -68,6 +83,27 @@ export function useKeyboardShortcuts(
           event.preventDefault()
           onToggleFullscreen()
           break
+        case 'z':
+        case 'Z':
+          event.preventDefault()
+          onResetSpeed()
+          break
+        case 'ArrowLeft':
+          event.preventDefault()
+          onPrevScene()
+          break
+        case 'ArrowRight':
+          event.preventDefault()
+          onNextScene()
+          break
+        case 'ArrowUp':
+          event.preventDefault()
+          onVolumeUp()
+          break
+        case 'ArrowDown':
+          event.preventDefault()
+          onVolumeDown()
+          break
         default:
           break
       }
@@ -75,5 +111,5 @@ export function useKeyboardShortcuts(
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [enabled, onTogglePlayPause, onSpeedUp, onSlowDown, onToggleFullscreen])
+  }, [enabled, onTogglePlayPause, onSpeedUp, onSlowDown, onToggleFullscreen, onResetSpeed, onPrevScene, onNextScene, onVolumeUp, onVolumeDown])
 }

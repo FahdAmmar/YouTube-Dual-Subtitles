@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { Play, Pause, FastForward, Rewind, Maximize, Minimize } from 'lucide-react'
+import { Play, Pause, FastForward, Rewind, Maximize, Minimize, RotateCcw, SkipBack, SkipForward, Volume2, Volume1 } from 'lucide-react'
 import { YouTubePlayerView } from './YouTubePlayerView'
 import { LocalVideoPlayerView } from './LocalVideoPlayerView'
 import { VideoTopBar } from './VideoTopBar'
@@ -13,6 +13,7 @@ import { MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE } from '@/hooks/useYouTubePlayer'
 import { formatPlaybackRate } from '@/lib/utils/formatPlaybackRate'
 import type { SubtitleTrackState } from '@/types/subtitle.types'
 import type { ViewMode } from '@/types/theme.types'
+import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 
 interface VideoStageProps {
@@ -21,6 +22,7 @@ interface VideoStageProps {
   translationTrack: SubtitleTrackState
   viewMode: ViewMode
   onChangeVideo: () => void
+  slices: PairedSlice[]
 }
 
 let shortcutFeedbackIdCounter = 0
@@ -36,11 +38,13 @@ let shortcutFeedbackIdCounter = 0
  * لأنه المكان الطبيعي الوحيد الذي تتوفر فيه كل عناصر التحكم اللازمة معاً
  * (المشغّل، حالة ملء الشاشة) في مكوّن واحد
  */
-export function VideoStage({ player, sourceTrack, translationTrack, viewMode, onChangeVideo }: VideoStageProps) {
+export function VideoStage({ player, sourceTrack, translationTrack, viewMode, onChangeVideo, slices }: VideoStageProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const { isFullscreen, toggleFullscreen } = useFullscreen(stageRef)
   const [shortcutFeedback, setShortcutFeedback] = useState<PlaybackShortcutFeedback | null>(null)
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const slicesRef = useRef(slices)
+  slicesRef.current = slices
 
   const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
 
@@ -90,11 +94,56 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
     )
   }, [toggleFullscreen, isFullscreen, showShortcutFeedback])
 
+  const handleResetSpeed = useCallback(() => {
+    player.setPlaybackRate(1)
+    showShortcutFeedback('1×', <RotateCcw size={20} aria-hidden="true" />)
+  }, [player, showShortcutFeedback])
+
+  const handlePrevScene = useCallback(() => {
+    const currentSlices = slicesRef.current
+    const currentTime = player.getCurrentTime()
+    const currentIndex = currentSlices.findIndex((s) => currentTime >= s.start && currentTime < s.end)
+    const targetIndex = currentIndex > 0 ? currentIndex - 1 : 0
+    if (currentSlices[targetIndex]) {
+      player.seekTo(currentSlices[targetIndex].start)
+      showShortcutFeedback(`المقطع ${targetIndex + 1}`, <SkipBack size={20} aria-hidden="true" />)
+    }
+  }, [player, showShortcutFeedback])
+
+  const handleNextScene = useCallback(() => {
+    const currentSlices = slicesRef.current
+    const currentTime = player.getCurrentTime()
+    const currentIndex = currentSlices.findIndex((s) => currentTime >= s.start && currentTime < s.end)
+    const targetIndex = currentIndex < currentSlices.length - 1 ? currentIndex + 1 : currentSlices.length - 1
+    if (currentSlices[targetIndex]) {
+      player.seekTo(currentSlices[targetIndex].start)
+      showShortcutFeedback(`المقطع ${targetIndex + 1}`, <SkipForward size={20} aria-hidden="true" />)
+    }
+  }, [player, showShortcutFeedback])
+
+  const VOLUME_STEP = 10
+  const handleVolumeUp = useCallback(() => {
+    const newVolume = Math.min(100, player.getVolume() + VOLUME_STEP)
+    player.setVolume(newVolume)
+    showShortcutFeedback(`${newVolume}%`, <Volume2 size={20} aria-hidden="true" />)
+  }, [player, showShortcutFeedback])
+
+  const handleVolumeDown = useCallback(() => {
+    const newVolume = Math.max(0, player.getVolume() - VOLUME_STEP)
+    player.setVolume(newVolume)
+    showShortcutFeedback(`${newVolume}%`, <Volume1 size={20} aria-hidden="true" />)
+  }, [player, showShortcutFeedback])
+
   useKeyboardShortcuts(player.isReady, {
     onTogglePlayPause: handleTogglePlayPause,
     onSpeedUp: handleSpeedUp,
     onSlowDown: handleSlowDown,
     onToggleFullscreen: handleToggleFullscreenShortcut,
+    onResetSpeed: handleResetSpeed,
+    onPrevScene: handlePrevScene,
+    onNextScene: handleNextScene,
+    onVolumeUp: handleVolumeUp,
+    onVolumeDown: handleVolumeDown,
   })
 
   return (
@@ -147,6 +196,9 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
               onToggleFullscreen={toggleFullscreen}
               playbackRate={player.playbackRate}
               onSetPlaybackRate={player.setPlaybackRate}
+              qualityLevels={player.qualityLevels}
+              currentQuality={player.currentQuality}
+              onSetQuality={player.setQuality}
             />
           </div>
         </>

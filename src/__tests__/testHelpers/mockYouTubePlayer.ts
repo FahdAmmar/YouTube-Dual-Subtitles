@@ -79,6 +79,16 @@ export class MockYouTubePlayer implements YouTubePlayerInstance {
   }
 
   destroy(): void {}
+
+  getAvailableQualityLevels(): string[] {
+    return ['hd1080', 'hd720', 'large', 'medium', 'small', 'tiny', 'auto']
+  }
+
+  setPlaybackQuality(_quality: string): void {}
+
+  getPlaybackQuality(): string {
+    return 'auto'
+  }
 }
 
 /**
