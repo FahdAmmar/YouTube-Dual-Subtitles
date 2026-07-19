@@ -37,6 +37,26 @@
   --color-warning: 217 121 31;
   --color-error: 226 104 91;
   --color-info: 91 155 213;
+
+  /* رموز الزجاج (Glass) — أسطح شبه شفافة مدعومة بتشويش خلفي (backdrop-blur).
+     معرّفة بصيغة RGB لتمكين Tailwind من تطبيق الشفافية عبر <alpha-value>،
+     كما تُستخدم مباشرةً في أصناف الأدوات المخصّصة بالأسفل */
+  --glass-bg: 18 20 28;
+  --glass-border: 255 255 255;
+  --glass-border-alpha: 0.08;
+  --glass-highlight: 255 255 255;
+  --glass-highlight-alpha: 0.04;
+
+  /* ألوان "الهالة" (Aurora) — تدرجات ناعمة تتحرك ببطء في الخلفية لتمنح
+     الإحساس السينمائي دون تشتيت; تُستخدم في مكوّن BackgroundFX */
+  --aurora-a: 138 122 246;
+  --aurora-b: 79 199 190;
+  --aurora-c: 232 180 76;
+
+  /* شدّة التشويش الرقمي (Noise) — قيمة opacity مناسبة لكل وضع */
+  --noise-opacity: 0.035;
+  --grid-line: 255 255 255;
+  --grid-alpha: 0.025;
 }
 
 [data-theme='light'] {
@@ -61,6 +81,20 @@
   --color-warning: 180 110 10;
   --color-error: 198 62 51;
   --color-info: 43 108 176;
+
+  --glass-bg: 255 255 255;
+  --glass-border: 255 255 255;
+  --glass-border-alpha: 0.6;
+  --glass-highlight: 255 255 255;
+  --glass-highlight-alpha: 0.6;
+
+  --aurora-a: 102 84 226;
+  --aurora-b: 18 132 124;
+  --aurora-c: 169 114 12;
+
+  --noise-opacity: 0.022;
+  --grid-line: 20 23 29;
+  --grid-alpha: 0.035;
 }
 
 @layer base {
@@ -70,11 +104,17 @@
 
   html {
     scroll-behavior: smooth;
+    /* شبكة أمان: تمنع ظهور تمرير أفقي غير مقصود على الشاشات الضيقة جداً.
+       عمداً clip وليس hidden: الأخيرة تُنشئ سياق تمرير/تنسيق جديد يُعطّل
+       position: sticky لأي عنصر فرعي (يشمل الفيديو المثبّت على الجوال في
+       AppShell) — clip يمنع نفس الفيض البصري دون هذا الأثر الجانبي */
+    overflow-x: clip;
   }
 
   body {
     @apply bg-bg text-text-primary antialiased;
     font-family: theme('fontFamily.sans');
+    overflow-x: clip;
   }
 
   /* حالة تركيز واضحة موحّدة عبر لوحة المفاتيح فقط، دون إزعاج مستخدمي الفأرة */
@@ -108,5 +148,114 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+@layer components {
+  /* ──────────────────────────────────────────────────────────────────────
+     أدوات الزجاج (Glassmorphism) — أسطح شبه شفافة مدعومة بتشويش خلفي.
+     تُستخدم في البطاقات والرأس والنماذج لمنح إحساس العمق والطبقات
+   ────────────────────────────────────────────────────────────────────── */
+  .glass-panel {
+    background: rgb(var(--glass-bg) / 0.6);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgb(var(--glass-border) / var(--glass-border-alpha));
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--glass-highlight) / var(--glass-highlight-alpha)),
+      0 2px 8px rgb(0 0 0 / 0.04),
+      0 16px 48px -16px rgb(0 0 0 / 0.24);
+  }
+
+  .glass-subtle {
+    background: rgb(var(--glass-bg) / 0.4);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    border: 1px solid rgb(var(--glass-border) / calc(var(--glass-border-alpha) * 0.6));
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     شبكة نقطية خفيفة في الخلفية — تُضيف إحساس "الكونسول التقني" دون
+     إثقال بصري; تُطبَّق كطبقة فوق الخلفية وتحت المحتوى
+   ────────────────────────────────────────────────────────────────────── */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgb(var(--grid-line) / var(--grid-alpha)) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--grid-line) / var(--grid-alpha)) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: center center;
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 30%, transparent 80%);
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 30%, transparent 80%);
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     نسيج تشويش رقمي (Noise) — يُكسر التدرجات النقية ويمنع ظهور
+     "banding" في التدرجات، ويمنح لمسة سينمائية راقية. يُولَّد كـ SVG
+     مضمّن صغير (inline) بدل طلب ملف خارجي لتفادي حمولة شبكة إضافية
+   ────────────────────────────────────────────────────────────────────── */
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: var(--noise-opacity);
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     نص متدرّج (Gradient Text) — للعناوين البطولية; يدمج لون المسارين
+     (ذهبي/أزرق-مخضر) مع لون الكونسول البنفسجي لربط نظام المحتوى بالنظام
+   ────────────────────────────────────────────────────────────────────── */
+  .text-gradient-hero {
+    background-image: linear-gradient(
+      110deg,
+      rgb(var(--color-text-primary)) 0%,
+      rgb(var(--color-text-primary)) 35%,
+      rgb(var(--color-console)) 62%,
+      rgb(var(--color-track-b)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     حد متدرّج متحرّك (Animated Gradient Border) — إطار متوهّج يحيط
+     بالعنصر النشط/المميّز; يُحقَّق عبر طبقة زائفة خلف المحتوى
+   ────────────────────────────────────────────────────────────────────── */
+  .border-gradient-glow {
+    position: relative;
+    isolation: isolate;
+  }
+  .border-gradient-glow::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      130deg,
+      rgb(var(--color-console) / 0.6),
+      rgb(var(--color-track-b) / 0.35),
+      transparent 55%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+@layer utilities {
+  /* موازنة مرنة لمسار ضوئي (Spotlight) يتبع مؤشر الفأرة — يُضبط عبر
+     متغير CSS مخصّص (--x, --y) من المستمع في React */
+  .spotlight-mouse {
+    background: radial-gradient(
+      600px circle at var(--mx, 50%) var(--my, 0%),
+      rgb(var(--color-console) / 0.08),
+      transparent 45%
+    );
   }
 }

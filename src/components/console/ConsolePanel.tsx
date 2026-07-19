@@ -79,7 +79,7 @@ export function ConsolePanel({
             <SlidersHorizontal size={12} aria-hidden="true" />
             DISPLAY_MODE
           </h2>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1.5">
             <IconButton
               aria-label={
                 sidebarPosition === 'left'

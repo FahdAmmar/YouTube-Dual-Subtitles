@@ -61,10 +61,40 @@ export default {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.35' },
         },
+        // هالة بطيئة تطفو وتتلاشى في الخلفية — أساس التأثير السينمائي
+        aurora: {
+          '0%, 100%': { transform: 'translate3d(0, 0, 0) scale(1)', opacity: '0.7' },
+          '33%': { transform: 'translate3d(4%, -3%, 0) scale(1.08)', opacity: '0.9' },
+          '66%': { transform: 'translate3d(-3%, 4%, 0) scale(0.96)', opacity: '0.6' },
+        },
+        // طفو ناعم لأعلى ولأسفل — للعناصر العائمة كالشارات والنقاط
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-8px)' },
+        },
+        // تدرّج متحرّك على الحدود المتوهّجة (gradient border)
+        'border-flow': {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
+        // وميض ناعم لـ"الشارة الحيّة" (مؤشر جاهزية)
+        'glow-pulse': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgb(var(--color-console) / 0.4)' },
+          '50%': { boxShadow: '0 0 0 6px rgb(var(--color-console) / 0)' },
+        },
+        shimmer: {
+          '0%': { transform: 'translateX(-120%)' },
+          '100%': { transform: 'translateX(220%)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 180ms ease-out',
         'pulse-dot': 'pulse-dot 1.6s ease-in-out infinite',
+        aurora: 'aurora 18s ease-in-out infinite',
+        float: 'float 6s ease-in-out infinite',
+        'border-flow': 'border-flow 6s ease infinite',
+        'glow-pulse': 'glow-pulse 2.4s ease-in-out infinite',
+        shimmer: 'shimmer 2.2s ease-in-out infinite',
       },
     },
   },

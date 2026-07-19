@@ -123,7 +123,7 @@ export function VideoControlBar({
           value={currentTime}
           onChange={handleSeekChange}
           aria-label="موضع التشغيل الحالي في الفيديو"
-          className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent accent-console opacity-0 hover:opacity-100 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-console"
+          className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent accent-console opacity-70 transition-opacity hover:opacity-100 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-console"
         />
       </div>
 
@@ -155,6 +155,10 @@ export function VideoControlBar({
                 <Volume2 size={17} aria-hidden="true" />
               )}
             </button>
+            {/* منزلق الصوت مخفي على الجوال: بين زر الكتم وزر السرعة وزر ملء
+                الشاشة معاً، لم تعد المساحة تتّسع لمنزلق إضافي على الشاشات
+                الضيقة دون ازدحام أو فيضان الصف بأكمله. زر الكتم وحده يبقى
+                كافياً على الجوال (يطابق تعارف تطبيقات الفيديو الأخرى هناك) */}
             <input
               type="range"
               min={0}
@@ -163,7 +167,7 @@ export function VideoControlBar({
               value={isMuted ? 0 : volume}
               onChange={handleVolumeChange}
               aria-label="مستوى الصوت"
-              className="h-1 w-14 cursor-pointer appearance-none rounded-full bg-white/25 accent-console sm:w-16"
+              className="hidden h-1 w-14 cursor-pointer appearance-none rounded-full bg-white/25 accent-console sm:block sm:w-16"
             />
           </div>
 

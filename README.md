@@ -28,6 +28,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 - **Sidebar side swap** — a dedicated toggle instantly moves the sidebar between the left and right of the video, correctly on any text direction; the choice persists across sessions
 - **Collapsible upload panel** — auto‑collapses once both subtitle files are ready, freeing up space for the transcript
 - Fully responsive: fixed‑height dashboard with independent scroll regions on desktop, and a mobile layout where the video stays pinned (`sticky`) at the top with a compact, non‑scrolling "now playing" caption strip underneath it
+- Mobile‑tuned controls: comfortable touch‑sized buttons throughout, an always‑visible (not hover‑only) seek handle, the volume slider gives way to a simple mute toggle on narrow screens to avoid crowding the control bar, and text inputs are sized to avoid iOS Safari's auto‑zoom‑on‑focus
 - Full RTL/LTR support with automatic per‑line text direction detection
 
 ### 🎬 Two Ways to Watch
@@ -61,6 +62,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 - **Type Safety**: Full TypeScript codebase, strict null checks, shared types across parsing, sync, and UI
 - **Player adapter pattern**: `useYouTubePlayer` and `useLocalVideoPlayer` independently implement the same control‑surface shape; `useVideoPlayer` composes them behind one interface, so `VideoControlBar`, `SubtitleOverlay`, and the keyboard shortcuts hook are entirely source‑agnostic
 - **Isolated Re‑renders**: Video time is exposed as an imperative getter via `useSyncExternalStore`; only subscriber components update on tick, and transcript cards are memoized so only the active one re‑renders during playback
+- **`overflow-x: clip`, not `hidden`**: the global horizontal‑overflow safety net in `index.css` deliberately uses `clip` — `hidden` on `html`/`body` is a well‑known way to silently break `position: sticky` on descendants (it creates a new scroll/formatting context), which would have broken the mobile sticky video. `clip` gets the same "no horizontal scrollbar" result without that side effect.
 - **Resilient by design**: every external browser/YouTube/media API call (`matchMedia`, `scrollIntoView`, the Fullscreen API, `HTMLMediaElement.play()`, and the entire YouTube postMessage bridge) is wrapped defensively — a temporary hiccup degrades gracefully instead of crashing the app
 - **Performance**: binary‑search cue matching, 2 MB subtitle file size cap, code‑split settings panel
 - **Security**: XSS‑safe by construction, no `dangerouslySetInnerHTML`, strict URL validation, `youtube-nocookie.com`; local video files are validated by MIME type/extension and never transmitted anywhere

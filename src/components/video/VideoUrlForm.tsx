@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react'
 import { Play, AlertCircle, Upload, FileVideo } from 'lucide-react'
 import { extractYouTubeVideoId } from '@/lib/youtube/extractVideoId'
 import { Button } from '@/components/ui/Button'
@@ -20,10 +20,10 @@ const ACCEPTED_VIDEO_EXTENSIONS = ['mp4', 'webm', 'ogg', 'ogv', 'mov', 'm4v', 'm
 
 const METHOD_TAB_CLASSNAME = (isActive: boolean) =>
   cn(
-    'rounded-sm border px-2.5 py-1.5 font-mono text-[11px] font-medium tracking-wide transition-colors',
+    'relative overflow-hidden rounded-sm border px-2.5 py-1.5 font-mono text-[11px] font-medium tracking-wide transition-colors',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
     isActive
-      ? 'border-console bg-console/10 text-console'
+      ? 'border-console/60 bg-console/10 text-console shadow-[0_0_16px_-6px_rgb(var(--color-console)/0.8)]'
       : 'border-border text-text-muted hover:border-text-muted hover:text-text-secondary',
   )
 
@@ -44,6 +44,19 @@ export function VideoUrlForm({ onVideoSourceSelected }: VideoUrlFormProps) {
   const [urlError, setUrlError] = useState<string | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  // تتبّع مؤشر الفأرة داخل البطاقة لتحريك "مسار الضوء" (Spotlight) الذي
+  // يتبع المؤشر — يُحقَّق عبر متغيّري CSS (--mx, --my) تُحدّث مباشرة على
+  // العنصر بدل إعادة رسم React (أرخص بكثير من setState لكل حركة فأرة).
+  // يُعطَّل ضمنياً على اللمس لأن mousemove لا يُطلق هناك أصلاً.
+  function handleMouseMove(event: MouseEvent<HTMLDivElement>) {
+    const element = cardRef.current
+    if (!element) return
+    const rect = element.getBoundingClientRect()
+    element.style.setProperty('--mx', `${event.clientX - rect.left}px`)
+    element.style.setProperty('--my', `${event.clientY - rect.top}px`)
+  }
 
   function handleUrlSubmit(event: FormEvent) {
     event.preventDefault()
@@ -82,7 +95,22 @@ export function VideoUrlForm({ onVideoSourceSelected }: VideoUrlFormProps) {
   }
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      className="group border-gradient-glow glass-panel spotlight-mouse relative rounded-xl p-5 sm:p-6"
+    >
+      {/* وميض "شيمّر" يمر على البطاقة عند المرور فوقها — يُضيف لمسة حيّة
+          سينمائية دون إثقال؛ يُفعَّل فقط أثناء hover عبر group-hover،
+          وpointer-events-none حتى لا يعترض النقرات على المدخلات */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl"
+      >
+        <div className="absolute -inset-y-2 -left-1/3 w-1/3 rotate-12 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent opacity-0 transition-opacity duration-500 group-hover:animate-shimmer group-hover:opacity-100" />
+      </div>
+
+      <div className="relative flex w-full flex-col gap-3">
       <div role="radiogroup" aria-label="طريقة اختيار الفيديو" className="flex flex-wrap gap-1.5">
         <button
           type="button"
@@ -118,7 +146,7 @@ export function VideoUrlForm({ onVideoSourceSelected }: VideoUrlFormProps) {
               placeholder="https://www.youtube.com/watch?v=..."
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
-              className="h-12 flex-1 rounded-md border border-border bg-surface-elevated px-4 font-mono text-sm text-text-primary placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+              className="h-12 flex-1 rounded-md border border-border bg-surface-elevated/60 px-4 font-mono text-base text-text-primary backdrop-blur-sm transition-colors placeholder:text-text-muted hover:border-text-muted/50 focus-visible:border-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console/60 focus-visible:ring-offset-0 sm:text-sm"
               aria-invalid={Boolean(urlError)}
               aria-describedby={urlError ? 'youtube-url-error' : undefined}
             />
@@ -140,7 +168,7 @@ export function VideoUrlForm({ onVideoSourceSelected }: VideoUrlFormProps) {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border bg-surface-elevated px-4 text-sm font-medium text-text-secondary transition-colors hover:border-console hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border bg-surface-elevated/60 px-4 text-sm font-medium text-text-secondary backdrop-blur-sm transition-all hover:border-console hover:bg-console/5 hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console/60"
           >
             <Upload size={17} aria-hidden="true" />
             اختر ملف فيديو من جهازك
@@ -165,6 +193,7 @@ export function VideoUrlForm({ onVideoSourceSelected }: VideoUrlFormProps) {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

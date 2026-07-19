@@ -34,14 +34,14 @@ export function SyncOffsetControl({
   const accessibleLabel = languageLabel ?? 'هذا المسار'
 
   return (
-    <div className="flex items-center justify-center gap-1 text-xs text-text-muted">
+    <div className="flex items-center justify-center gap-1.5 text-xs text-text-muted">
       {languageLabel && <span className={cn('font-medium', accentClassName)}>{languageLabel}</span>}
 
       <button
         type="button"
         onClick={() => onNudge(-1)}
         aria-label={`تقديم ترجمة ${accessibleLabel} ربع ثانية`}
-        className="flex h-6 w-6 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+        className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
       >
         <Minus size={12} aria-hidden="true" />
       </button>
@@ -54,7 +54,7 @@ export function SyncOffsetControl({
         type="button"
         onClick={() => onNudge(1)}
         aria-label={`تأخير ترجمة ${accessibleLabel} ربع ثانية`}
-        className="flex h-6 w-6 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+        className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
       >
         <Plus size={12} aria-hidden="true" />
       </button>
@@ -64,7 +64,7 @@ export function SyncOffsetControl({
           type="button"
           onClick={onReset}
           aria-label={`إعادة ضبط إزاحة ترجمة ${accessibleLabel}`}
-          className="flex h-6 w-6 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
         >
           <RotateCcw size={11} aria-hidden="true" />
         </button>

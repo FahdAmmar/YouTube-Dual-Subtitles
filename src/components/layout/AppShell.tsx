@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
 import { Header } from './Header'
 import { Footer } from './Footer'
+import { BackgroundFX } from './BackgroundFX'
 import { PanelResizeHandle } from './PanelResizeHandle'
 import { VideoUrlForm } from '@/components/video/VideoUrlForm'
 import { VideoStage } from '@/components/video/VideoStage'
@@ -91,14 +92,25 @@ export function AppShell() {
   // المرحلة الأولى: لا يوجد فيديو بعد — شاشة إعداد مركزية بسيطة
   if (!videoSource) {
     return (
-      <div className="flex min-h-screen flex-col bg-bg">
+      <div className="relative flex min-h-screen flex-col">
+        <BackgroundFX />
         <Header />
-        <main className="flex flex-1 items-center justify-center px-4 py-12">
+        <main className="flex flex-1 items-center justify-center px-4 py-10 sm:py-16">
           <div className="w-full max-w-lg">
-            <div className="mb-7 text-center">
-              <p className="font-mono text-xs tracking-widest text-console">[ INITIALIZE_SESSION ]</p>
-              <h1 className="mt-3 text-2xl font-bold text-text-primary">مترجم يوتيوب المزدوج</h1>
-              <p className="mt-1.5 text-sm text-text-secondary">
+            <div className="mb-8 text-center sm:mb-9">
+              {/* شارة "الجلسة جاهزة" — نقطة نابضة + نص بفونت مونو، تمنح
+                  إحساس لوحة تحكم حيّة فور فتح الصفحة دون ضوضاء بصرية */}
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-console/30 bg-console/5 px-3 py-1.5 font-mono text-[10px] tracking-widest text-console">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-console opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-console" />
+                </span>
+                INITIALIZE_SESSION
+              </div>
+              <h1 className="text-gradient-hero text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+                مترجم يوتيوب المزدوج
+              </h1>
+              <p className="mt-2 text-sm text-text-secondary sm:mt-2.5 sm:text-base">
                 شاهد أي فيديو مع ترجمتين متزامنتين، جنباً إلى جنب
               </p>
             </div>
@@ -125,7 +137,8 @@ export function AppShell() {
   // على الشاشات الكبيرة (lg+): عمودان جنباً إلى جنب بارتفاع الشاشة كاملاً،
   // مع مقبض سحب بينهما (PanelResizeHandle) يتيح تغيير عرض اللوحة الجانبية
   return (
-    <div className="flex flex-col bg-bg lg:h-screen lg:overflow-hidden">
+    <div className="relative flex flex-col bg-bg lg:h-screen lg:overflow-hidden">
+      <BackgroundFX />
       <Header />
 
       <div ref={sidebar.containerRef} className="flex flex-1 flex-col lg:min-h-0 lg:flex-row">
