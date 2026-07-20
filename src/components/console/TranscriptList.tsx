@@ -48,12 +48,13 @@ export function TranscriptList({ slices, getCurrentTime, isPlaying, viewMode, on
     // useLocalStorage وuseFullscreen) يمنع توقف التطبيق مهما كانت البيئة
     const target = activeItemRef.current
     if (target && typeof target.scrollIntoView === 'function') {
-      try {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      } catch {
-        // تجاهل بأمان: التمرير التلقائي تحسين مساعد وليس وظيفة أساسية —
-        // فقدانه في بيئة لا تدعمه أفضل بكثير من تعطّل التطبيق بالكامل
-      }
+      requestAnimationFrame(() => {
+        try {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        } catch {
+          // تجاهل بأمان
+        }
+      })
     }
   }, [activeSlice?.id])
 

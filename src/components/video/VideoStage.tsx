@@ -45,6 +45,10 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const slicesRef = useRef(slices)
   slicesRef.current = slices
+  // مرجع لآخر حالة للاعب — يسمح بالوصول لدوال player المستقرة دون
+  // إعادة بناء callbacks عند كل إعادة رسم (player هو كائن جديد كل مرة)
+  const playerRef = useRef(player)
+  playerRef.current = player
 
   const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
 
@@ -59,32 +63,35 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
   }, [])
 
   const handleTogglePlayPause = useCallback(() => {
+    const p = playerRef.current
     if (isPlaying) {
-      player.pause()
+      p.pause()
       showShortcutFeedback('إيقاف مؤقت', <Pause size={20} aria-hidden="true" />)
     } else {
-      player.play()
+      p.play()
       showShortcutFeedback('تشغيل', <Play size={20} aria-hidden="true" />)
     }
-  }, [isPlaying, player, showShortcutFeedback])
+  }, [isPlaying, showShortcutFeedback])
 
   const handleSpeedUp = useCallback(() => {
-    const nextRate = player.playbackRate + 0.5
-    player.setPlaybackRate(nextRate)
+    const p = playerRef.current
+    const nextRate = p.playbackRate + 0.5
+    p.setPlaybackRate(nextRate)
     showShortcutFeedback(
       formatPlaybackRate(Math.min(nextRate, MAX_PLAYBACK_RATE)),
       <FastForward size={20} aria-hidden="true" />,
     )
-  }, [player, showShortcutFeedback])
+  }, [showShortcutFeedback])
 
   const handleSlowDown = useCallback(() => {
-    const nextRate = player.playbackRate - 0.5
-    player.setPlaybackRate(nextRate)
+    const p = playerRef.current
+    const nextRate = p.playbackRate - 0.5
+    p.setPlaybackRate(nextRate)
     showShortcutFeedback(
       formatPlaybackRate(Math.max(nextRate, MIN_PLAYBACK_RATE)),
       <Rewind size={20} aria-hidden="true" />,
     )
-  }, [player, showShortcutFeedback])
+  }, [showShortcutFeedback])
 
   const handleToggleFullscreenShortcut = useCallback(() => {
     toggleFullscreen()
@@ -95,44 +102,48 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
   }, [toggleFullscreen, isFullscreen, showShortcutFeedback])
 
   const handleResetSpeed = useCallback(() => {
-    player.setPlaybackRate(1)
+    playerRef.current.setPlaybackRate(1)
     showShortcutFeedback('1×', <RotateCcw size={20} aria-hidden="true" />)
-  }, [player, showShortcutFeedback])
+  }, [showShortcutFeedback])
 
   const handlePrevScene = useCallback(() => {
+    const p = playerRef.current
     const currentSlices = slicesRef.current
-    const currentTime = player.getCurrentTime()
+    const currentTime = p.getCurrentTime()
     const currentIndex = currentSlices.findIndex((s) => currentTime >= s.start && currentTime < s.end)
     const targetIndex = currentIndex > 0 ? currentIndex - 1 : 0
     if (currentSlices[targetIndex]) {
-      player.seekTo(currentSlices[targetIndex].start)
+      p.seekTo(currentSlices[targetIndex].start)
       showShortcutFeedback(`المقطع ${targetIndex + 1}`, <SkipBack size={20} aria-hidden="true" />)
     }
-  }, [player, showShortcutFeedback])
+  }, [showShortcutFeedback])
 
   const handleNextScene = useCallback(() => {
+    const p = playerRef.current
     const currentSlices = slicesRef.current
-    const currentTime = player.getCurrentTime()
+    const currentTime = p.getCurrentTime()
     const currentIndex = currentSlices.findIndex((s) => currentTime >= s.start && currentTime < s.end)
     const targetIndex = currentIndex < currentSlices.length - 1 ? currentIndex + 1 : currentSlices.length - 1
     if (currentSlices[targetIndex]) {
-      player.seekTo(currentSlices[targetIndex].start)
+      p.seekTo(currentSlices[targetIndex].start)
       showShortcutFeedback(`المقطع ${targetIndex + 1}`, <SkipForward size={20} aria-hidden="true" />)
     }
-  }, [player, showShortcutFeedback])
+  }, [showShortcutFeedback])
 
   const VOLUME_STEP = 10
   const handleVolumeUp = useCallback(() => {
-    const newVolume = Math.min(100, player.getVolume() + VOLUME_STEP)
-    player.setVolume(newVolume)
+    const p = playerRef.current
+    const newVolume = Math.min(100, p.getVolume() + VOLUME_STEP)
+    p.setVolume(newVolume)
     showShortcutFeedback(`${newVolume}%`, <Volume2 size={20} aria-hidden="true" />)
-  }, [player, showShortcutFeedback])
+  }, [showShortcutFeedback])
 
   const handleVolumeDown = useCallback(() => {
-    const newVolume = Math.max(0, player.getVolume() - VOLUME_STEP)
-    player.setVolume(newVolume)
+    const p = playerRef.current
+    const newVolume = Math.max(0, p.getVolume() - VOLUME_STEP)
+    p.setVolume(newVolume)
     showShortcutFeedback(`${newVolume}%`, <Volume1 size={20} aria-hidden="true" />)
-  }, [player, showShortcutFeedback])
+  }, [showShortcutFeedback])
 
   useKeyboardShortcuts(player.isReady, {
     onTogglePlayPause: handleTogglePlayPause,

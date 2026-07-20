@@ -127,16 +127,31 @@ export function useResizableSidebarWidth(sidebarPosition: SidebarPosition): UseR
   // متاحاً فعلياً) وعند كل تغيّر لحجم نافذة المتصفح، مع قصّ العرض الحالي
   // تلقائياً إن أصبح أكبر من المسموح به بعد تصغير النافذة — تجربة سلسة
   // بدل بقاء اللوحة الجانبية بعرض غير متناسب مع نافذة أصغر
+  //
+  // تأخير (Debounce) لمعالجة resize على الأجهزة المحمولة: عند تغيير حجم
+  // شريط العنوان أو ظهور/اختفاء لوحة المفاتيح، يُطلق المتصفح أحداث resize
+  // متعددة بسرعة. التأخير يمنع عمليات إعادة حساب وتحديث حالة متكررة تُسبب
+  // تجمّد الواجهة
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
     function syncMaxWidth() {
       const nextMaxWidth = computeMaxWidth()
       setMaxWidth(nextMaxWidth)
       setWidth((previousWidth) => clampWidth(previousWidth, nextMaxWidth))
     }
 
+    function debouncedSync() {
+      if (timeoutId !== null) clearTimeout(timeoutId)
+      timeoutId = setTimeout(syncMaxWidth, 150)
+    }
+
     syncMaxWidth()
-    window.addEventListener('resize', syncMaxWidth)
-    return () => window.removeEventListener('resize', syncMaxWidth)
+    window.addEventListener('resize', debouncedSync)
+    return () => {
+      window.removeEventListener('resize', debouncedSync)
+      if (timeoutId !== null) clearTimeout(timeoutId)
+    }
   }, [computeMaxWidth, clampWidth])
 
   useEffect(() => {

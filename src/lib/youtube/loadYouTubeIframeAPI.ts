@@ -7,7 +7,9 @@
  * لتخزين مفاتيح سرية أو خادم وسيط.
  *
  * نستخدم متغيراً وحيداً (Promise) لضمان عدم حقن السكربت أكثر من مرة حتى
- * لو استدعت عدة مكوّنات هذه الدالة بالتوازي.
+ * لو استدعت عدة مكوّنات هذه الدالة بالتوازي. عند فشل التحميل (مثلاً بسبب
+ * اتصال شبكة ضعيف على الأجهزة المحمولة)، يُعاد ضبط الـ Promise للسماح
+ * بمحاولة تحميل جديدة عند المحاولة التالية بدلاً من فشل دائم.
  */
 
 let apiReadyPromise: Promise<void> | null = null
@@ -29,7 +31,12 @@ export function loadYouTubeIframeAPI(): Promise<void> {
       script.id = 'youtube-iframe-api'
       script.src = 'https://www.youtube.com/iframe_api'
       script.async = true
-      script.onerror = () => reject(new Error('فشل تحميل مشغّل يوتيوب'))
+      script.onerror = () => {
+        // إعادة ضبط الـ Promise للسماح بمحاولة تحميل جديدة — بدون هذا
+        //، سيفشل كل طلب لاحق بنفس الخطأ (خاصة على الشبكات البطيئة/المتقطعة)
+        apiReadyPromise = null
+        reject(new Error('فشل تحميل مشغّل يوتيوب'))
+      }
       document.head.appendChild(script)
     }
 

@@ -15,6 +15,17 @@ if (!window.matchMedia) {
   }) as unknown as MediaQueryList
 }
 
+// محاكاة ResizeObserver — غير متوفرة في jsdom لكنها مستخدمة في
+// useDraggableOverlayPosition لمتابعة أبعاد حاوية الفيديو
+if (typeof window.ResizeObserver === 'undefined') {
+  class ResizeObserverMock {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver
+}
+
 // مطابقة اتجاه الصفحة الفعلي المضبوط في index.html (dir="rtl" lang="ar")
 // — Testing Library تُركّب المكوّنات مباشرة داخل document جديد لا يمرّ
 // بـ index.html إطلاقاً، فبدون هذا السطر تُختبر الواجهة بافتراض LTR خاطئ

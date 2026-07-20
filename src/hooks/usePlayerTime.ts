@@ -1,30 +1,48 @@
-import { useCallback, useSyncExternalStore } from 'react'
+import { useCallback, useRef, useSyncExternalStore } from 'react'
 
-/** معدّل استطلاع الوقت الحالي أثناء التشغيل (بالميلي ثانية)
- *  120ms يكفي لمزامنة سلسة بصرياً (أسرع من قدرة العين على ملاحظة التأخير)
- *  دون إثقال المتصفح باستدعاءات لا داعي لها 60 مرة في الثانية */
-const TIME_POLL_INTERVAL_MS = 120
+const TIME_POLL_INTERVAL_MS = 200
 
-/**
- * Hook يشترك في الوقت الحالي لمشغّل يوتيوب عبر useSyncExternalStore —
- * نمط React 18 القياسي للاشتراك في مصدر بيانات خارجي عن React (هنا:
- * getCurrentTime() الخاصة بمشغّل يوتيوب) دون الحاجة لتمرير هذه الحالة
- * عبر الشجرة أو الاحتفاظ بها في مكوّن أعلى مستوى.
- *
- * الفائدة الجوهرية: فقط المكوّن الذي يستدعي هذا الـ Hook (DualSubtitleDisplay)
- * يُعاد رسمه كل 120ms أثناء التشغيل. أي مكوّن آخر في الشجرة (الرأس، نموذج
- * الرابط، بطاقات الرفع...) لا "يشترك" في هذا التحديث إطلاقاً فيبقى ساكناً
- * تماماً، خلافاً لو كانت currentTime حالة React عادية في مكوّن أعلى.
- */
-export function usePlayerTime(getCurrentTime: () => number, isPlaying: boolean): number {
+let sharedGetCurrentTime: (() => number) | null = null
+let sharedIntervalId: ReturnType<typeof setInterval> | null = null
+const sharedSubscribers = new Set<() => void>()
+let sharedSnapshot = 0
+
+function tick(): void {
+  const next = sharedGetCurrentTime?.() ?? 0
+  if (next !== sharedSnapshot) {
+    sharedSnapshot = next
+    sharedSubscribers.forEach((fn) => fn())
+  }
+}
+
+function startInterval(): void {
+  if (sharedIntervalId !== null) return
+  sharedSnapshot = sharedGetCurrentTime?.() ?? 0
+  sharedIntervalId = setInterval(tick, TIME_POLL_INTERVAL_MS)
+}
+
+function stopInterval(): void {
+  if (sharedIntervalId === null) return
+  clearInterval(sharedIntervalId)
+  sharedIntervalId = null
+  sharedGetCurrentTime = null
+}
+
+export function usePlayerTime(getCurrentTime: () => number, _isPlaying: boolean): number {
+  const getCurrentTimeRef = useRef(getCurrentTime)
+  getCurrentTimeRef.current = getCurrentTime
+
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
-      if (!isPlaying) return () => {}
-      const intervalId = window.setInterval(onStoreChange, TIME_POLL_INTERVAL_MS)
-      return () => window.clearInterval(intervalId)
-    },
-    [isPlaying],
-  )
+    sharedSubscribers.add(onStoreChange)
+    sharedGetCurrentTime = () => getCurrentTimeRef.current()
+    startInterval()
 
-  return useSyncExternalStore(subscribe, getCurrentTime, getCurrentTime)
+    return () => {
+      sharedSubscribers.delete(onStoreChange)
+      if (sharedSubscribers.size === 0) stopInterval()
+    }
+  }, [])
+
+  return useSyncExternalStore(subscribe, () => sharedSnapshot, () => sharedSnapshot)
 }

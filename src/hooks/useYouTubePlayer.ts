@@ -74,6 +74,7 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
   const [playbackRate, setPlaybackRateState] = useState(1)
   const [qualityLevels, setQualityLevels] = useState<string[]>([])
   const [currentQuality, setCurrentQuality] = useState<string>('auto')
+  const consecutiveErrors = useRef(0)
 
   useEffect(() => {
     if (!videoId) return
@@ -121,6 +122,7 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
                 setDuration(safePlayerCall(() => event.target.getDuration(), 0))
                 setCurrentQuality(safePlayerCall(() => event.target.getPlaybackQuality(), 'auto'))
               }
+              consecutiveErrors.current = 0
             },
             onError: () => {
               setLoadError('تعذّر تشغيل هذا الفيديو (قد يكون غير متاح أو مقيّداً بالتضمين)')

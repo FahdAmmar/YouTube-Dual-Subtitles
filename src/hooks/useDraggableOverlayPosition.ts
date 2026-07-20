@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useLocalStorage } from './useLocalStorage'
 import { STORAGE_KEYS } from '@/constants/theme.constants'
 
@@ -53,9 +53,31 @@ export function useDraggableOverlayPosition(
   )
   const [offset, setOffset] = useState(storedOffset)
   const [isDragging, setIsDragging] = useState(false)
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
   const dragStateRef = useRef<DragState | null>(null)
   const latestOffsetRef = useRef(offset)
   latestOffsetRef.current = offset
+
+  // متابعة أبعاد الحاوية عبر ResizeObserver بدلاً من getBoundingClientRect
+  // أثناء كل إعادة رسم — هذا يمنع "Layout Thrashing" الذي يسبب تجمّد
+  // الأجهزة المحمولة أثناء التشغيل
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    function updateSize() {
+      const rect = container!.getBoundingClientRect()
+      setContainerSize((prev) => {
+        if (prev.width === rect.width && prev.height === rect.height) return prev
+        return { width: rect.width, height: rect.height }
+      })
+    }
+
+    updateSize()
+    const observer = new ResizeObserver(updateSize)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [containerRef])
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -140,11 +162,15 @@ export function useDraggableOverlayPosition(
     }
   }, [isDragging, setStoredOffset])
 
-  const container = containerRef.current
-  const transformPx = {
-    x: (offset.xPercent / 100) * (container?.getBoundingClientRect().width ?? 0),
-    y: (offset.yPercent / 100) * (container?.getBoundingClientRect().height ?? 0),
-  }
+  // حساب التحويل بناءً على النسبة المئوية + أبعاد الحاوية المخزنة
+  // بدلاً من استدعاء getBoundingClientRect() عند كل إعادة رسم
+  const transformPx = useMemo(
+    () => ({
+      x: (offset.xPercent / 100) * containerSize.width,
+      y: (offset.yPercent / 100) * containerSize.height,
+    }),
+    [offset.xPercent, offset.yPercent, containerSize.width, containerSize.height],
+  )
 
   return { transformPx, isDragging, onPointerDown, onDoubleClick }
 }

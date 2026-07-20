@@ -1,4 +1,3 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import './index.css'
@@ -8,8 +7,4 @@ if (!rootElement) {
   throw new Error('لم يتم العثور على عنصر الجذر #root في index.html')
 }
 
-createRoot(rootElement).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+createRoot(rootElement).render(<App />)
