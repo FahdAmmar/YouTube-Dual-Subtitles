@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight } from 'lucide-react'
+import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload } from 'lucide-react'
 import { ViewModeToggle } from './ViewModeToggle'
 import { SourceFileRow } from './SourceFileRow'
 import { DownloadSubtitles } from './DownloadSubtitles'
@@ -12,6 +12,15 @@ import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import type { ViewMode } from '@/types/theme.types'
 import type { SidebarPosition } from '@/hooks/useSidebarPosition'
 
+/** حالة رفع الملف الثنائي اللغة — معزولة عن حالة كل مسار لأن ملفاً واحداً يُغذّي الاثنين معاً */
+type BilingualUploadStatus = 'idle' | 'parsing' | 'ready' | 'error'
+
+interface BilingualUploadState {
+  status: BilingualUploadStatus
+  fileName: string | null
+  errorMessage: string | null
+}
+
 interface ConsolePanelProps {
   sourceTrack: SubtitleTrackState
   translationTrack: SubtitleTrackState
@@ -19,6 +28,8 @@ interface ConsolePanelProps {
   translationControls: TrackOffsetControls
   onUploadSource: (file: File) => void
   onUploadTranslation: (file: File) => void
+  bilingualUpload: BilingualUploadState
+  onUploadBilingual: (file: File) => void
   slices: PairedSlice[]
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
@@ -42,6 +53,8 @@ export function ConsolePanel({
   translationControls,
   onUploadSource,
   onUploadTranslation,
+  bilingualUpload,
+  onUploadBilingual,
   slices,
   viewMode,
   onViewModeChange,
@@ -124,6 +137,8 @@ export function ConsolePanel({
               <div className="flex flex-col gap-3">
                 <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
 
+                <BilingualFileRow state={bilingualUpload} onFileSelected={onUploadBilingual} />
+
                 <div className="flex flex-col gap-2">
                   <SourceFileRow
                     track={sourceTrack}
@@ -202,5 +217,84 @@ function TrackStatusDot({
       />
       <span className="truncate">{track.languageLabel}</span>
     </span>
+  )
+}
+
+interface BilingualFileRowProps {
+  state: BilingualUploadState
+  onFileSelected: (file: File) => void
+}
+
+/**
+ * صف رفع ملف ثنائي اللغة — بديل مُدمج لرفع ملف واحد يحوي لغتين معاً
+ * (كل مقطع بسطرين: مصدر وترجمة) بدل رفع ملفّين منفصلين. يُحمَّل الملف
+ * مرّة واحدة ثم يُقسَّم داخلياً إلى المسارين بنفس التوقيت، فيظهران بنفس
+ * تصميم التطبيق المعتاد في لوحة النص وفوق الفيديو.
+ *
+ * بصرياً مميّز بلون console الموحّد (بدل ألوان المسارين الذهبية/الفيروزية)
+ * لأنه يُغذّي كليهما معاً ولا ينتمي لأحدهما دون الآخر
+ */
+function BilingualFileRow({ state, onFileSelected }: BilingualFileRowProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    // إفراغ القيمة فوراً يسمح بإعادة اختيار نفس الملف لاحقاً
+    event.target.value = ''
+    if (file) onFileSelected(file)
+  }
+
+  const { status, fileName, errorMessage } = state
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-md border border-console/40 bg-console/5 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Languages size={13} className="shrink-0 text-console" aria-hidden="true" />
+          <span className="truncate text-[13px] font-medium text-text-primary">ملف ثنائي اللغة</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-1 font-mono text-[10px] text-console transition-colors hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+        >
+          <Upload size={11} aria-hidden="true" />
+          {fileName ? 'CHANGE' : 'UPLOAD'}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".srt,.vtt"
+          className="sr-only"
+          aria-label="رفع ملف ترجمة ثنائي اللغة"
+          onChange={handleChange}
+        />
+      </div>
+
+      {status === 'ready' && fileName && (
+        <p className="flex min-w-0 items-center gap-1 truncate text-[11px] text-success">
+          <CheckCircle2 size={11} className="shrink-0" aria-hidden="true" />
+          <span className="truncate">{fileName}</span>
+        </p>
+      )}
+      {status === 'parsing' && (
+        <p className="flex items-center gap-1 text-[11px] text-text-muted">
+          <Loader2 size={11} className="animate-spin" aria-hidden="true" />
+          جارٍ التحليل...
+        </p>
+      )}
+      {status === 'error' && errorMessage && (
+        <p role="alert" className="flex min-w-0 items-center gap-1 truncate text-[11px] text-error">
+          <XCircle size={11} className="shrink-0" aria-hidden="true" />
+          <span className="truncate">{errorMessage}</span>
+        </p>
+      )}
+      {status === 'idle' && (
+        <p className="text-[11px] text-text-muted">
+          ملف واحد بسطرين لكل مقطع — يُملأ المساران معاً تلقائياً
+        </p>
+      )}
+    </div>
   )
 }

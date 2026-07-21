@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { parseSubtitleFile, SubtitleParseError } from '@/lib/subtitles/parseSubtitleFile'
-import type { SubtitleTrackState } from '@/types/subtitle.types'
+import type { SubtitleCue, SubtitleTrackState } from '@/types/subtitle.types'
 
 /** الحد الأقصى/الأدنى المسموح به للإزاحة اليدوية — نطاق معقول يغطي كل الحالات الواقعية */
 export const MAX_SYNC_OFFSET_SECONDS = 15
@@ -68,6 +68,23 @@ export function useSubtitleTrack(initialLanguageCode: string, initialLanguageLab
     setTrack((previous) => ({ ...previous, languageCode, languageLabel }))
   }, [])
 
+  /**
+   * تعيين المقاطع مباشرةً دون المرور بتحليل ملف — يُستخدم لحالة الرفع
+   * الثنائي: حيث يُحلَّل ملف واحد مرّةً واحدة ثم يُقسَّم إلى مسارين، فيُستدعى
+   * هذا التابع على كلٍّ من المسارين بمحتواه المُقسَّم بدل قراءة الملف مرّتين.
+   * يتصرف تماماً كرفع ملف ناجح (تصفير الإزاحة، تسجيل اسم الملف، حالة ready)
+   */
+  const loadCues = useCallback((cues: SubtitleCue[], fileName: string) => {
+    setTrack((previous) => ({
+      ...previous,
+      fileName,
+      cues,
+      status: 'ready',
+      errorMessage: null,
+      syncOffsetSeconds: 0,
+    }))
+  }, [])
+
   /** ضبط الإزاحة الزمنية مباشرة على قيمة محددة (تُستخدم من شريط التمرير) */
   const setSyncOffset = useCallback((seconds: number) => {
     setTrack((previous) => ({ ...previous, syncOffsetSeconds: clampOffset(seconds) }))
@@ -89,5 +106,5 @@ export function useSubtitleTrack(initialLanguageCode: string, initialLanguageLab
     setTrack((previous) => createEmptyState(previous.languageCode, previous.languageLabel))
   }, [])
 
-  return { track, uploadFile, setLanguage, setSyncOffset, nudgeSyncOffset, resetSyncOffset, reset }
+  return { track, uploadFile, loadCues, setLanguage, setSyncOffset, nudgeSyncOffset, resetSyncOffset, reset }
 }

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { Play, Pause, FastForward, Rewind, Maximize, Minimize, RotateCcw, SkipBack, SkipForward, Volume2, Volume1 } from 'lucide-react'
+import { Play, Pause, FastForward, Rewind, Maximize, Minimize, RotateCcw, SkipBack, SkipForward, Volume2, Volume1, Repeat, AlertCircle } from 'lucide-react'
 import { YouTubePlayerView } from './YouTubePlayerView'
 import { LocalVideoPlayerView } from './LocalVideoPlayerView'
 import { VideoTopBar } from './VideoTopBar'
@@ -8,6 +8,8 @@ import { SubtitleOverlay } from './SubtitleOverlay'
 import { PlaybackShortcutToast, type PlaybackShortcutFeedback } from './PlaybackShortcutToast'
 import { useFullscreen } from '@/hooks/useFullscreen'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useFocusRetention } from '@/hooks/useFocusRetention'
+import { useSceneRepeat } from '@/hooks/useSceneRepeat'
 import type { UseVideoPlayerResult } from '@/hooks/useVideoPlayer'
 import { MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE } from '@/hooks/useYouTubePlayer'
 import { formatPlaybackRate } from '@/lib/utils/formatPlaybackRate'
@@ -51,6 +53,21 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
   playerRef.current = player
 
   const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
+
+  // استعادة التركيز من iframe يوتيوب بعد كل تفاعل pointer — يضمن استجابة
+  // اختصارات لوحة المفاتيح دوماً (انظر useFocusRetention للتفاصيل)
+  useFocusRetention(stageRef, player.isReady)
+
+  // إدارة تكرار المشهد (اختصارات 0/1/2/3) — معزول عن بقية الشجرة عبر
+  // استطلاع مستقل بـ setInterval داخلياً، فلا يُعيد رسم المكوّنات الأخرى
+  // عند كل نبضة وقت. نُفكِّك المراجع المستقرة (findCurrentScene/restartScene/
+  // repeatScene) كاعتماديات للمعالجات بدل كائن sceneRepeat كاملاً، فلا تُعاد
+  // بناء المعالجات إلا عند الحاجة الفعلية (لا عند كل إعادة رسم)
+  const { repeatState: sceneRepeatState, findCurrentScene, restartScene, repeatScene } = useSceneRepeat(
+    player,
+    slices,
+    isPlaying,
+  )
 
   // يعرض تغذية راجعة لحظية (وميض أيقونة) لمدة قصيرة ثم يُخفيها تلقائياً؛
   // يُعيد ضبط المؤقّت في كل استدعاء حتى تبقى الأيقونة ظاهرة عند الضغط
@@ -145,6 +162,31 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
     showShortcutFeedback(`${newVolume}%`, <Volume1 size={20} aria-hidden="true" />)
   }, [showShortcutFeedback])
 
+  // اختصار "0": إعادة تشغيل المقطع الحالي من بدايته (مرة واحدة، بلا تكرار)
+  const handleRestartScene = useCallback(() => {
+    const scene = findCurrentScene()
+    if (!scene) {
+      showShortcutFeedback('لا يوجد مقطع', <AlertCircle size={20} aria-hidden="true" />)
+      return
+    }
+    restartScene(scene)
+    showShortcutFeedback('إعادة من البداية', <RotateCcw size={20} aria-hidden="true" />)
+  }, [findCurrentScene, restartScene, showShortcutFeedback])
+
+  // اختصارات "1"/"2"/"3": تكرار المقطع الحالي 2/3/4 مرات على التوالي
+  const handleRepeatScene = useCallback(
+    (totalLoops: number) => {
+      const scene = findCurrentScene()
+      if (!scene) {
+        showShortcutFeedback('لا يوجد مقطع', <AlertCircle size={20} aria-hidden="true" />)
+        return
+      }
+      repeatScene(scene, totalLoops)
+      showShortcutFeedback(`تكرار ${totalLoops}×`, <Repeat size={20} aria-hidden="true" />)
+    },
+    [findCurrentScene, repeatScene, showShortcutFeedback],
+  )
+
   useKeyboardShortcuts(player.isReady, {
     onTogglePlayPause: handleTogglePlayPause,
     onSpeedUp: handleSpeedUp,
@@ -155,12 +197,15 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
     onNextScene: handleNextScene,
     onVolumeUp: handleVolumeUp,
     onVolumeDown: handleVolumeDown,
+    onRestartScene: handleRestartScene,
+    onRepeatScene: handleRepeatScene,
   })
 
   return (
     <div
       ref={stageRef}
-      className="relative aspect-video w-full overflow-hidden rounded-lg bg-black shadow-elevated"
+      tabIndex={-1}
+      className="relative aspect-video w-full overflow-hidden rounded-lg bg-black shadow-elevated outline-none"
     >
       {player.renderTarget.type === 'youtube' ? (
         <YouTubePlayerView
@@ -180,6 +225,18 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
       {player.isReady && (
         <>
           <VideoTopBar languageCode={sourceTrack.languageCode} onBack={onChangeVideo} />
+
+          {/* مؤشر تكرار المشهد النشط — يبقى ظاهراً طوال فترة التكرار
+              ليُذكِّر المستخدم بأن المقطع الحالي يُعاد تشغيله N مرات،
+              ويُوضّح التقدّم (المرّة الحالية من إجمالي المرّات) */}
+          {sceneRepeatState && (
+            <div className="pointer-events-none absolute end-3 top-14 z-10 flex items-center gap-1.5 rounded-md bg-black/75 px-2.5 py-1 font-mono text-[11px] tabular-nums text-white shadow-elevated backdrop-blur-sm">
+              <Repeat size={12} className="text-console" aria-hidden="true" />
+              <span aria-live="polite">
+                {`${sceneRepeatState.totalLoops - sceneRepeatState.remainingLoops + 1}/${sceneRepeatState.totalLoops}`}
+              </span>
+            </div>
+          )}
 
           <SubtitleOverlay
             sourceTrack={sourceTrack}

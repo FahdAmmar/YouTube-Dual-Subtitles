@@ -37,10 +37,14 @@ describe('collapsible upload section', () => {
     expect(screen.getByRole('radiogroup', { name: 'وضع عرض الترجمة' })).toBeInTheDocument()
 
     const fileInputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>
-    expect(fileInputs.length).toBe(2)
+    expect(fileInputs.length).toBe(3)
 
-    await fireEvent.change(fileInputs[0]!, { target: { files: [makeFile('ar.srt', SRT)] } })
-    await fireEvent.change(fileInputs[1]!, { target: { files: [makeFile('en.srt', SRT)] } })
+    await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), {
+      target: { files: [makeFile('ar.srt', SRT)] },
+    })
+    await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة الإنجليزية'), {
+      target: { files: [makeFile('en.srt', SRT)] },
+    })
 
     // بعد جهوزية الملفين: يُطوى القسم تلقائياً — أزرار وضع العرض تختفي
     await waitFor(() => {

@@ -35,10 +35,10 @@ describe('reproduce upload crash', () => {
       expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument()
     })
 
-    // العثور على أول مدخل رفع ملف (مسار المصدر)
+    // العثور على مدخل رفع ملف المسار (المصدر) عبر اسمه الميسّر
     const fileInputs = document.querySelectorAll('input[type="file"]')
     expect(fileInputs.length).toBeGreaterThan(0)
-    const fileInput = fileInputs[0] as HTMLInputElement
+    const fileInput = screen.getByLabelText('رفع ملف ترجمة العربية') as HTMLInputElement
 
     const file = makeSrtFile('test.srt', SAMPLE_SRT)
     await fireEvent.change(fileInput, { target: { files: [file] } })

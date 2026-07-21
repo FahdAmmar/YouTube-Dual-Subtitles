@@ -48,10 +48,14 @@ describe('full dual-subtitle workflow', () => {
     await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
 
     const fileInputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>
-    expect(fileInputs.length).toBe(2)
+    expect(fileInputs.length).toBe(3)
 
-    await fireEvent.change(fileInputs[0]!, { target: { files: [makeFile('ar.srt', SOURCE_SRT)] } })
-    await fireEvent.change(fileInputs[1]!, { target: { files: [makeFile('en.srt', TRANSLATION_SRT)] } })
+    await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), {
+      target: { files: [makeFile('ar.srt', SOURCE_SRT)] },
+    })
+    await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة الإنجليزية'), {
+      target: { files: [makeFile('en.srt', TRANSLATION_SRT)] },
+    })
 
     await waitFor(() => {
       expect(screen.getByText('ar.srt')).toBeInTheDocument()

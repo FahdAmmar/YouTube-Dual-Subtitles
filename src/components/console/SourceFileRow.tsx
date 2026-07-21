@@ -46,6 +46,7 @@ export function SourceFileRow({ track, accentClassName, onFileSelected, offsetCo
           type="file"
           accept=".srt,.vtt"
           className="sr-only"
+          aria-label={`رفع ملف ترجمة ${track.languageLabel}`}
           onChange={handleChange}
         />
       </div>

@@ -12,6 +12,8 @@ import { useSubtitleTrack } from '@/hooks/useSubtitleTrack'
 import { useResizableSidebarWidth } from '@/hooks/useResizableSidebarWidth'
 import { useSidebarPosition, getSidebarFlexOrderClasses } from '@/hooks/useSidebarPosition'
 import { pairCuesIntoSlices } from '@/lib/subtitles/pairCues'
+import { parseSubtitleFile, SubtitleParseError } from '@/lib/subtitles/parseSubtitleFile'
+import { splitBilingualCues } from '@/lib/subtitles/splitBilingualCues'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { VideoSource } from '@/types/video.types'
 import type { ViewMode } from '@/types/theme.types'
@@ -52,6 +54,15 @@ export function AppShell() {
   const sidebarPosition = useSidebarPosition()
   const sidebar = useResizableSidebarWidth(sidebarPosition.position)
 
+  // حالة رفع الملف الثنائي اللغة منفصلة عن حالة كل مسار: لأن ملفاً واحداً
+  // يُغذّي المسارين معاً، نحتاج لحالة مستقلة نعرضها في صف الرفع الثنائي
+  // (parsing/error/ready) دون التداخل مع حالة كل مسار على حدة
+  const [bilingualUpload, setBilingualUpload] = useState<{
+    status: 'idle' | 'parsing' | 'ready' | 'error'
+    fileName: string | null
+    errorMessage: string | null
+  }>({ status: 'idle', fileName: null, errorMessage: null })
+
   // اتجاه الصفحة الفعلي (مضبوط في index.html) — يُقرأ مباشرة لأنه لا
   // يتغيّر ديناميكياً في هذا التطبيق، فلا حاجة لحالة React أو مستمع أحداث
   const documentDirection = document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr'
@@ -68,6 +79,35 @@ export function AppShell() {
       return null
     })
   }, [])
+
+  // رفع ملف ثنائي اللغة: يُحلَّل مرة واحدة ثم يُقسَّم إلى مسارين بنفس
+  // التوقيت، فيُحمَّل كلٌّ منهما مباشرةً عبر loadCues دون إعادة تحليل.
+  // النتيجة: نفس تصميم لوحة النص والترجمة فوق الفيديو المعتاد، كأن المستخدم
+  // رفع ملفّين منفصلين تماماً
+  const { loadCues: loadSourceCues } = sourceTrack
+  const { loadCues: loadTranslationCues } = translationTrack
+  const handleUploadBilingual = useCallback(
+    async (file: File) => {
+      setBilingualUpload({ status: 'parsing', fileName: null, errorMessage: null })
+      try {
+        const cues = await parseSubtitleFile(file)
+        const { sourceCues, translationCues } = splitBilingualCues(cues)
+        if (sourceCues.length === 0 && translationCues.length === 0) {
+          throw new SubtitleParseError('لم يُعثَر على نص ترجمة صالح داخل الملف')
+        }
+        loadSourceCues(sourceCues, file.name)
+        loadTranslationCues(translationCues, file.name)
+        setBilingualUpload({ status: 'ready', fileName: file.name, errorMessage: null })
+      } catch (error) {
+        const message =
+          error instanceof SubtitleParseError
+            ? error.message
+            : 'حدث خطأ غير متوقع أثناء قراءة الملف'
+        setBilingualUpload({ status: 'error', fileName: null, errorMessage: message })
+      }
+    },
+    [loadSourceCues, loadTranslationCues],
+  )
 
   // إعادة بناء قائمة المقاطع الموحّدة فقط عند تغيّر المدخلات الفعلية
   // (المقاطع الخام أو الإزاحة الزمنية)، وليس عند كل نبضة وقت أو تفاعل آخر
@@ -187,6 +227,8 @@ export function AppShell() {
             translationControls={translationTrack}
             onUploadSource={sourceTrack.uploadFile}
             onUploadTranslation={translationTrack.uploadFile}
+            bilingualUpload={bilingualUpload}
+            onUploadBilingual={handleUploadBilingual}
             slices={slices}
             viewMode={viewMode}
             onViewModeChange={setViewMode}

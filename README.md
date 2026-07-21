@@ -40,6 +40,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 ### 🌐 Dual Subtitle Power
 
 - Upload **any two independent SRT/VTT files** (different sources, different segmentations)
+- **Upload a single bilingual SRT/VTT file** — each cue containing both languages (typically one line per language) is automatically split into the two tracks by detecting each line's writing direction (RTL → source, LTR → translation), with a positional fallback for same‑direction language pairs; both tracks appear with the exact same design as if two separate files were uploaded
 - Frame‑accurate sync using `O(log n)` binary‑search cue lookup
 - Per‑track manual sync offset (±15s) to correct mistimed files — baked directly into the transcript highlight, so it never drifts from what's burned into the video overlay
 - Live transcript panel with the active segment highlighted in real time, including an animated progress bar tracking position within that exact segment
@@ -50,10 +51,15 @@ No backend. No database. No API keys. Everything runs in the browser.
 ### ⌨️ Playback & Keyboard Shortcuts
 
 - `Space` — play / pause
-- `C` — speed up by 0.5× (up to 2×) · `X` — slow down by 0.5× (down to 0.25×)
+- `C` — speed up by 0.5× (up to 2×) · `X` — slow down by 0.5× (down to 0.25×) · `Z` — reset to 1×
 - `F` — toggle fullscreen
+- `←` / `→` — jump to the previous / next subtitle scene
+- `↑` / `↓` — volume up / down
+- `0` — restart the current scene from its beginning (play once, no loop)
+- `1` — repeat the current scene **twice** · `2` — **three** times · `3` — **four** times (a persistent on‑screen badge tracks loop progress, e.g. `2/3`)
 - All shortcuts work identically whether watching a YouTube video or a local file
 - All shortcuts are automatically disabled while typing in any text field, and ignore modifier‑key combos (`Ctrl`/`Cmd`/`Alt`) so they never fight with browser shortcuts
+- **Focus retention**: after clicking the YouTube video (which steals keyboard focus into the cross‑origin iframe), focus is automatically reclaimed by the stage container on the next pointer release, so shortcuts keep responding reliably — the keydown listener is also registered in the capture phase as a defensive measure
 - Every shortcut has an on‑screen flash indicator (à la YouTube/Netflix) confirming the action, plus a clickable equivalent in the control bar (a speed menu) for mouse/touch users
 - **Not included: a YouTube resolution/quality picker.** YouTube [officially discontinued](https://developers.google.com/youtube/iframe_api_reference) programmatic quality control for embeds — `setPlaybackQuality` and the `vq` load‑time hint are both documented no‑ops today, so a quality selector for YouTube videos here would just be a fake control that does nothing. Quality is fully automatic (adaptive bitrate) on YouTube's side. This doesn't apply to local file uploads, which always play at their native, unmodified quality.
 
