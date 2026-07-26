@@ -11,6 +11,10 @@ import { useVideoPlayer } from '@/hooks/useVideoPlayer'
 import { useSubtitleTrack } from '@/hooks/useSubtitleTrack'
 import { useResizableSidebarWidth } from '@/hooks/useResizableSidebarWidth'
 import { useSidebarPosition, getSidebarFlexOrderClasses } from '@/hooks/useSidebarPosition'
+import { useDynamicAccentColor } from '@/hooks/useDynamicAccentColor'
+import { useVideoProgress } from '@/hooks/useVideoProgress'
+import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
+import { useThemeContext } from '@/context/ThemeContext'
 import { pairCuesIntoSlices } from '@/lib/subtitles/pairCues'
 import { parseSubtitleFile, SubtitleParseError } from '@/lib/subtitles/parseSubtitleFile'
 import { splitBilingualCues } from '@/lib/subtitles/splitBilingualCues'
@@ -48,7 +52,13 @@ export function AppShell() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('both')
 
+  const { settings } = useSubtitleSettings()
+  const { resolvedTheme } = useThemeContext()
+  // لون تمييز الموقع بأكمله مشتق حياً من لون الترجمة الأجنبية (انظر توثيق الـ Hook)
+  useDynamicAccentColor(settings.trackB.color, resolvedTheme)
+
   const player = useVideoPlayer(videoSource)
+  useVideoProgress(videoSource, player)
   const sourceTrack = useSubtitleTrack('ar', 'العربية')
   const translationTrack = useSubtitleTrack('en', 'الإنجليزية')
   const sidebarPosition = useSidebarPosition()

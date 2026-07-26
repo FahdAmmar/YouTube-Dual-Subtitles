@@ -21,4 +21,8 @@ export interface SubtitleDisplaySettings {
   trackB: SubtitleStyleSettings
   /** إظهار أو إخفاء خلفية شبه شفافة خلف نص الترجمة لتحسين وضوح القراءة */
   showBackdrop: boolean
+  /** أقصى عرض لصندوق الترجمة، كنسبة مئوية من عرض الفيديو (النطاق: 40–100) */
+  subtitleWidthPercent: number
+  /** تباعد الأسطر داخل صندوق الترجمة (مضاعِف line-height، النطاق: 1.1–2) */
+  subtitleLineHeight: number
 }

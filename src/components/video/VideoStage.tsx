@@ -266,7 +266,6 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
               onSetPlaybackRate={player.setPlaybackRate}
               qualityLevels={player.qualityLevels}
               currentQuality={player.currentQuality}
-              onSetQuality={player.setQuality}
             />
           </div>
         </>

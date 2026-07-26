@@ -51,9 +51,9 @@ function SliceCardImpl(
       onClick={() => onSeek(slice.start)}
       aria-current={isActive ? 'true' : undefined}
       className={cn(
-        'flex w-full flex-col gap-2 rounded-md border-s-2 px-3.5 py-3.5 text-start transition-colors duration-150',
+        'flex w-full flex-col gap-2 rounded-md border-s-2 px-3.5 py-3.5 text-start transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.99]',
         isActive
-          ? 'border-console bg-console/[0.07] shadow-glow-console'
+          ? 'border-console bg-console/[0.07] shadow-glow-console animate-glow-pulse motion-reduce:animate-none'
           : 'border-transparent hover:bg-surface-elevated',
       )}
     >

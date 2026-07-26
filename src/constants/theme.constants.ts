@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   SUBTITLE_SETTINGS: 'ydc:subtitle-display-settings',
   SUBTITLE_OVERLAY_POSITION: 'ydc:subtitle-overlay-position',
   SIDEBAR_POSITION: 'ydc:sidebar-position',
+  VIDEO_PROGRESS: 'ydc:video-progress',
 } as const
 
 /**
@@ -26,4 +27,9 @@ export const DEFAULT_SUBTITLE_SETTINGS: SubtitleDisplaySettings = {
     color: '#4FC7BE', // أزرق مخضر — لون المسار الثاني (لغة الفيديو الأجنبية)
   },
   showBackdrop: true,
+  // يطابق عرض سطر الترجمة الأساسي (94%) قبل أن يصبح هذا الحقل قابلاً
+  // للتعديل — فلا يتغيّر شكل أي واجهة موجودة لمستخدم لم يفتح الإعدادات بعد
+  subtitleWidthPercent: 94,
+  // يطابق قيمة leading-snug (1.375) المستخدمة سابقاً كصنف CSS ثابت
+  subtitleLineHeight: 1.375,
 }

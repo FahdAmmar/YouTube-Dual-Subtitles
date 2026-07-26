@@ -11,34 +11,70 @@ interface SubtitleSettingsContextValue {
   settings: SubtitleDisplaySettings
   updateTrackStyle: (track: SubtitleTrackId, patch: Partial<SubtitleStyleSettings>) => void
   toggleBackdrop: () => void
+  setSubtitleWidthPercent: (value: number) => void
+  setSubtitleLineHeight: (value: number) => void
   resetToDefaults: () => void
 }
 
 const SubtitleSettingsContext = createContext<SubtitleSettingsContextValue | null>(null)
 
 /**
+ * يُكمِّل أي حقول ناقصة بالقيم الافتراضية قبل القراءة أو الكتابة —
+ * ضروري لأن مستخدمين حاليين لديهم بالفعل كائن محفوظ في localStorage من
+ * قبل إضافة subtitleWidthPercent/subtitleLineHeight (ومستقبلاً أي حقل
+ * جديد آخر)؛ بدون هذا الإكمال، settings.subtitleWidthPercent سيكون
+ * undefined لكل مستخدم قديم تحديداً، لا للمستخدمين الجدد فقط
+ */
+function withDefaults(value: SubtitleDisplaySettings): SubtitleDisplaySettings {
+  return {
+    ...DEFAULT_SUBTITLE_SETTINGS,
+    ...value,
+    trackA: { ...DEFAULT_SUBTITLE_SETTINGS.trackA, ...value.trackA },
+    trackB: { ...DEFAULT_SUBTITLE_SETTINGS.trackB, ...value.trackB },
+  }
+}
+
+/**
  * موفّر إعدادات عرض الترجمة: يحفظ تفضيلات حجم/لون الخط لكل مسار في
  * التخزين المحلي تلقائياً، ليجدها المستخدم كما تركها في زيارته التالية
  */
 export function SubtitleSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useLocalStorage<SubtitleDisplaySettings>(
+  const [storedSettings, setSettings] = useLocalStorage<SubtitleDisplaySettings>(
     STORAGE_KEYS.SUBTITLE_SETTINGS,
     DEFAULT_SUBTITLE_SETTINGS,
   )
+  const settings = withDefaults(storedSettings)
 
   const updateTrackStyle = useCallback(
     (track: SubtitleTrackId, patch: Partial<SubtitleStyleSettings>) => {
-      setSettings((previous) => ({
-        ...previous,
-        [track]: { ...previous[track], ...patch },
-      }))
+      setSettings((previous) => {
+        const complete = withDefaults(previous)
+        return { ...complete, [track]: { ...complete[track], ...patch } }
+      })
     },
     [setSettings],
   )
 
   const toggleBackdrop = useCallback(() => {
-    setSettings((previous) => ({ ...previous, showBackdrop: !previous.showBackdrop }))
+    setSettings((previous) => {
+      const complete = withDefaults(previous)
+      return { ...complete, showBackdrop: !complete.showBackdrop }
+    })
   }, [setSettings])
+
+  const setSubtitleWidthPercent = useCallback(
+    (value: number) => {
+      setSettings((previous) => ({ ...withDefaults(previous), subtitleWidthPercent: value }))
+    },
+    [setSettings],
+  )
+
+  const setSubtitleLineHeight = useCallback(
+    (value: number) => {
+      setSettings((previous) => ({ ...withDefaults(previous), subtitleLineHeight: value }))
+    },
+    [setSettings],
+  )
 
   const resetToDefaults = useCallback(() => {
     setSettings(DEFAULT_SUBTITLE_SETTINGS)
@@ -46,7 +82,14 @@ export function SubtitleSettingsProvider({ children }: { children: ReactNode }) 
 
   return (
     <SubtitleSettingsContext.Provider
-      value={{ settings, updateTrackStyle, toggleBackdrop, resetToDefaults }}
+      value={{
+        settings,
+        updateTrackStyle,
+        toggleBackdrop,
+        setSubtitleWidthPercent,
+        setSubtitleLineHeight,
+        resetToDefaults,
+      }}
     >
       {children}
     </SubtitleSettingsContext.Provider>

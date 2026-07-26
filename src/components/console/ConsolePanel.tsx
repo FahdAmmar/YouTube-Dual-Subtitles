@@ -74,14 +74,25 @@ export function ConsolePanel({
   const hasAutoCollapsedRef = useRef(false)
   const bothTracksReady = sourceTrack.status === 'ready' && translationTrack.status === 'ready'
 
+  // مهلة قصيرة قبل الطي التلقائي: عند الرفع الثنائي اللغة (ملف واحد يملأ
+  // المسارين معاً في نفس اللحظة)، كان الطي يحدث فوراً قبل أن يرى المستخدم
+  // تأكيد "✓ اسم الملف" إطلاقاً — يختفي الصف بأكمله في نفس اللحظة التي
+  // يظهر فيها. هذا التأخير يمنح تغذية راجعة الرفع فرصة حقيقية للظهور أولاً،
+  // ثم يُطوى القسم بسلاسة (عبر حركة AnimatePresence الموجودة أصلاً) بعدها
+  const AUTO_COLLAPSE_DELAY_MS = 900
+
   useEffect(() => {
     // الشرط hasAutoCollapsedRef يضمن أن هذا يحدث تلقائياً *مرة واحدة فقط*
     // (أول انتقال إلى "كلا المسارين جاهزان") — بعدها يملك المستخدم تحكماً
     // يدوياً كاملاً عبر السهم دون أن يقاومه هذا الأثر عند كل إعادة رسم
-    if (bothTracksReady && !hasAutoCollapsedRef.current) {
+    if (!bothTracksReady || hasAutoCollapsedRef.current) return
+
+    const timeoutId = setTimeout(() => {
       setIsUploadSectionExpanded(false)
       hasAutoCollapsedRef.current = true
-    }
+    }, AUTO_COLLAPSE_DELAY_MS)
+
+    return () => clearTimeout(timeoutId)
   }, [bothTracksReady])
 
   return (
@@ -100,7 +111,7 @@ export function ConsolePanel({
                   : 'نقل اللوحة الجانبية إلى يسار الشاشة'
               }
               onClick={onToggleSidebarPosition}
-              className="hidden h-7 w-7 lg:inline-flex"
+              className="hidden h-8 w-8 lg:inline-flex"
             >
               <ArrowLeftRight size={13} aria-hidden="true" />
             </IconButton>
@@ -109,7 +120,7 @@ export function ConsolePanel({
               aria-expanded={isUploadSectionExpanded}
               aria-controls="upload-controls-section"
               onClick={() => setIsUploadSectionExpanded((previous) => !previous)}
-              className="h-7 w-7"
+              className="h-8 w-8"
             >
               {isUploadSectionExpanded ? (
                 <ChevronUp size={14} aria-hidden="true" />
@@ -117,7 +128,7 @@ export function ConsolePanel({
                 <ChevronDown size={14} aria-hidden="true" />
               )}
             </IconButton>
-            <IconButton aria-label="فتح إعدادات حجم ولون الترجمة" onClick={onOpenSettings} className="h-7 w-7">
+            <IconButton aria-label="فتح إعدادات حجم ولون الترجمة" onClick={onOpenSettings} className="h-8 w-8">
               <SlidersHorizontal size={14} aria-hidden="true" />
             </IconButton>
           </div>

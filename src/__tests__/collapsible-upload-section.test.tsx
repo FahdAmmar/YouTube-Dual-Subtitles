@@ -46,10 +46,15 @@ describe('collapsible upload section', () => {
       target: { files: [makeFile('en.srt', SRT)] },
     })
 
-    // بعد جهوزية الملفين: يُطوى القسم تلقائياً — أزرار وضع العرض تختفي
-    await waitFor(() => {
-      expect(screen.queryByRole('radiogroup', { name: 'وضع عرض الترجمة' })).not.toBeInTheDocument()
-    })
+    // بعد جهوزية الملفين: يُطوى القسم تلقائياً بعد مهلة قصيرة (تتيح رؤية
+    // تأكيد الرفع أولاً) — أزرار وضع العرض تختفي. المهلة الممتدة هنا تغطي
+    // تأخير الطي المتعمَّد (انظر AUTO_COLLAPSE_DELAY_MS في ConsolePanel)
+    await waitFor(
+      () => {
+        expect(screen.queryByRole('radiogroup', { name: 'وضع عرض الترجمة' })).not.toBeInTheDocument()
+      },
+      { timeout: 2000 },
+    )
 
     // الصف الموجز يظهر بدلاً منه ويحوي زر التوسيع
     const expandButton = screen.getByRole('button', { name: /UPLOAD_SETTINGS/ })

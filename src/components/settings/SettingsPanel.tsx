@@ -1,11 +1,18 @@
+import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, RotateCcw } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
+import { Slider } from '@/components/ui/Slider'
 import { TrackStyleControl } from './FontSizeControl'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import type { SubtitleTrackState } from '@/types/subtitle.types'
+
+const MIN_SUBTITLE_WIDTH_PERCENT = 40
+const MAX_SUBTITLE_WIDTH_PERCENT = 100
+const MIN_SUBTITLE_LINE_HEIGHT = 1.1
+const MAX_SUBTITLE_LINE_HEIGHT = 2
 
 interface SettingsPanelProps {
   isOpen: boolean
@@ -20,7 +27,32 @@ interface SettingsPanelProps {
  * الحزمة الأولية المحمّلة عند فتح التطبيق لأول مرة (تحسين الأداء)
  */
 export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanelProps) {
-  const { settings, updateTrackStyle, toggleBackdrop, resetToDefaults } = useSubtitleSettings()
+  const { settings, updateTrackStyle, toggleBackdrop, setSubtitleWidthPercent, setSubtitleLineHeight, resetToDefaults } =
+    useSubtitleSettings()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null)
+
+  // سلوك حوار قياسي (WAI-ARIA Dialog Pattern): عند الفتح، نحفظ العنصر
+  // الذي كان يملك التركيز (زر الفتح غالباً) وننقل التركيز داخل اللوحة؛
+  // Escape يُغلقها كأي حوار؛ وعند الإغلاق نُعيد التركيز إلى مكانه الأصلي
+  // بدل تركه "ضائعاً" على body — كل هذا كان غائباً سابقاً
+  useEffect(() => {
+    if (!isOpen) return
+
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null
+    const frame = requestAnimationFrame(() => dialogRef.current?.focus())
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', handleKeyDown)
+      previouslyFocusedRef.current?.focus?.()
+    }
+  }, [isOpen, onClose])
 
   return (
     <AnimatePresence>
@@ -35,15 +67,18 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
             aria-hidden="true"
           />
           <motion.div
+            ref={dialogRef}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'tween', duration: 0.22 }}
             role="dialog"
+            aria-modal="true"
             aria-label="إعدادات عرض الترجمة"
-            className="fixed inset-y-0 end-0 z-50 w-full max-w-sm p-3"
+            tabIndex={-1}
+            className="fixed inset-y-0 end-0 z-50 w-full max-w-sm p-3 outline-none"
           >
-            <Card className="flex h-full flex-col gap-6 overflow-y-auto p-5">
+            <Card className="flex h-full flex-col gap-6 overflow-y-auto p-5 shadow-elevated">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-text-primary">إعدادات الترجمة</h2>
                 <IconButton aria-label="إغلاق لوحة الإعدادات" onClick={onClose}>
@@ -64,6 +99,32 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
                 style={settings.trackB}
                 onChange={(patch) => updateTrackStyle('trackB', patch)}
               />
+
+              <div className="flex flex-col gap-4 border-s-4 border-border ps-4">
+                <h3 className="text-sm font-semibold text-text-primary">صندوق الترجمة</h3>
+
+                <Slider
+                  id="subtitle-width"
+                  label="عرض الصندوق"
+                  valueLabel={`${Math.round(settings.subtitleWidthPercent)}%`}
+                  min={MIN_SUBTITLE_WIDTH_PERCENT}
+                  max={MAX_SUBTITLE_WIDTH_PERCENT}
+                  step={2}
+                  value={settings.subtitleWidthPercent}
+                  onChange={(event) => setSubtitleWidthPercent(Number(event.target.value))}
+                />
+
+                <Slider
+                  id="subtitle-line-height"
+                  label="تباعد الأسطر"
+                  valueLabel={settings.subtitleLineHeight.toFixed(2)}
+                  min={MIN_SUBTITLE_LINE_HEIGHT}
+                  max={MAX_SUBTITLE_LINE_HEIGHT}
+                  step={0.05}
+                  value={settings.subtitleLineHeight}
+                  onChange={(event) => setSubtitleLineHeight(Number(event.target.value))}
+                />
+              </div>
 
               <label className="flex items-center justify-between text-sm font-medium text-text-secondary">
                 خلفية داكنة خلف النص

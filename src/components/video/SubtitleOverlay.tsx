@@ -66,6 +66,11 @@ export function SubtitleOverlay({
   const showSource = viewMode !== 'translation' && activeSource
   const showTranslation = viewMode !== 'source' && activeTranslation
 
+  // يحافظ على نفس النسبة السابقة بين عرض السطرين (88% للمرجعي مقابل 94%
+  // للأساسي) لكن كليهما الآن يتحرّكان معاً بمقدار واحد يتحكم به المستخدم
+  const translationWidthPercent = settings.subtitleWidthPercent
+  const sourceWidthPercent = settings.subtitleWidthPercent * (88 / 94)
+
   if (!showSource && !showTranslation) return null
 
   return (
@@ -92,10 +97,12 @@ export function SubtitleOverlay({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="max-w-[88%] whitespace-pre-line rounded-md bg-black/55 px-3 py-0.5 text-center italic leading-snug"
+              className="whitespace-pre-line rounded-md bg-black/55 px-3 py-0.5 text-center italic"
               style={{
                 fontSize: `${settings.trackA.fontSize * 0.85}px`,
                 color: settings.trackA.color,
+                maxWidth: `${sourceWidthPercent}%`,
+                lineHeight: settings.subtitleLineHeight,
               }}
             >
               {activeSource.text}
@@ -113,8 +120,13 @@ export function SubtitleOverlay({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="max-w-[94%] whitespace-pre-line rounded-md bg-black/70 px-3.5 py-1.5 text-center font-bold leading-snug shadow-elevated"
-              style={{ fontSize: `${settings.trackB.fontSize}px`, color: settings.trackB.color }}
+              className="whitespace-pre-line rounded-md bg-black/70 px-3.5 py-1.5 text-center font-bold shadow-elevated"
+              style={{
+                fontSize: `${settings.trackB.fontSize}px`,
+                color: settings.trackB.color,
+                maxWidth: `${translationWidthPercent}%`,
+                lineHeight: settings.subtitleLineHeight,
+              }}
             >
               {activeTranslation.text}
             </motion.p>

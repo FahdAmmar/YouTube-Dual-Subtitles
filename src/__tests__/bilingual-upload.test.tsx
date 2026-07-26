@@ -42,10 +42,16 @@ describe('bilingual subtitle upload', () => {
       target: { files: [makeFile('bilingual.srt', BILINGUAL_SRT)] },
     })
 
-    // اسم الملف يظهر في صف الرفع الثنائي بحالة نجاح
+    // اسم الملف يظهر في ثلاثة أماكن معاً بحالة نجاح: صف الرفع الثنائي،
+    // وصفّا المسارين المنفصلين (loadCues يُسجّل نفس الاسم على الاثنين
+    // عمداً — انظر التعليق في useSubtitleTrack.loadCues). يجب أن يبقى
+    // ظاهراً فوراً بعد الرفع، قبل الطي التلقائي المؤجَّل
     await waitFor(() => {
-      expect(screen.getByText('bilingual.srt')).toBeInTheDocument()
+      expect(screen.getAllByText('bilingual.srt')).toHaveLength(3)
     })
+
+    // يبقى ظاهراً بعد مهلة قصيرة أيضاً (قبل أن يبدأ الطي التلقائي المؤجَّل)
+    expect(screen.getAllByText('bilingual.srt')).toHaveLength(3)
 
     // النص العربي (المصدر) يظهر في لوحة النص المتزامن
     await waitFor(() => {
@@ -58,6 +64,43 @@ describe('bilingual subtitle upload', () => {
       expect(screen.getByText('Welcome to this video')).toBeInTheDocument()
       expect(screen.getByText('This is an example of the translation')).toBeInTheDocument()
     })
+
+    expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
+    errorSpy.mockRestore()
+  })
+
+  it('keeps the success confirmation visible before collapsing the upload section', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+      target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
+
+    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+
+    // رفع ملف ثنائي اللغة يُجهّز كلا المسارين في نفس اللحظة تماماً — هذا
+    // بالضبط السيناريو الذي كان يُسبّب طياً فورياً يُخفي التأكيد قبل ظهوره
+    await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة ثنائي اللغة'), {
+      target: { files: [makeFile('bilingual.srt', BILINGUAL_SRT)] },
+    })
+
+    // التأكيد ظاهر فوراً (في أماكنه الثلاثة) — القسم لم يُطوَ بعد
+    await waitFor(() => {
+      expect(screen.getAllByText('bilingual.srt')).toHaveLength(3)
+    })
+    expect(screen.getByRole('radiogroup', { name: 'وضع عرض الترجمة' })).toBeInTheDocument()
+
+    // بعد المهلة المتعمَّدة: يُطوى القسم تلقائياً كالمعتاد (السلوك الأصلي
+    // لم يُلغَ، فقط أُجِّل قليلاً)
+    await waitFor(
+      () => {
+        expect(screen.queryByRole('radiogroup', { name: 'وضع عرض الترجمة' })).not.toBeInTheDocument()
+      },
+      { timeout: 2000 },
+    )
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
     errorSpy.mockRestore()
