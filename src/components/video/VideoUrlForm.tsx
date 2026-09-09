@@ -1,5 +1,5 @@
-import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react'
-import { Play, AlertCircle, Upload, FileVideo } from 'lucide-react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react'
+import { Play, AlertCircle, Upload, FileVideo, Info } from 'lucide-react'
 import { extractYouTubeVideoId } from '@/lib/youtube/extractVideoId'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
@@ -7,6 +7,12 @@ import type { VideoSource } from '@/types/video.types'
 
 interface VideoUrlFormProps {
   onVideoSourceSelected: (source: VideoSource) => void
+  /**
+   * اسم ملف محدَّد مطلوب إعادة اختياره (قادم من نقر مُدخل محلي في سجل
+   * المشاهدات) — يبدّل تلقائياً لتبويب "ملف من جهازي" ويعرض تذكيراً
+   * واضحاً باسم الملف، بدل ترك المستخدم يخمّن أي تبويب يفتح وأي ملف يختار
+   */
+  pendingLocalFileName?: string | null
 }
 
 type InputMethod = 'url' | 'file'
@@ -38,13 +44,19 @@ const METHOD_TAB_CLASSNAME = (isActive: boolean) =>
  * محاولة لبناء عنصر iframe (OWASP Input Validation). التحقق من الملف
  * المحلي يعتمد على نوع MIME أولاً، ثم الامتداد كمرجعية إضافية
  */
-export function VideoUrlForm({ onVideoSourceSelected }: VideoUrlFormProps) {
+export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: VideoUrlFormProps) {
   const [activeTab, setActiveTab] = useState<InputMethod>('url')
   const [inputValue, setInputValue] = useState('')
   const [urlError, setUrlError] = useState<string | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+
+  // نقر مُدخل محلي في سجل المشاهدات يصل هنا كـ prop بعد أن كان هذا
+  // المكوّن مُركَّباً بالفعل (لا يُعاد تركيبه، فمهيّئ useState وحده لا يكفي)
+  useEffect(() => {
+    if (pendingLocalFileName) setActiveTab('file')
+  }, [pendingLocalFileName])
 
   // تتبّع مؤشر الفأرة داخل البطاقة لتحريك "مسار الضوء" (Spotlight) الذي
   // يتبع المؤشر — يُحقَّق عبر متغيّري CSS (--mx, --my) تُحدّث مباشرة على
@@ -165,6 +177,15 @@ export function VideoUrlForm({ onVideoSourceSelected }: VideoUrlFormProps) {
       ) : (
         <div className="flex w-full flex-col gap-2.5">
           <span className="font-mono text-[11px] tracking-wide text-text-muted">LOCAL_FILE</span>
+          {pendingLocalFileName && (
+            <p className="flex items-center gap-1.5 rounded-md border border-console/40 bg-console/10 px-3 py-2 text-xs text-console">
+              <Info size={13} className="shrink-0" aria-hidden="true" />
+              <span>
+                لإكمال المشاهدة من حيث توقفت، أعد اختيار نفس الملف:{' '}
+                <span className="font-mono font-semibold">{pendingLocalFileName}</span>
+              </span>
+            </p>
+          )}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}

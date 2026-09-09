@@ -34,7 +34,13 @@ export function useSubtitleTrack(initialLanguageCode: string, initialLanguageLab
     createEmptyState(initialLanguageCode, initialLanguageLabel),
   )
 
-  const uploadFile = useCallback(async (file: File) => {
+  /**
+   * يُرجع true عند نجاح التحليل وfalse عند الفشل — ضروري للطبقات الأعلى
+   * (مثل حفظ محتوى الملف في IndexedDB لسجل المشاهدات) لمعرفة النتيجة
+   * الفعلية دون الاعتماد على قراءة track بعد await (سيبقى نسخة قديمة من
+   * لحظة إنشاء الدالة المستدعية، لا يعكس التحديث الذي حدث للتو داخل هذا الـ Hook)
+   */
+  const uploadFile = useCallback(async (file: File): Promise<boolean> => {
     setTrack((previous) => ({ ...previous, status: 'parsing', errorMessage: null }))
 
     try {
@@ -49,6 +55,7 @@ export function useSubtitleTrack(initialLanguageCode: string, initialLanguageLab
         // غير ذات صلة بملف مختلف تماماً، والاحتفاظ بها سيربك المستخدم
         syncOffsetSeconds: 0,
       }))
+      return true
     } catch (error) {
       const message =
         error instanceof SubtitleParseError
@@ -61,6 +68,7 @@ export function useSubtitleTrack(initialLanguageCode: string, initialLanguageLab
         status: 'error',
         errorMessage: message,
       }))
+      return false
     }
   }, [])
 

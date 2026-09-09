@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import App from '../App'
 import { installMockYouTubeApi, type MockYouTubePlayer } from './testHelpers/mockYouTubePlayer'
 
@@ -33,6 +33,16 @@ async function loadVideo() {
   await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
 }
 
+/**
+ * مهلة انتظار حقيقية مغلَّفة بـ act(): تُستخدم للتأكد من عدم حدوث استعادة
+ * تقدّم خاطئة، مع منح فرصة لتحميل SettingsPanel الكسول (React.lazy) لإنهاء
+ * عمله ضمن act() أيضاً بدل أن يُنهي بعد نهاية الاختبار (تحذير React غير
+ * ضار لكن مزعج في المخرجات)
+ */
+async function waitRealMs(ms: number) {
+  await act(() => new Promise((resolve) => setTimeout(resolve, ms)))
+}
+
 describe('video watch progress', () => {
   it('resumes from the previously saved position once the player is ready', async () => {
     window.localStorage.setItem(
@@ -58,14 +68,14 @@ describe('video watch progress', () => {
     await loadVideo()
 
     // مهلة قصيرة كافية لمنح تأثير الاستعادة فرصة للعمل لو كان سيعمل خطأً
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    await waitRealMs(300)
     expect(latestPlayerInstance?.getCurrentTime()).toBe(0)
   })
 
   it('does not resume when there is no saved entry for this video', async () => {
     await loadVideo()
 
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    await waitRealMs(300)
     expect(latestPlayerInstance?.getCurrentTime()).toBe(0)
   })
 

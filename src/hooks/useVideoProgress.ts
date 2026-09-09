@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { STORAGE_KEYS } from '@/constants/theme.constants'
+import { getVideoKey } from '@/lib/utils/videoKey'
 import type { VideoSource } from '@/types/video.types'
 import type { UseVideoPlayerResult } from './useVideoPlayer'
 
@@ -18,17 +19,6 @@ interface ProgressEntry {
 }
 
 type ProgressMap = Record<string, ProgressEntry>
-
-/**
- * مفتاح مستقر لكل فيديو: معرّف يوتيوب للفيديوهات القادمة من رابط (مستقر
- * تماماً بين الزيارات)، أو اسم الملف للفيديوهات المحلية — بما أن
- * objectUrl عشوائي ومؤقت (يُعاد إنشاؤه في كل جلسة عبر
- * URL.createObjectURL) فلا يصلح كمفتاح، بخلاف اسم الملف الذي يبقى نفسه
- * لو اختار المستخدم نفس الملف مرة أخرى لاحقاً
- */
-function getProgressKey(source: VideoSource): string {
-  return source.type === 'youtube' ? `youtube:${source.videoId}` : `local:${source.fileName}`
-}
 
 function readProgressMap(): ProgressMap {
   try {
@@ -54,6 +44,18 @@ function writeProgressMap(map: ProgressMap): void {
 }
 
 /**
+ * يحذف موضع التقدّم المحفوظ لفيديو واحد — يُستدعى عند إزالة مُدخل من سجل
+ * المشاهدات (useWatchHistory) كي لا يبقى تقدّماً يتيماً لفيديو لم يعد
+ * مذكوراً في السجل أصلاً
+ */
+export function deleteProgressForVideo(videoKey: string): void {
+  const map = readProgressMap()
+  if (!(videoKey in map)) return
+  delete map[videoKey]
+  writeProgressMap(map)
+}
+
+/**
  * يحفظ موضع التشغيل الحالي دورياً لكل فيديو على حدة، ويستأنف منه تلقائياً
  * في المرة التالية التي يُفتح فيها نفس الفيديو (بنفس الرابط أو نفس اسم
  * الملف) — بلا أي تأكيد أو واجهة إضافية، تماماً كسلوك معظم مشغّلات الفيديو
@@ -67,7 +69,7 @@ export function useVideoProgress(source: VideoSource | null, player: UseVideoPla
   const playerRef = useRef(player)
   playerRef.current = player
 
-  const progressKey = source ? getProgressKey(source) : null
+  const progressKey = source ? getVideoKey(source) : null
   const hasRestoredRef = useRef<string | null>(null)
 
   // الاستعادة: بمجرد جاهزية المشغّل لفيديو جديد، اقفز مرة واحدة فقط للموضع

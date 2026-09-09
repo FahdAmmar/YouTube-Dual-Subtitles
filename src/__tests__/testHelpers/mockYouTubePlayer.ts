@@ -26,6 +26,10 @@ export class MockYouTubePlayer implements YouTubePlayerInstance {
     setTimeout(() => this.options.events?.onReady?.({ target: this }), 0)
   }
 
+  getVideoData(): { video_id: string; title: string; author: string } {
+    return { video_id: this.options.videoId, title: 'فيديو تجريبي للاختبار', author: 'قناة تجريبية' }
+  }
+
   setTime(seconds: number): void {
     this.time = seconds
   }

@@ -1,0 +1,120 @@
+export interface KeyboardShortcutHandlers {
+  onTogglePlayPause: () => void
+  onSpeedUp: () => void
+  onSlowDown: () => void
+  onToggleFullscreen: () => void
+  onResetSpeed: () => void
+  onPrevScene: () => void
+  onNextScene: () => void
+  onVolumeUp: () => void
+  onVolumeDown: () => void
+  /** إعادة تشغيل المقطع الحالي من بدايته — اختصار "0" */
+  onRestartScene: () => void
+  /** تكرار المقطع الحالي N مرات — اختصارات "1"/"2"/"3" */
+  onRepeatScene: (totalLoops: number) => void
+  /** إظهار/إخفاء لوحة اختصارات لوحة المفاتيح — اختصار "؟" */
+  onShowHelp: () => void
+}
+
+export interface KeyboardShortcutDefinition {
+  /** كل صيغ event.key التي تُفعّل هذا الاختصار (حالة كبيرة/صغيرة، أسماء بديلة كـ "Spacebar") */
+  matchKeys: string[]
+  /** رمز واحد يُعرض للمستخدم في لوحة المساعدة (بصرف النظر عن عدد matchKeys) */
+  displayKey: string
+  description: string
+  /** الإجراء الفعلي عند الضغط — دالة صغيرة تُحدّد أي معالج تستدعي وبأي وسائط (مهم لـ onRepeatScene التي تُستدعى بوسيط مختلف لكل مفتاح) */
+  action: (handlers: KeyboardShortcutHandlers) => void
+}
+
+/**
+ * مصدر الحقيقة الوحيد لكل اختصارات لوحة المفاتيح الخاصة بالفيديو: يُستخدم
+ * مباشرة من useKeyboardShortcuts لمعالجة الضغطات الفعلية، ومن
+ * KeyboardShortcutsPanel لعرضها في لوحة المساعدة — بدل نسختين منفصلتين
+ * (منطق + عرض) كان يجب مزامنتهما يدوياً عند أي تعديل مستقبلي
+ */
+export const KEYBOARD_SHORTCUTS: KeyboardShortcutDefinition[] = [
+  {
+    matchKeys: [' ', 'Spacebar'],
+    displayKey: 'Space',
+    description: 'تشغيل/إيقاف مؤقت',
+    action: (h) => h.onTogglePlayPause(),
+  },
+  {
+    matchKeys: ['ArrowLeft'],
+    displayKey: '←',
+    description: 'المقطع السابق',
+    action: (h) => h.onPrevScene(),
+  },
+  {
+    matchKeys: ['ArrowRight'],
+    displayKey: '→',
+    description: 'المقطع التالي',
+    action: (h) => h.onNextScene(),
+  },
+  {
+    matchKeys: ['ArrowUp'],
+    displayKey: '↑',
+    description: 'رفع الصوت',
+    action: (h) => h.onVolumeUp(),
+  },
+  {
+    matchKeys: ['ArrowDown'],
+    displayKey: '↓',
+    description: 'خفض الصوت',
+    action: (h) => h.onVolumeDown(),
+  },
+  {
+    matchKeys: ['c', 'C'],
+    displayKey: 'C',
+    description: 'تسريع التشغيل (+0.5×)',
+    action: (h) => h.onSpeedUp(),
+  },
+  {
+    matchKeys: ['x', 'X'],
+    displayKey: 'X',
+    description: 'إبطاء التشغيل (−0.5×)',
+    action: (h) => h.onSlowDown(),
+  },
+  {
+    matchKeys: ['z', 'Z'],
+    displayKey: 'Z',
+    description: 'إعادة ضبط السرعة (1×)',
+    action: (h) => h.onResetSpeed(),
+  },
+  {
+    matchKeys: ['f', 'F'],
+    displayKey: 'F',
+    description: 'تبديل وضع ملء الشاشة',
+    action: (h) => h.onToggleFullscreen(),
+  },
+  {
+    matchKeys: ['0'],
+    displayKey: '0',
+    description: 'إعادة تشغيل المقطع الحالي من بدايته',
+    action: (h) => h.onRestartScene(),
+  },
+  {
+    matchKeys: ['1'],
+    displayKey: '1',
+    description: 'تكرار المقطع الحالي مرّتين',
+    action: (h) => h.onRepeatScene(2),
+  },
+  {
+    matchKeys: ['2'],
+    displayKey: '2',
+    description: 'تكرار المقطع الحالي ثلاث مرات',
+    action: (h) => h.onRepeatScene(3),
+  },
+  {
+    matchKeys: ['3'],
+    displayKey: '3',
+    description: 'تكرار المقطع الحالي أربع مرات',
+    action: (h) => h.onRepeatScene(4),
+  },
+  {
+    matchKeys: ['?'],
+    displayKey: '?',
+    description: 'إظهار/إخفاء لوحة الاختصارات',
+    action: (h) => h.onShowHelp(),
+  },
+]

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload } from 'lucide-react'
+import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload, Keyboard } from 'lucide-react'
 import { ViewModeToggle } from './ViewModeToggle'
 import { SourceFileRow } from './SourceFileRow'
 import { DownloadSubtitles } from './DownloadSubtitles'
@@ -37,8 +37,11 @@ interface ConsolePanelProps {
   isPlaying: boolean
   onSeek: (seconds: number) => void
   onOpenSettings: () => void
+  onOpenShortcutsHelp: () => void
   sidebarPosition: SidebarPosition
   onToggleSidebarPosition: () => void
+  rememberedSourceFileName?: string
+  rememberedTranslationFileName?: string
 }
 
 /**
@@ -62,8 +65,11 @@ export function ConsolePanel({
   isPlaying,
   onSeek,
   onOpenSettings,
+  onOpenShortcutsHelp,
   sidebarPosition,
   onToggleSidebarPosition,
+  rememberedSourceFileName,
+  rememberedTranslationFileName,
 }: ConsolePanelProps) {
   // طي قسم الرفع/العرض/التنزيل تلقائياً بمجرد جهوزية المسارين معاً، لصالح
   // تفريغ أكبر مساحة ممكنة لقائمة النص المتزامن — وهو الغرض الأساسي من
@@ -131,6 +137,9 @@ export function ConsolePanel({
             <IconButton aria-label="فتح إعدادات حجم ولون الترجمة" onClick={onOpenSettings} className="h-8 w-8">
               <SlidersHorizontal size={14} aria-hidden="true" />
             </IconButton>
+            <IconButton aria-label="عرض اختصارات لوحة المفاتيح" onClick={onOpenShortcutsHelp} className="h-8 w-8">
+              <Keyboard size={14} aria-hidden="true" />
+            </IconButton>
           </div>
         </div>
 
@@ -156,12 +165,14 @@ export function ConsolePanel({
                     accentClassName="bg-track-a"
                     onFileSelected={onUploadSource}
                     offsetControls={sourceControls}
+                    rememberedFileName={rememberedSourceFileName}
                   />
                   <SourceFileRow
                     track={translationTrack}
                     accentClassName="bg-track-b"
                     onFileSelected={onUploadTranslation}
                     offsetControls={translationControls}
+                    rememberedFileName={rememberedTranslationFileName}
                   />
                 </div>
 

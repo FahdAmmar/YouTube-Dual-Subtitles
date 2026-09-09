@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, RotateCcw } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -6,6 +5,7 @@ import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
 import { Slider } from '@/components/ui/Slider'
 import { TrackStyleControl } from './FontSizeControl'
+import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import type { SubtitleTrackState } from '@/types/subtitle.types'
 
@@ -29,30 +29,7 @@ interface SettingsPanelProps {
 export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanelProps) {
   const { settings, updateTrackStyle, toggleBackdrop, setSubtitleWidthPercent, setSubtitleLineHeight, resetToDefaults } =
     useSubtitleSettings()
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null)
-
-  // سلوك حوار قياسي (WAI-ARIA Dialog Pattern): عند الفتح، نحفظ العنصر
-  // الذي كان يملك التركيز (زر الفتح غالباً) وننقل التركيز داخل اللوحة؛
-  // Escape يُغلقها كأي حوار؛ وعند الإغلاق نُعيد التركيز إلى مكانه الأصلي
-  // بدل تركه "ضائعاً" على body — كل هذا كان غائباً سابقاً
-  useEffect(() => {
-    if (!isOpen) return
-
-    previouslyFocusedRef.current = document.activeElement as HTMLElement | null
-    const frame = requestAnimationFrame(() => dialogRef.current?.focus())
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      cancelAnimationFrame(frame)
-      document.removeEventListener('keydown', handleKeyDown)
-      previouslyFocusedRef.current?.focus?.()
-    }
-  }, [isOpen, onClose])
+  const dialogRef = useDialogFocusTrap(isOpen, onClose)
 
   return (
     <AnimatePresence>

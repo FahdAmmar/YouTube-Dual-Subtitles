@@ -24,6 +24,7 @@ interface VideoStageProps {
   translationTrack: SubtitleTrackState
   viewMode: ViewMode
   onChangeVideo: () => void
+  onOpenShortcutsHelp: () => void
   slices: PairedSlice[]
 }
 
@@ -40,7 +41,15 @@ let shortcutFeedbackIdCounter = 0
  * لأنه المكان الطبيعي الوحيد الذي تتوفر فيه كل عناصر التحكم اللازمة معاً
  * (المشغّل، حالة ملء الشاشة) في مكوّن واحد
  */
-export function VideoStage({ player, sourceTrack, translationTrack, viewMode, onChangeVideo, slices }: VideoStageProps) {
+export function VideoStage({
+  player,
+  sourceTrack,
+  translationTrack,
+  viewMode,
+  onChangeVideo,
+  onOpenShortcutsHelp,
+  slices,
+}: VideoStageProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const { isFullscreen, toggleFullscreen } = useFullscreen(stageRef)
   const [shortcutFeedback, setShortcutFeedback] = useState<PlaybackShortcutFeedback | null>(null)
@@ -199,12 +208,14 @@ export function VideoStage({ player, sourceTrack, translationTrack, viewMode, on
     onVolumeDown: handleVolumeDown,
     onRestartScene: handleRestartScene,
     onRepeatScene: handleRepeatScene,
+    onShowHelp: onOpenShortcutsHelp,
   })
 
   return (
     <div
       ref={stageRef}
       tabIndex={-1}
+      data-testid="video-stage"
       className="relative aspect-video w-full overflow-hidden rounded-lg bg-black shadow-elevated outline-none"
     >
       {player.renderTarget.type === 'youtube' ? (

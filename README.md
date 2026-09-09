@@ -37,12 +37,21 @@ No backend. No database. No API keys. Everything runs in the browser.
 - **Local video file** — upload a file straight from your device (MP4, WebM, MOV, MKV...); it never leaves the browser (played via a local Object URL, nothing is uploaded to any server)
 - Both paths lead to the *exact same* viewing experience — same custom control bar, same keyboard shortcuts, same dual‑subtitle overlay and transcript panel. A single unified player interface (`useVideoPlayer`) sits in front of both, so no other part of the app needs to know or care which one is active
 
+### 📼 Watch History
+
+- A "continue watching" list appears above the URL/file form, showing every recently‑watched video with its title (fetched from YouTube's own `getVideoData()`), thumbnail, and a relative timestamp (`Intl.RelativeTimeFormat`, no library)
+- **YouTube entries resume with a single click** — the exact same URL is resubmitted automatically, and playback resumes from the saved position
+- **Local video entries cannot auto‑resume** — browsers fundamentally do not allow a site to reopen a file from disk without the user selecting it again, so clicking a local entry instead switches straight to the "local file" tab and shows a clear reminder of the exact file name to pick, rather than pretending to do something it structurally cannot
+- **Subtitle files are activated automatically** — their full text content (not just the file name) is saved to `IndexedDB` on upload, keyed by (video, track, file name). Revisiting the same video from history re‑parses that stored content through the exact same upload pipeline with zero manual steps — no re‑upload, no reminder. If the content isn't available (older browser, private‑browsing restrictions, or a file uploaded before this feature existed), the UI falls back to a clear reminder ("أعد رفع: ar.srt") instead of pretending nothing changed
+- Per‑entry removal and a "clear all" action — both fully clean up *everything* tied to that video (saved playback position, sync offset, and subtitle content in `IndexedDB`), not just the visible history row; capped at 40 entries (oldest pruned automatically)
+- No backend, no accounts — entry metadata lives in `localStorage` like the rest of the app's persistence; subtitle file *content* lives in `IndexedDB` (larger quota, built for this size), capped at the 30 most‑recently‑saved files
+
 ### 🌐 Dual Subtitle Power
 
 - Upload **any two independent SRT/VTT files** (different sources, different segmentations)
 - **Upload a single bilingual SRT/VTT file** — each cue containing both languages (typically one line per language) is automatically split into the two tracks by detecting each line's writing direction (RTL → source, LTR → translation), with a positional fallback for same‑direction language pairs; both tracks appear with the exact same design as if two separate files were uploaded
 - Frame‑accurate sync using `O(log n)` binary‑search cue lookup
-- Per‑track manual sync offset (±15s) to correct mistimed files — baked directly into the transcript highlight, so it never drifts from what's burned into the video overlay
+- Per‑track manual sync offset (±15s) to correct mistimed files — baked directly into the transcript highlight, so it never drifts from what's burned into the video overlay. The offset is remembered per (video, subtitle file) pair and restored automatically next time you open the same combination
 - Live transcript panel with the active segment highlighted in real time, including an animated progress bar tracking position within that exact segment
 - **Draggable burned‑in captions** — drag the subtitle bubble anywhere within the video frame (e.g. to avoid covering on‑screen text), constrained to the video's own bounds; double‑click to reset, position persists across sessions
 - Toggle view mode: source only, translation only, or both side‑by‑side
@@ -57,9 +66,10 @@ No backend. No database. No API keys. Everything runs in the browser.
 - `↑` / `↓` — volume up / down
 - `0` — restart the current scene from its beginning (play once, no loop)
 - `1` — repeat the current scene **twice** · `2` — **three** times · `3` — **four** times (a persistent on‑screen badge tracks loop progress, e.g. `2/3`)
+- `?` — open the in‑app **keyboard shortcuts help panel** (also reachable via a button in the console header) — lists every shortcut above, since there was previously no way to discover them from the UI
 - All shortcuts work identically whether watching a YouTube video or a local file
 - All shortcuts are automatically disabled while typing in any text field, and ignore modifier‑key combos (`Ctrl`/`Cmd`/`Alt`) so they never fight with browser shortcuts
-- **Focus retention**: after clicking the YouTube video (which steals keyboard focus into the cross‑origin iframe), focus is automatically reclaimed by the stage container on the next pointer release, so shortcuts keep responding reliably — the keydown listener is also registered in the capture phase as a defensive measure
+- **Focus retention**: clicking the YouTube video moves keyboard focus into its cross‑origin iframe, whose keydown events never reach the parent document. A `focusin` listener on `document` detects the instant focus lands on the iframe and reclaims it for the stage container immediately, so shortcuts keep responding reliably — the keydown listener is also registered in the capture phase as a defensive measure
 - Every shortcut has an on‑screen flash indicator (à la YouTube/Netflix) confirming the action, plus a clickable equivalent in the control bar (a speed menu) for mouse/touch users
 - **Not included: a YouTube resolution/quality picker.** YouTube [officially discontinued](https://developers.google.com/youtube/iframe_api_reference) programmatic quality control for embeds — `setPlaybackQuality` and the `vq` load‑time hint are both documented no‑ops today, so a quality selector for YouTube videos here would just be a fake control that does nothing. Quality is fully automatic (adaptive bitrate) on YouTube's side. This doesn't apply to local file uploads, which always play at their native, unmodified quality.
 
@@ -83,19 +93,31 @@ No backend. No database. No API keys. Everything runs in the browser.
 ├── 📁 src
 │   ├── 📁 __tests__
 │   │   ├── 📁 testHelpers
-│   │   │   └── 📄 mockYouTubePlayer.ts
+│   │   │   ├── 📄 mockYouTubePlayer.ts
+│   │   │   └── 📄 resetIndexedDb.ts
+│   │   ├── 📄 bilingual-upload.test.tsx
 │   │   ├── 📄 collapsible-upload-section.test.tsx
 │   │   ├── 📄 draggable-subtitle-overlay.test.tsx
+│   │   ├── 📄 dynamic-accent-color.test.tsx
 │   │   ├── 📄 flaky-player-bridge.test.tsx
+│   │   ├── 📄 focus-retention-iframe.test.tsx
 │   │   ├── 📄 full-workflow.test.tsx
+│   │   ├── 📄 keyboard-shortcuts-help-panel.test.tsx
 │   │   ├── 📄 keyboard-shortcuts.test.tsx
 │   │   ├── 📄 local-video-upload.test.tsx
 │   │   ├── 📄 matchmedia-crash.test.tsx
 │   │   ├── 📄 mobile-active-caption.test.tsx
+│   │   ├── 📄 quality-indicator.test.tsx
 │   │   ├── 📄 repro.test.tsx
 │   │   ├── 📄 resizable-sidebar.test.tsx
+│   │   ├── 📄 scene-repeat-shortcuts.test.tsx
+│   │   ├── 📄 settings-panel-focus.test.tsx
 │   │   ├── 📄 sidebar-position-logic.test.ts
 │   │   ├── 📄 sidebar-position-toggle.test.tsx
+│   │   ├── 📄 subtitle-box-size.test.tsx
+│   │   ├── 📄 sync-offset-persistence.test.tsx
+│   │   ├── 📄 video-progress.test.tsx
+│   │   ├── 📄 watch-history.test.tsx
 │   │   └── 📄 setup.ts
 │   ├── 📁 components
 │   │   ├── 📁 console
@@ -107,6 +129,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   └── 📄 ViewModeToggle.tsx
 │   │   ├── 📁 layout
 │   │   │   ├── 📄 AppShell.tsx
+│   │   │   ├── 📄 BackgroundFX.tsx
 │   │   │   ├── 📄 Footer.tsx
 │   │   │   ├── 📄 Header.tsx
 │   │   │   └── 📄 PanelResizeHandle.tsx
@@ -126,6 +149,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   ├── 📄 Select.tsx
 │   │   │   └── 📄 Slider.tsx
 │   │   └── 📁 video
+│   │       ├── 📄 KeyboardShortcutsPanel.tsx
 │   │       ├── 📄 LocalVideoPlayerView.tsx
 │   │       ├── 📄 MobileActiveCaption.tsx
 │   │       ├── 📄 PlaybackShortcutToast.tsx
@@ -134,8 +158,10 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │       ├── 📄 VideoStage.tsx
 │   │       ├── 📄 VideoTopBar.tsx
 │   │       ├── 📄 VideoUrlForm.tsx
+│   │       ├── 📄 WatchHistoryList.tsx
 │   │       └── 📄 YouTubePlayerView.tsx
 │   ├── 📁 constants
+│   │   ├── 📄 keyboardShortcuts.ts
 │   │   ├── 📄 languages.ts
 │   │   └── 📄 theme.constants.ts
 │   ├── 📁 context
@@ -143,17 +169,24 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   └── 📄 ThemeContext.tsx
 │   ├── 📁 hooks
 │   │   ├── 📄 useActiveCue.ts
+│   │   ├── 📄 useDialogFocusTrap.ts
 │   │   ├── 📄 useDraggableOverlayPosition.ts
+│   │   ├── 📄 useDynamicAccentColor.ts
+│   │   ├── 📄 useFocusRetention.ts
 │   │   ├── 📄 useFullscreen.ts
 │   │   ├── 📄 useKeyboardShortcuts.ts
 │   │   ├── 📄 useLocalStorage.ts
 │   │   ├── 📄 useLocalVideoPlayer.ts
 │   │   ├── 📄 usePlayerTime.ts
 │   │   ├── 📄 useResizableSidebarWidth.ts
+│   │   ├── 📄 useSceneRepeat.ts
 │   │   ├── 📄 useSidebarPosition.ts
 │   │   ├── 📄 useSubtitleTrack.ts
+│   │   ├── 📄 useSyncOffsetPersistence.ts
 │   │   ├── 📄 useTheme.ts
 │   │   ├── 📄 useVideoPlayer.ts
+│   │   ├── 📄 useVideoProgress.ts
+│   │   ├── 📄 useWatchHistory.ts
 │   │   └── 📄 useYouTubePlayer.ts
 │   ├── 📁 lib
 │   │   ├── 📁 subtitles
@@ -162,18 +195,29 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   ├── 📄 parseSRT.ts
 │   │   │   ├── 📄 parseSubtitleFile.ts
 │   │   │   ├── 📄 parseVTT.ts
-│   │   │   └── 📄 serializeSRT.ts
+│   │   │   ├── 📄 serializeSRT.ts
+│   │   │   ├── 📄 splitBilingualCues.test.ts
+│   │   │   └── 📄 splitBilingualCues.ts
 │   │   ├── 📁 utils
 │   │   │   ├── 📄 cn.ts
+│   │   │   ├── 📄 color.test.ts
+│   │   │   ├── 📄 color.ts
 │   │   │   ├── 📄 formatPlaybackRate.ts
+│   │   │   ├── 📄 formatRelativeTime.test.ts
+│   │   │   ├── 📄 formatRelativeTime.ts
 │   │   │   ├── 📄 safePlayerCall.ts
-│   │   │   └── 📄 sanitize.ts
+│   │   │   ├── 📄 sanitize.ts
+│   │   │   ├── 📄 subtitleContentStore.test.ts
+│   │   │   ├── 📄 subtitleContentStore.ts
+│   │   │   ├── 📄 videoKey.test.ts
+│   │   │   └── 📄 videoKey.ts
 │   │   └── 📁 youtube
 │   │       ├── 📄 extractVideoId.ts
 │   │       └── 📄 loadYouTubeIframeAPI.ts
 │   ├── 📁 styles
 │   │   └── 🎨 tokens.css
 │   ├── 📁 types
+│   │   ├── 📄 history.types.ts
 │   │   ├── 📄 subtitle.types.ts
 │   │   ├── 📄 theme.types.ts
 │   │   ├── 📄 video.types.ts
@@ -182,6 +226,9 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   ├── 🎨 index.css
 │   ├── 📄 main.tsx
 │   └── 📄 vite-env.d.ts
+├── 📁 .github
+│   └── 📁 workflows
+│       └── 📄 ci.yml
 ├── ⚙️ .eslintrc.json
 ├── ⚙️ .gitignore
 ├── 📄 LICENSE
@@ -201,6 +248,8 @@ No backend. No database. No API keys. Everything runs in the browser.
 ---
 
 ## Getting Started
+
+**Requirements:** Node.js ≥ 20, npm ≥ 11 (older npm versions can fail to resolve the dependency tree — see `engines` in `package.json`).
 
 ```bash
 npm install

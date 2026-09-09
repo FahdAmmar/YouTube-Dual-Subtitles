@@ -15,6 +15,8 @@ export interface UseVideoPlayerResult {
   playerState: YouTubePlayerState
   isReady: boolean
   loadError: string | null
+  /** عنوان الفيديو — متاح ليوتيوب فقط (فارغ للفيديو المحلي؛ اسم الملف نفسه يكفي كعنوان هناك) */
+  videoTitle: string | null
   play: () => void
   pause: () => void
   seekTo: (seconds: number) => void
@@ -53,6 +55,7 @@ export function useVideoPlayer(source: VideoSource | null): UseVideoPlayerResult
     return {
       ...localPlayer,
       renderTarget: { type: 'local', videoRef: localPlayer.videoRef, objectUrl: source.objectUrl },
+      videoTitle: null,
       qualityLevels: [],
       currentQuality: 'native',
       setQuality: () => {},

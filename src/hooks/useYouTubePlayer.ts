@@ -20,6 +20,8 @@ export interface UseYouTubePlayerResult {
   playerState: YouTubePlayerState
   isReady: boolean
   loadError: string | null
+  /** عنوان الفيديو كما يُرسله يوتيوب — يُستخدم في عرض سجل المشاهدات فقط، فارغ حتى onReady */
+  videoTitle: string | null
   play: () => void
   pause: () => void
   seekTo: (seconds: number) => void
@@ -71,6 +73,7 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
   const [playerState, setPlayerState] = useState<YouTubePlayerState>(YT_PLAYER_STATE.UNSTARTED)
   const [isReady, setIsReady] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [videoTitle, setVideoTitle] = useState<string | null>(null)
   const [playbackRate, setPlaybackRateState] = useState(1)
   const [qualityLevels, setQualityLevels] = useState<string[]>([])
   const [currentQuality, setCurrentQuality] = useState<string>('auto')
@@ -82,6 +85,7 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
     let isCancelled = false
     setIsReady(false)
     setLoadError(null)
+    setVideoTitle(null)
     // إعادة الضبط لسرعة التشغيل الطبيعية عند تحميل فيديو جديد — سلوك
     // متوقَّع (مطابق لسلوك يوتيوب نفسه ومعظم مشغّلات الفيديو الأخرى) بدل
     // توريث سرعة كانت مضبوطة للفيديو السابق
@@ -115,6 +119,9 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
               const levels = safePlayerCall(() => event.target.getAvailableQualityLevels(), [] as string[])
               setQualityLevels(levels.length > 0 ? levels : DEFAULT_QUALITY_LEVELS)
               setCurrentQuality(safePlayerCall(() => event.target.getPlaybackQuality(), 'auto'))
+              // العنوان لعرض سجل المشاهدات فقط — فشل قراءته ليس خطأً حرجاً بأي شكل
+              const title = safePlayerCall(() => event.target.getVideoData().title, '')
+              setVideoTitle(title || null)
             },
             onStateChange: (event) => {
               setPlayerState(event.data)
@@ -211,6 +218,7 @@ export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult
     playerState,
     isReady,
     loadError,
+    videoTitle,
     play: () => safePlayerCall(() => playerRef.current?.playVideo(), undefined),
     pause: () => safePlayerCall(() => playerRef.current?.pauseVideo(), undefined),
     seekTo: (seconds: number) => safePlayerCall(() => playerRef.current?.seekTo(seconds, true), undefined),

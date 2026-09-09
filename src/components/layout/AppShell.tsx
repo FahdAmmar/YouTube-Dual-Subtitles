@@ -6,6 +6,8 @@ import { PanelResizeHandle } from './PanelResizeHandle'
 import { VideoUrlForm } from '@/components/video/VideoUrlForm'
 import { VideoStage } from '@/components/video/VideoStage'
 import { MobileActiveCaption } from '@/components/video/MobileActiveCaption'
+import { KeyboardShortcutsPanel } from '@/components/video/KeyboardShortcutsPanel'
+import { WatchHistoryList } from '@/components/video/WatchHistoryList'
 import { ConsolePanel } from '@/components/console/ConsolePanel'
 import { useVideoPlayer } from '@/hooks/useVideoPlayer'
 import { useSubtitleTrack } from '@/hooks/useSubtitleTrack'
@@ -13,11 +15,16 @@ import { useResizableSidebarWidth } from '@/hooks/useResizableSidebarWidth'
 import { useSidebarPosition, getSidebarFlexOrderClasses } from '@/hooks/useSidebarPosition'
 import { useDynamicAccentColor } from '@/hooks/useDynamicAccentColor'
 import { useVideoProgress } from '@/hooks/useVideoProgress'
+import { useSyncOffsetPersistence } from '@/hooks/useSyncOffsetPersistence'
+import { useRecordWatchHistory, useAutoRestoreSubtitles, getHistoryEntryByKey } from '@/hooks/useWatchHistory'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import { useThemeContext } from '@/context/ThemeContext'
 import { pairCuesIntoSlices } from '@/lib/subtitles/pairCues'
 import { parseSubtitleFile, SubtitleParseError } from '@/lib/subtitles/parseSubtitleFile'
 import { splitBilingualCues } from '@/lib/subtitles/splitBilingualCues'
+import { cuesToSrt } from '@/lib/subtitles/serializeSRT'
+import { getVideoKey } from '@/lib/utils/videoKey'
+import { saveSubtitleContent } from '@/lib/utils/subtitleContentStore'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { VideoSource } from '@/types/video.types'
 import type { ViewMode } from '@/types/theme.types'
@@ -50,7 +57,11 @@ const SettingsPanel = lazy(() =>
 export function AppShell() {
   const [videoSource, setVideoSource] = useState<VideoSource | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('both')
+  // اسم ملف فيديو محلي مطلوب إعادة اختياره يدوياً (نقر مُدخل محلي في سجل
+  // المشاهدات) — انظر توثيق useWatchHistory لسبب عدم إمكانية فتحه تلقائياً
+  const [pendingLocalFileName, setPendingLocalFileName] = useState<string | null>(null)
 
   const { settings } = useSubtitleSettings()
   const { resolvedTheme } = useThemeContext()
@@ -61,6 +72,40 @@ export function AppShell() {
   useVideoProgress(videoSource, player)
   const sourceTrack = useSubtitleTrack('ar', 'العربية')
   const translationTrack = useSubtitleTrack('en', 'الإنجليزية')
+  useSyncOffsetPersistence(
+    'source',
+    videoSource,
+    sourceTrack.track.fileName,
+    sourceTrack.track.syncOffsetSeconds,
+    sourceTrack.setSyncOffset,
+  )
+  useSyncOffsetPersistence(
+    'translation',
+    videoSource,
+    translationTrack.track.fileName,
+    translationTrack.track.syncOffsetSeconds,
+    translationTrack.setSyncOffset,
+  )
+  useRecordWatchHistory(videoSource, player.videoTitle, sourceTrack.track.fileName, translationTrack.track.fileName)
+  // تذكير ملفات الترجمة لهذا الفيديو تحديداً: يُقرأ مرة واحدة فقط لحظة
+  // تحميل الفيديو (وليس بشكل حيّ)، فيبقى يعكس آخر زيارة سابقة طوال هذه
+  // الجلسة، حتى بعد أن يكتب useRecordWatchHistory أعلاه فوقه لاحقاً
+  const historyEntry = useMemo(
+    () => (videoSource ? getHistoryEntryByKey(getVideoKey(videoSource)) : null),
+    [videoSource],
+  )
+  // استعادة محتوى ملفات الترجمة تلقائياً (إن وُجد محفوظاً فعلياً في
+  // IndexedDB) — بلا أي تدخّل من المستخدم؛ إن لم يكن المحتوى محفوظاً
+  // (متصفح قديم، أو أول رفع كان قبل إضافة هذه الميزة) يبقى تذكير
+  // SourceFileRow النصي كخطة بديلة صامتة
+  useAutoRestoreSubtitles(
+    videoSource,
+    historyEntry,
+    sourceTrack.track.fileName,
+    translationTrack.track.fileName,
+    sourceTrack.uploadFile,
+    translationTrack.uploadFile,
+  )
   const sidebarPosition = useSidebarPosition()
   const sidebar = useResizableSidebarWidth(sidebarPosition.position)
 
@@ -88,7 +133,46 @@ export function AppShell() {
       }
       return null
     })
-  }, [])
+    setPendingLocalFileName(null)
+    // تصفير مساري الترجمة: بدونه يبقى ملف الفيديو السابق "جاهزاً" ظاهرياً
+    // حتى بعد التبديل لفيديو مختلف تماماً — توقيته لا علاقة له بهذا
+    // الفيديو الجديد إطلاقاً، وعرضه يُربك المستخدم بترجمة خاطئة تماماً
+    sourceTrack.reset()
+    translationTrack.reset()
+    // sourceTrack.reset/translationTrack.reset مستقران (useCallback([]) داخل
+    // useSubtitleTrack)، لكن ESLint لا يستطيع التحقق من ذلك عبر التحليل
+    // الساكن ويطلب الكائنين الكاملين كاعتماد رغم أنهما يتغيّران كل rerender
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceTrack.reset, translationTrack.reset])
+
+  // غلاف فوق uploadFile: يحفظ محتوى الملف كاملاً في IndexedDB بعد نجاح
+  // الرفع فقط (uploadFile يُرجع النتيجة الفعلية الآن تحديداً لهذا الغرض)
+  // — يتيح تفعيل الترجمة تلقائياً عند العودة لهذا الفيديو من السجل لاحقاً
+  const handleUploadSource = useCallback(
+    async (file: File) => {
+      const succeeded = await sourceTrack.uploadFile(file)
+      if (succeeded && videoSource) {
+        void file.text().then((content) => saveSubtitleContent(getVideoKey(videoSource), 'source', file.name, content))
+      }
+    },
+    // sourceTrack.uploadFile مستقر (useCallback([]) داخل useSubtitleTrack)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sourceTrack.uploadFile, videoSource],
+  )
+
+  const handleUploadTranslation = useCallback(
+    async (file: File) => {
+      const succeeded = await translationTrack.uploadFile(file)
+      if (succeeded && videoSource) {
+        void file
+          .text()
+          .then((content) => saveSubtitleContent(getVideoKey(videoSource), 'translation', file.name, content))
+      }
+    },
+    // translationTrack.uploadFile مستقر (useCallback([]) داخل useSubtitleTrack)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [translationTrack.uploadFile, videoSource],
+  )
 
   // رفع ملف ثنائي اللغة: يُحلَّل مرة واحدة ثم يُقسَّم إلى مسارين بنفس
   // التوقيت، فيُحمَّل كلٌّ منهما مباشرةً عبر loadCues دون إعادة تحليل.
@@ -108,6 +192,17 @@ export function AppShell() {
         loadSourceCues(sourceCues, file.name)
         loadTranslationCues(translationCues, file.name)
         setBilingualUpload({ status: 'ready', fileName: file.name, errorMessage: null })
+
+        // حفظ محتوى كل مسار منفصلاً (بصيغة SRT مُعاد بناؤها عبر cuesToSrt)
+        // — الملف الأصلي واحد لكليهما، لكن المحتوى المُستعاد يجب أن يطابق
+        // ما يراه المستخدم فعلياً في كل مسار على حدة
+        if (videoSource) {
+          const videoKey = getVideoKey(videoSource)
+          if (sourceCues.length > 0) void saveSubtitleContent(videoKey, 'source', file.name, cuesToSrt(sourceCues))
+          if (translationCues.length > 0) {
+            void saveSubtitleContent(videoKey, 'translation', file.name, cuesToSrt(translationCues))
+          }
+        }
       } catch (error) {
         const message =
           error instanceof SubtitleParseError
@@ -116,7 +211,7 @@ export function AppShell() {
         setBilingualUpload({ status: 'error', fileName: null, errorMessage: message })
       }
     },
-    [loadSourceCues, loadTranslationCues],
+    [loadSourceCues, loadTranslationCues, videoSource],
   )
 
   // إعادة بناء قائمة المقاطع الموحّدة فقط عند تغيّر المدخلات الفعلية
@@ -164,7 +259,11 @@ export function AppShell() {
                 شاهد أي فيديو مع ترجمتين متزامنتين، جنباً إلى جنب
               </p>
             </div>
-            <VideoUrlForm onVideoSourceSelected={setVideoSource} />
+            <WatchHistoryList
+              onSelectYoutube={(videoId) => setVideoSource({ type: 'youtube', videoId })}
+              onSelectLocal={(fileName) => setPendingLocalFileName(fileName)}
+            />
+            <VideoUrlForm onVideoSourceSelected={setVideoSource} pendingLocalFileName={pendingLocalFileName} />
           </div>
         </main>
         <Footer />
@@ -201,6 +300,7 @@ export function AppShell() {
             translationTrack={translationTrack.track}
             viewMode={viewMode}
             onChangeVideo={handleChangeVideo}
+            onOpenShortcutsHelp={() => setIsShortcutsHelpOpen(true)}
             slices={slices}
           />
         </main>
@@ -235,8 +335,8 @@ export function AppShell() {
             translationTrack={translationTrack.track}
             sourceControls={sourceTrack}
             translationControls={translationTrack}
-            onUploadSource={sourceTrack.uploadFile}
-            onUploadTranslation={translationTrack.uploadFile}
+            onUploadSource={handleUploadSource}
+            onUploadTranslation={handleUploadTranslation}
             bilingualUpload={bilingualUpload}
             onUploadBilingual={handleUploadBilingual}
             slices={slices}
@@ -246,8 +346,11 @@ export function AppShell() {
             isPlaying={isPlaying}
             onSeek={player.seekTo}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenShortcutsHelp={() => setIsShortcutsHelpOpen(true)}
             sidebarPosition={sidebarPosition.position}
             onToggleSidebarPosition={sidebarPosition.toggle}
+            rememberedSourceFileName={historyEntry?.subtitleFileNames.source}
+            rememberedTranslationFileName={historyEntry?.subtitleFileNames.translation}
           />
         </div>
       </div>
@@ -268,6 +371,8 @@ export function AppShell() {
           trackB={translationTrack.track}
         />
       </Suspense>
+
+      <KeyboardShortcutsPanel isOpen={isShortcutsHelpOpen} onClose={() => setIsShortcutsHelpOpen(false)} />
     </div>
   )
 }

@@ -1,4 +1,7 @@
 import '@testing-library/jest-dom/vitest'
+// jsdom لا يوفّر IndexedDB إطلاقاً — محاكاة كاملة في الذاكرة لاختبار
+// subtitleContentStore.ts (تخزين محتوى ملفات الترجمة لسجل المشاهدات)
+import 'fake-indexeddb/auto'
 
 // محاكاة قياسية لـ window.matchMedia (متوفرة فعلياً في كل المتصفحات الحديثة،
 // لكن jsdom لا يوفرها افتراضياً) — هذا يحاكي بيئة متصفح حقيقي بدقة

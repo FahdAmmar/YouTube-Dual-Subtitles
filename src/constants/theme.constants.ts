@@ -7,6 +7,8 @@ export const STORAGE_KEYS = {
   SUBTITLE_OVERLAY_POSITION: 'ydc:subtitle-overlay-position',
   SIDEBAR_POSITION: 'ydc:sidebar-position',
   VIDEO_PROGRESS: 'ydc:video-progress',
+  SYNC_OFFSETS: 'ydc:sync-offsets',
+  WATCH_HISTORY: 'ydc:watch-history',
 } as const
 
 /**

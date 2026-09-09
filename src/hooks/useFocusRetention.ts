@@ -8,15 +8,16 @@ import { useEffect, type RefObject } from 'react'
  * window الأب إطلاقاً (الأحداث لا تفقّع عبر حدود المستندات)، فلا تُلتقط
  * من useKeyboardShortcuts مهما كانت مرتبطةً بـ window.
  *
- * الحل: جعل حاوية المرحلة قابلة للتركيز (tabIndex=-1، بلا حلقة تركيز
- * مرئية)، ثم بعد أي تفاعل pointer على المستند نتحقق إن كان التركيز قد
- * انتقل إلى iframe، ونُعيده فوراً إلى حاوية المرحلة. التأخير setTimeout(0)
- * ضروري لكي يُعالَج حدث click على الـ iframe أولاً (تشغيل/إيقاف يوتيوب
- * الافتراضي عند النقر على الفيديو) قبل استعادة التركيز — حتى لا نُعطّل
- * هذا التفاعل المشروع.
+ * لماذا focusin على document وليس pointerup: النقرة التي تسرق التركيز
+ * تقع فعلياً *داخل* محتوى الـ iframe — أي في مستند منعزل مختلف تماماً —
+ * فحدث pointerup الناتج عنها لا يصل إطلاقاً إلى مستند الصفحة الأب (لا
+ * تفقّع عبر حدود المستندات). أما تركيز عنصر iframe نفسه فهو حالة تخص
+ * document.activeElement في المستند الأب مباشرة، ويُصدر عنه حدث focusin
+ * (يصعد خلافاً لـ focus) يلتقطه المستمع هنا بدقة وفوراً بمجرد وقوعه.
  *
  * ملاحظة: هذا لا يُعطّل أي تفاعل مع الفيديو نفسه (النقر للتشغيل يبقى
- * يعمل)، بل يضمن فقط أن لوحة المفاتيح تعود فوراً لاختصاراتنا بعده.
+ * يعمل، لأنه يُعالَج بالكامل داخل مستند الـ iframe المستقل)، بل يضمن
+ * فقط أن التركيز في المستند الأب يعود فوراً لاختصاراتنا بعده.
  */
 export function useFocusRetention(stageRef: RefObject<HTMLElement>, enabled: boolean): void {
   useEffect(() => {
@@ -24,26 +25,20 @@ export function useFocusRetention(stageRef: RefObject<HTMLElement>, enabled: boo
     const stage = stageRef.current
     if (!stage) return
 
-    function reclaimFocus() {
-      const active = document.activeElement
-      if (active && active.tagName === 'IFRAME') {
-        // التأخير الصفري كافٍ لترك حدث click يُعالَج على الـ iframe أولاً
-        // قبل استعادة التركيز — حتى لا نُعطّل نقر التشغيل/الإيقاف في يوتيوب
-        setTimeout(() => {
-          if (!stage) return
-          try {
-            stage.focus({ preventScroll: true })
-          } catch {
-            // بعض المتصفحات القديمة لا تدعم preventScroll — تجاهل بأمان
-            stage.focus()
-          }
-        }, 0)
+    function reclaimFocus(event: FocusEvent) {
+      const target = event.target
+      if (!(target instanceof HTMLElement) || target.tagName !== 'IFRAME') return
+      try {
+        stage?.focus({ preventScroll: true })
+      } catch {
+        // بعض المتصفحات القديمة لا تدعم preventScroll — تجاهل بأمان
+        stage?.focus()
       }
     }
 
-    // الاستماع على مستوى document: حتى النقرات خارج حدود stage المباشرة قد
-    // تترك التركيز في الـ iframe، ونريد استعادته في كل حالة
-    document.addEventListener('pointerup', reclaimFocus)
-    return () => document.removeEventListener('pointerup', reclaimFocus)
+    // focusin (بخلاف focus) يصعد عبر الشجرة، فيلتقطه مستمع document واحد
+    // بغض النظر عن مكان الـ iframe داخل الصفحة
+    document.addEventListener('focusin', reclaimFocus)
+    return () => document.removeEventListener('focusin', reclaimFocus)
   }, [enabled, stageRef])
 }

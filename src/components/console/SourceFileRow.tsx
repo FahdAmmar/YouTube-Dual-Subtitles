@@ -1,5 +1,5 @@
 import { useRef, type ChangeEvent } from 'react'
-import { Upload, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { Upload, CheckCircle2, Loader2, XCircle, History } from 'lucide-react'
 import { SyncOffsetControl } from '@/components/subtitles/SyncOffsetControl'
 import { cn } from '@/lib/utils/cn'
 import type { SubtitleTrackState, TrackOffsetControls } from '@/types/subtitle.types'
@@ -9,6 +9,8 @@ interface SourceFileRowProps {
   accentClassName: string
   onFileSelected: (file: File) => void
   offsetControls: TrackOffsetControls
+  /** اسم ملف كان مستخدَماً لهذا المسار في هذا الفيديو تحديداً آخر مرة — يُعرَض كتذكير فقط طالما لا يوجد ملف محمَّل حالياً */
+  rememberedFileName?: string
 }
 
 /**
@@ -17,7 +19,7 @@ interface SourceFileRowProps {
  * الضيقة نسبياً بعد بدء التشغيل. يسمح بتغيير الملف في أي وقت دون الحاجة
  * للعودة لشاشة الإعداد الأولية.
  */
-export function SourceFileRow({ track, accentClassName, onFileSelected, offsetControls }: SourceFileRowProps) {
+export function SourceFileRow({ track, accentClassName, onFileSelected, offsetControls, rememberedFileName }: SourceFileRowProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -70,7 +72,13 @@ export function SourceFileRow({ track, accentClassName, onFileSelected, offsetCo
             <span className="truncate">{track.errorMessage}</span>
           </p>
         )}
-        {track.status === 'empty' && (
+        {track.status === 'empty' && rememberedFileName && (
+          <p className="flex min-w-0 flex-1 items-center gap-1 truncate text-[11px] text-console">
+            <History size={11} className="shrink-0" aria-hidden="true" />
+            <span className="truncate">أعد رفع: {rememberedFileName}</span>
+          </p>
+        )}
+        {track.status === 'empty' && !rememberedFileName && (
           <p className="flex-1 text-[11px] text-text-muted">لم يُرفع ملف بعد</p>
         )}
 

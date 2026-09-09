@@ -35,6 +35,8 @@ export interface YouTubePlayerInstance {
   getAvailableQualityLevels(): string[]
   setPlaybackQuality(quality: string): void
   getPlaybackQuality(): string
+  /** بيانات الفيديو الوصفية — نحتاج العنوان فقط منها لعرضه في سجل المشاهدات */
+  getVideoData(): { video_id: string; title: string; author: string }
   destroy(): void
 }
 
