@@ -11,6 +11,15 @@ interface TranscriptListProps {
   isPlaying: boolean
   viewMode: ViewMode
   onSeek: (seconds: number) => void
+  /**
+   * صحيح أثناء وجود عبارة بحث نشطة — يُستخدم لأمرين معاً: (1) تعطيل
+   * التمرير التلقائي للمقطع النشط، فلا يُفلت هذا التمرير قائمة نتائج
+   * البحث من تحت يد المستخدم كل بضع ثوانٍ بينما يتصفّحها يدوياً أثناء
+   * استمرار تشغيل الفيديو في الخلفية، (2) اختيار رسالة الحالة الفارغة
+   * الصحيحة ("لا نتائج مطابقة" بدل "ارفع ملف ترجمة" المُضلِّلة لو كان
+   * هناك نص محمَّل فعلاً ولم يُطابق البحث أي مقطع منه فقط)
+   */
+  isSearchActive?: boolean
 }
 
 /**
@@ -23,7 +32,14 @@ interface TranscriptListProps {
  * ملاحظة أداء: يشترك هذا المكوّن في تحديثات الوقت عبر usePlayerTime
  * بمعزل عن بقية الشجرة، تماماً مثل SubtitleOverlay و VideoControlBar
  */
-export function TranscriptList({ slices, getCurrentTime, isPlaying, viewMode, onSeek }: TranscriptListProps) {
+export function TranscriptList({
+  slices,
+  getCurrentTime,
+  isPlaying,
+  viewMode,
+  onSeek,
+  isSearchActive,
+}: TranscriptListProps) {
   const currentTime = usePlayerTime(getCurrentTime, isPlaying)
   const activeSlice = useMemo(() => findActiveCue(slices, currentTime), [slices, currentTime])
 
@@ -47,6 +63,7 @@ export function TranscriptList({ slices, getCurrentTime, isPlaying, viewMode, on
     // التحقق من النوع + التغليف بـ try/catch (بنفس نمط الحماية المُتّبع في
     // useLocalStorage وuseFullscreen) يمنع توقف التطبيق مهما كانت البيئة
     const target = activeItemRef.current
+    if (isSearchActive) return
     if (target && typeof target.scrollIntoView === 'function') {
       requestAnimationFrame(() => {
         try {
@@ -56,15 +73,25 @@ export function TranscriptList({ slices, getCurrentTime, isPlaying, viewMode, on
         }
       })
     }
-  }, [activeSlice?.id])
+  }, [activeSlice?.id, isSearchActive])
 
   if (slices.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 text-center">
         <p className="font-mono text-xs leading-relaxed text-text-muted">
-          [ NO_TRANSCRIPT_DATA ]
-          <br />
-          ارفع ملف ترجمة واحداً على الأقل لعرض النص هنا
+          {isSearchActive ? (
+            <>
+              [ NO_MATCHES ]
+              <br />
+              لا يوجد مقطع يطابق عبارة البحث
+            </>
+          ) : (
+            <>
+              [ NO_TRANSCRIPT_DATA ]
+              <br />
+              ارفع ملف ترجمة واحداً على الأقل لعرض النص هنا
+            </>
+          )}
         </p>
       </div>
     )
@@ -72,7 +99,7 @@ export function TranscriptList({ slices, getCurrentTime, isPlaying, viewMode, on
 
   return (
     <div ref={listContainerRef} className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
-      {slices.map((slice, index) => {
+      {slices.map((slice) => {
         const isActive = activeSlice?.id === slice.id
         // نسبة التقدّم داخل المقطع النشط فقط — تبقى undefined لكل البطاقات
         // الأخرى (قيمة مستقرة بين عمليات إعادة الرسم) حتى لا تُبطل فائدة
@@ -89,7 +116,7 @@ export function TranscriptList({ slices, getCurrentTime, isPlaying, viewMode, on
             key={slice.id}
             ref={isActive ? activeItemRef : undefined}
             slice={slice}
-            index={index}
+            index={slice.originalIndex}
             isActive={isActive}
             viewMode={viewMode}
             onSeek={onSeek}

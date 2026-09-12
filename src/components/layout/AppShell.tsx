@@ -1,13 +1,11 @@
-import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
 import { Header } from './Header'
-import { Footer } from './Footer'
 import { BackgroundFX } from './BackgroundFX'
 import { PanelResizeHandle } from './PanelResizeHandle'
-import { VideoUrlForm } from '@/components/video/VideoUrlForm'
+import { PreLoadScreen } from './PreLoadScreen'
 import { VideoStage } from '@/components/video/VideoStage'
 import { MobileActiveCaption } from '@/components/video/MobileActiveCaption'
 import { KeyboardShortcutsPanel } from '@/components/video/KeyboardShortcutsPanel'
-import { WatchHistoryList } from '@/components/video/WatchHistoryList'
 import { ConsolePanel } from '@/components/console/ConsolePanel'
 import { useVideoPlayer } from '@/hooks/useVideoPlayer'
 import { useSubtitleTrack } from '@/hooks/useSubtitleTrack'
@@ -17,14 +15,11 @@ import { useDynamicAccentColor } from '@/hooks/useDynamicAccentColor'
 import { useVideoProgress } from '@/hooks/useVideoProgress'
 import { useSyncOffsetPersistence } from '@/hooks/useSyncOffsetPersistence'
 import { useRecordWatchHistory, useAutoRestoreSubtitles, getHistoryEntryByKey } from '@/hooks/useWatchHistory'
+import { useSubtitleUploadHandlers } from '@/hooks/useSubtitleUploadHandlers'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import { useThemeContext } from '@/context/ThemeContext'
 import { pairCuesIntoSlices } from '@/lib/subtitles/pairCues'
-import { parseSubtitleFile, SubtitleParseError } from '@/lib/subtitles/parseSubtitleFile'
-import { splitBilingualCues } from '@/lib/subtitles/splitBilingualCues'
-import { cuesToSrt } from '@/lib/subtitles/serializeSRT'
 import { getVideoKey } from '@/lib/utils/videoKey'
-import { saveSubtitleContent } from '@/lib/utils/subtitleContentStore'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { VideoSource } from '@/types/video.types'
 import type { ViewMode } from '@/types/theme.types'
@@ -62,6 +57,9 @@ export function AppShell() {
   // اسم ملف فيديو محلي مطلوب إعادة اختياره يدوياً (نقر مُدخل محلي في سجل
   // المشاهدات) — انظر توثيق useWatchHistory لسبب عدم إمكانية فتحه تلقائياً
   const [pendingLocalFileName, setPendingLocalFileName] = useState<string | null>(null)
+  // مرجع مشترك بين VideoStage (اختصار "/") وConsolePanel (الحقل الفعلي) —
+  // مكوّنان شقيقان، فلا سبيل لتنسيق التركيز بينهما إلا برفع المرجع لهذا المستوى
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { settings } = useSubtitleSettings()
   const { resolvedTheme } = useThemeContext()
@@ -109,14 +107,11 @@ export function AppShell() {
   const sidebarPosition = useSidebarPosition()
   const sidebar = useResizableSidebarWidth(sidebarPosition.position)
 
-  // حالة رفع الملف الثنائي اللغة منفصلة عن حالة كل مسار: لأن ملفاً واحداً
-  // يُغذّي المسارين معاً، نحتاج لحالة مستقلة نعرضها في صف الرفع الثنائي
-  // (parsing/error/ready) دون التداخل مع حالة كل مسار على حدة
-  const [bilingualUpload, setBilingualUpload] = useState<{
-    status: 'idle' | 'parsing' | 'ready' | 'error'
-    fileName: string | null
-    errorMessage: string | null
-  }>({ status: 'idle', fileName: null, errorMessage: null })
+  const { onUploadSource, onUploadTranslation, onUploadBilingual, bilingualUpload } = useSubtitleUploadHandlers(
+    videoSource,
+    sourceTrack,
+    translationTrack,
+  )
 
   // اتجاه الصفحة الفعلي (مضبوط في index.html) — يُقرأ مباشرة لأنه لا
   // يتغيّر ديناميكياً في هذا التطبيق، فلا حاجة لحالة React أو مستمع أحداث
@@ -145,75 +140,6 @@ export function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceTrack.reset, translationTrack.reset])
 
-  // غلاف فوق uploadFile: يحفظ محتوى الملف كاملاً في IndexedDB بعد نجاح
-  // الرفع فقط (uploadFile يُرجع النتيجة الفعلية الآن تحديداً لهذا الغرض)
-  // — يتيح تفعيل الترجمة تلقائياً عند العودة لهذا الفيديو من السجل لاحقاً
-  const handleUploadSource = useCallback(
-    async (file: File) => {
-      const succeeded = await sourceTrack.uploadFile(file)
-      if (succeeded && videoSource) {
-        void file.text().then((content) => saveSubtitleContent(getVideoKey(videoSource), 'source', file.name, content))
-      }
-    },
-    // sourceTrack.uploadFile مستقر (useCallback([]) داخل useSubtitleTrack)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sourceTrack.uploadFile, videoSource],
-  )
-
-  const handleUploadTranslation = useCallback(
-    async (file: File) => {
-      const succeeded = await translationTrack.uploadFile(file)
-      if (succeeded && videoSource) {
-        void file
-          .text()
-          .then((content) => saveSubtitleContent(getVideoKey(videoSource), 'translation', file.name, content))
-      }
-    },
-    // translationTrack.uploadFile مستقر (useCallback([]) داخل useSubtitleTrack)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [translationTrack.uploadFile, videoSource],
-  )
-
-  // رفع ملف ثنائي اللغة: يُحلَّل مرة واحدة ثم يُقسَّم إلى مسارين بنفس
-  // التوقيت، فيُحمَّل كلٌّ منهما مباشرةً عبر loadCues دون إعادة تحليل.
-  // النتيجة: نفس تصميم لوحة النص والترجمة فوق الفيديو المعتاد، كأن المستخدم
-  // رفع ملفّين منفصلين تماماً
-  const { loadCues: loadSourceCues } = sourceTrack
-  const { loadCues: loadTranslationCues } = translationTrack
-  const handleUploadBilingual = useCallback(
-    async (file: File) => {
-      setBilingualUpload({ status: 'parsing', fileName: null, errorMessage: null })
-      try {
-        const cues = await parseSubtitleFile(file)
-        const { sourceCues, translationCues } = splitBilingualCues(cues)
-        if (sourceCues.length === 0 && translationCues.length === 0) {
-          throw new SubtitleParseError('لم يُعثَر على نص ترجمة صالح داخل الملف')
-        }
-        loadSourceCues(sourceCues, file.name)
-        loadTranslationCues(translationCues, file.name)
-        setBilingualUpload({ status: 'ready', fileName: file.name, errorMessage: null })
-
-        // حفظ محتوى كل مسار منفصلاً (بصيغة SRT مُعاد بناؤها عبر cuesToSrt)
-        // — الملف الأصلي واحد لكليهما، لكن المحتوى المُستعاد يجب أن يطابق
-        // ما يراه المستخدم فعلياً في كل مسار على حدة
-        if (videoSource) {
-          const videoKey = getVideoKey(videoSource)
-          if (sourceCues.length > 0) void saveSubtitleContent(videoKey, 'source', file.name, cuesToSrt(sourceCues))
-          if (translationCues.length > 0) {
-            void saveSubtitleContent(videoKey, 'translation', file.name, cuesToSrt(translationCues))
-          }
-        }
-      } catch (error) {
-        const message =
-          error instanceof SubtitleParseError
-            ? error.message
-            : 'حدث خطأ غير متوقع أثناء قراءة الملف'
-        setBilingualUpload({ status: 'error', fileName: null, errorMessage: message })
-      }
-    },
-    [loadSourceCues, loadTranslationCues, videoSource],
-  )
-
   // إعادة بناء قائمة المقاطع الموحّدة فقط عند تغيّر المدخلات الفعلية
   // (المقاطع الخام أو الإزاحة الزمنية)، وليس عند كل نبضة وقت أو تفاعل آخر
   const slices = useMemo(
@@ -234,40 +160,14 @@ export function AppShell() {
 
   const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
 
-  // المرحلة الأولى: لا يوجد فيديو بعد — شاشة إعداد مركزية بسيطة
+  // المرحلة الأولى: لا يوجد فيديو بعد — انظر توثيق PreLoadScreen لسبب استخلاصها
   if (!videoSource) {
     return (
-      <div className="relative flex min-h-screen flex-col">
-        <BackgroundFX />
-        <Header />
-        <main className="flex flex-1 items-center justify-center px-4 py-10 sm:py-16">
-          <div className="w-full max-w-lg">
-            <div className="mb-8 text-center sm:mb-9">
-              {/* شارة "الجلسة جاهزة" — نقطة نابضة + نص بفونت مونو، تمنح
-                  إحساس لوحة تحكم حيّة فور فتح الصفحة دون ضوضاء بصرية */}
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-console/30 bg-console/5 px-3 py-1.5 font-mono text-[10px] tracking-widest text-console">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-console opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-console" />
-                </span>
-                INITIALIZE_SESSION
-              </div>
-              <h1 className="text-gradient-hero text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-                مترجم يوتيوب المزدوج
-              </h1>
-              <p className="mt-2 text-sm text-text-secondary sm:mt-2.5 sm:text-base">
-                شاهد أي فيديو مع ترجمتين متزامنتين، جنباً إلى جنب
-              </p>
-            </div>
-            <WatchHistoryList
-              onSelectYoutube={(videoId) => setVideoSource({ type: 'youtube', videoId })}
-              onSelectLocal={(fileName) => setPendingLocalFileName(fileName)}
-            />
-            <VideoUrlForm onVideoSourceSelected={setVideoSource} pendingLocalFileName={pendingLocalFileName} />
-          </div>
-        </main>
-        <Footer />
-      </div>
+      <PreLoadScreen
+        onVideoSourceSelected={setVideoSource}
+        pendingLocalFileName={pendingLocalFileName}
+        onSelectLocalFromHistory={setPendingLocalFileName}
+      />
     )
   }
 
@@ -301,6 +201,7 @@ export function AppShell() {
             viewMode={viewMode}
             onChangeVideo={handleChangeVideo}
             onOpenShortcutsHelp={() => setIsShortcutsHelpOpen(true)}
+            onFocusSearch={() => searchInputRef.current?.focus()}
             slices={slices}
           />
         </main>
@@ -335,10 +236,10 @@ export function AppShell() {
             translationTrack={translationTrack.track}
             sourceControls={sourceTrack}
             translationControls={translationTrack}
-            onUploadSource={handleUploadSource}
-            onUploadTranslation={handleUploadTranslation}
+            onUploadSource={onUploadSource}
+            onUploadTranslation={onUploadTranslation}
             bilingualUpload={bilingualUpload}
-            onUploadBilingual={handleUploadBilingual}
+            onUploadBilingual={onUploadBilingual}
             slices={slices}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
@@ -351,6 +252,7 @@ export function AppShell() {
             onToggleSidebarPosition={sidebarPosition.toggle}
             rememberedSourceFileName={historyEntry?.subtitleFileNames.source}
             rememberedTranslationFileName={historyEntry?.subtitleFileNames.translation}
+            searchInputRef={searchInputRef}
           />
         </div>
       </div>

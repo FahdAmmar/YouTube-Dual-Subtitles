@@ -25,6 +25,7 @@ interface VideoStageProps {
   viewMode: ViewMode
   onChangeVideo: () => void
   onOpenShortcutsHelp: () => void
+  onFocusSearch: () => void
   slices: PairedSlice[]
 }
 
@@ -48,6 +49,7 @@ export function VideoStage({
   viewMode,
   onChangeVideo,
   onOpenShortcutsHelp,
+  onFocusSearch,
   slices,
 }: VideoStageProps) {
   const stageRef = useRef<HTMLDivElement>(null)
@@ -209,6 +211,7 @@ export function VideoStage({
     onRestartScene: handleRestartScene,
     onRepeatScene: handleRepeatScene,
     onShowHelp: onOpenShortcutsHelp,
+    onFocusSearch,
   })
 
   return (

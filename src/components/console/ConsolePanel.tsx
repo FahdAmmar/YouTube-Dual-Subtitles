@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload, Keyboard } from 'lucide-react'
+import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload, Keyboard, Search, X } from 'lucide-react'
 import { ViewModeToggle } from './ViewModeToggle'
 import { SourceFileRow } from './SourceFileRow'
 import { DownloadSubtitles } from './DownloadSubtitles'
 import { TranscriptList } from './TranscriptList'
 import { IconButton } from '@/components/ui/IconButton'
 import { cn } from '@/lib/utils/cn'
+import { filterSlicesByQuery } from '@/lib/subtitles/filterSlices'
 import type { SubtitleTrackState, TrackOffsetControls } from '@/types/subtitle.types'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import type { ViewMode } from '@/types/theme.types'
@@ -42,6 +43,8 @@ interface ConsolePanelProps {
   onToggleSidebarPosition: () => void
   rememberedSourceFileName?: string
   rememberedTranslationFileName?: string
+  /** يُمرَّر من AppShell كي يستطيع اختصار "/" في VideoStage (مكوّن شقيق) التركيز على هذا الحقل */
+  searchInputRef?: RefObject<HTMLInputElement>
 }
 
 /**
@@ -70,6 +73,7 @@ export function ConsolePanel({
   onToggleSidebarPosition,
   rememberedSourceFileName,
   rememberedTranslationFileName,
+  searchInputRef,
 }: ConsolePanelProps) {
   // طي قسم الرفع/العرض/التنزيل تلقائياً بمجرد جهوزية المسارين معاً، لصالح
   // تفريغ أكبر مساحة ممكنة لقائمة النص المتزامن — وهو الغرض الأساسي من
@@ -79,6 +83,26 @@ export function ConsolePanel({
   const [isUploadSectionExpanded, setIsUploadSectionExpanded] = useState(true)
   const hasAutoCollapsedRef = useRef(false)
   const bothTracksReady = sourceTrack.status === 'ready' && translationTrack.status === 'ready'
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const trimmedSearchQuery = searchQuery.trim()
+  const isSearchActive = trimmedSearchQuery.length > 0
+  const filteredSlices = useMemo(
+    () => filterSlicesByQuery(slices, trimmedSearchQuery),
+    [slices, trimmedSearchQuery],
+  )
+
+  // Escape: يمسح نص البحث أولاً إن وُجد، وإلا يُفرغ التركيز عن الحقل —
+  // تماماً كسلوك حقول البحث المألوف في تطبيقات أخرى (مثال: GitHub)
+  function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'Escape') return
+    event.stopPropagation()
+    if (searchQuery) {
+      setSearchQuery('')
+    } else {
+      event.currentTarget.blur()
+    }
+  }
 
   // مهلة قصيرة قبل الطي التلقائي: عند الرفع الثنائي اللغة (ملف واحد يملأ
   // المسارين معاً في نفس اللحظة)، كان الطي يحدث فوراً قبل أن يرى المستخدم
@@ -202,19 +226,51 @@ export function ConsolePanel({
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 px-3.5 pt-3">
-        <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-console" aria-hidden="true" />
-        <h2 className="font-mono text-[11px] font-medium tracking-wide text-text-muted">
-          TRANSCRIPT — {slices.length} SEG
-        </h2>
+      <div className="flex flex-col gap-2 px-3.5 pt-3">
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-console" aria-hidden="true" />
+          <h2 className="font-mono text-[11px] font-medium tracking-wide text-text-muted">
+            TRANSCRIPT — {isSearchActive ? `${filteredSlices.length}/${slices.length}` : slices.length} SEG
+          </h2>
+        </div>
+
+        {slices.length > 0 && (
+          <div className="relative">
+            <Search
+              size={12}
+              className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-text-muted"
+              aria-hidden="true"
+            />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="ابحث في النص… (/)"
+              aria-label="البحث داخل النص المفرَّغ"
+              className="w-full rounded-md border border-border bg-surface-elevated py-1.5 ps-8 pe-8 text-xs text-text-primary placeholder:text-text-muted focus:border-console focus:outline-none focus:ring-1 focus:ring-console"
+            />
+            {searchQuery && (
+              <IconButton
+                aria-label="مسح البحث"
+                onClick={() => setSearchQuery('')}
+                className="absolute end-1 top-1/2 h-6 w-6 -translate-y-1/2"
+              >
+                <X size={12} aria-hidden="true" />
+              </IconButton>
+            )}
+          </div>
+        )}
       </div>
 
       <TranscriptList
-        slices={slices}
+        slices={filteredSlices}
         getCurrentTime={getCurrentTime}
         isPlaying={isPlaying}
         viewMode={viewMode}
         onSeek={onSeek}
+        isSearchActive={isSearchActive}
       />
     </aside>
   )

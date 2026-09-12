@@ -4,6 +4,12 @@ import { findActiveCue } from './findActiveCue'
 /** مقطع موحّد يجمع نص المسارين معاً عند نفس النافذة الزمنية، لعرضه في قائمة النص */
 export interface PairedSlice {
   id: string
+  /**
+   * الموضع الأصلي ضمن كامل قائمة المقاطع (وليس موضعه بعد أي تصفية لاحقة
+   * كالبحث) — يبقى ثابتاً دوماً، فيحافظ رقم SEG_XXX المعروض على معناه
+   * المرجعي حتى عند عرض نتائج بحث مُصفّاة جزئياً
+   */
+  originalIndex: number
   start: number
   end: number
   sourceText: string | null
@@ -65,6 +71,7 @@ export function pairCuesIntoSlices(
       )
       return {
         id: `slice-${index}`,
+        originalIndex: index,
         start: realStart,
         end: realEnd,
         sourceText: cue.text,
@@ -78,6 +85,7 @@ export function pairCuesIntoSlices(
     )
     return {
       id: `slice-${index}`,
+      originalIndex: index,
       start: realStart,
       end: realEnd,
       sourceText: matchedSource?.text ?? null,

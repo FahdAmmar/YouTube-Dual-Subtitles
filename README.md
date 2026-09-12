@@ -53,6 +53,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 - Frame‑accurate sync using `O(log n)` binary‑search cue lookup
 - Per‑track manual sync offset (±15s) to correct mistimed files — baked directly into the transcript highlight, so it never drifts from what's burned into the video overlay. The offset is remembered per (video, subtitle file) pair and restored automatically next time you open the same combination
 - Live transcript panel with the active segment highlighted in real time, including an animated progress bar tracking position within that exact segment
+- **Search the transcript** — filters both source and translation text live as you type (press `/` to jump straight to the search field), click any result to seek the video there instantly. Segment numbers keep their original position (`SEG_047` stays `SEG_047` even filtered down to one result), and the active‑segment auto‑scroll pauses while searching so it doesn't yank a manually‑browsed result list back to the live position every few seconds
 - **Draggable burned‑in captions** — drag the subtitle bubble anywhere within the video frame (e.g. to avoid covering on‑screen text), constrained to the video's own bounds; double‑click to reset, position persists across sessions
 - Toggle view mode: source only, translation only, or both side‑by‑side
 - Export subtitles as SRT — source only, translation only, or merged bilingual file
@@ -66,7 +67,8 @@ No backend. No database. No API keys. Everything runs in the browser.
 - `↑` / `↓` — volume up / down
 - `0` — restart the current scene from its beginning (play once, no loop)
 - `1` — repeat the current scene **twice** · `2` — **three** times · `3` — **four** times (a persistent on‑screen badge tracks loop progress, e.g. `2/3`)
-- `?` — open the in‑app **keyboard shortcuts help panel** (also reachable via a button in the console header) — lists every shortcut above, since there was previously no way to discover them from the UI
+- `?` — open the in‑app **keyboard shortcuts help panel** (also reachable via a button in the console header) — lists every shortcut above, grouped into categories (Playback / Navigation & Repeat / General) instead of one long flat list
+- `/` — focus the transcript search field
 - All shortcuts work identically whether watching a YouTube video or a local file
 - All shortcuts are automatically disabled while typing in any text field, and ignore modifier‑key combos (`Ctrl`/`Cmd`/`Alt`) so they never fight with browser shortcuts
 - **Focus retention**: clicking the YouTube video moves keyboard focus into its cross‑origin iframe, whose keydown events never reach the parent document. A `focusin` listener on `document` detects the instant focus lands on the iframe and reclaims it for the stage container immediately, so shortcuts keep responding reliably — the keydown listener is also registered in the capture phase as a defensive measure
@@ -116,6 +118,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📄 sidebar-position-toggle.test.tsx
 │   │   ├── 📄 subtitle-box-size.test.tsx
 │   │   ├── 📄 sync-offset-persistence.test.tsx
+│   │   ├── 📄 transcript-search.test.tsx
 │   │   ├── 📄 video-progress.test.tsx
 │   │   ├── 📄 watch-history.test.tsx
 │   │   └── 📄 setup.ts
@@ -132,7 +135,8 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   ├── 📄 BackgroundFX.tsx
 │   │   │   ├── 📄 Footer.tsx
 │   │   │   ├── 📄 Header.tsx
-│   │   │   └── 📄 PanelResizeHandle.tsx
+│   │   │   ├── 📄 PanelResizeHandle.tsx
+│   │   │   └── 📄 PreLoadScreen.tsx
 │   │   ├── 📁 settings
 │   │   │   ├── 📄 FontSizeControl.tsx
 │   │   │   ├── 📄 SettingsPanel.tsx
@@ -182,6 +186,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📄 useSceneRepeat.ts
 │   │   ├── 📄 useSidebarPosition.ts
 │   │   ├── 📄 useSubtitleTrack.ts
+│   │   ├── 📄 useSubtitleUploadHandlers.ts
 │   │   ├── 📄 useSyncOffsetPersistence.ts
 │   │   ├── 📄 useTheme.ts
 │   │   ├── 📄 useVideoPlayer.ts
@@ -190,6 +195,8 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   └── 📄 useYouTubePlayer.ts
 │   ├── 📁 lib
 │   │   ├── 📁 subtitles
+│   │   │   ├── 📄 filterSlices.test.ts
+│   │   │   ├── 📄 filterSlices.ts
 │   │   │   ├── 📄 findActiveCue.ts
 │   │   │   ├── 📄 pairCues.ts
 │   │   │   ├── 📄 parseSRT.ts

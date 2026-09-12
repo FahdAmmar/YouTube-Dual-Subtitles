@@ -3,20 +3,33 @@ import { X, Keyboard } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { IconButton } from '@/components/ui/IconButton'
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap'
-import { KEYBOARD_SHORTCUTS } from '@/constants/keyboardShortcuts'
+import { KEYBOARD_SHORTCUTS, type KeyboardShortcutCategory } from '@/constants/keyboardShortcuts'
 
 interface KeyboardShortcutsPanelProps {
   isOpen: boolean
   onClose: () => void
 }
 
+// ترتيب عرض الفئات في اللوحة — KEYBOARD_SHORTCUTS نفسه يبقى مسطّحاً (لا
+// علاقة لترتيب الفئات بمنطق المعالجة في useKeyboardShortcuts إطلاقاً)
+const CATEGORY_ORDER: KeyboardShortcutCategory[] = ['تشغيل', 'تنقّل وتكرار', 'عام']
+
+// يُحسَب مرة واحدة فقط عند تحميل الوحدة (KEYBOARD_SHORTCUTS ثابتة تماماً
+// ولا تتغيّر أثناء التشغيل) بدل إعادة التجميع في كل مرة تُفتَح فيها اللوحة
+const GROUPED_SHORTCUTS = CATEGORY_ORDER.map((category) => ({
+  category,
+  shortcuts: KEYBOARD_SHORTCUTS.filter((shortcut) => shortcut.category === category),
+}))
+
 /**
  * لوحة مرجعية بسيطة تسرد كل اختصارات لوحة المفاتيح الخاصة بالفيديو —
  * تحلّ مشكلة قابلية الاكتشاف (لا توجد أي طريقة أخرى لمعرفة هذه
  * الاختصارات داخل الواجهة). القائمة مصدرها KEYBOARD_SHORTCUTS مباشرة
  * (نفس المصدر الذي يعالج به useKeyboardShortcuts الضغطات الفعلية)، فلا
- * يوجد أي احتمال لتعارض بين ما يُعرَض هنا وما يعمل فعلياً. محتوى ثابت
- * بالكامل بلا حالة داخلية، فلا حاجة لتحميلها كسولاً (بخلاف SettingsPanel الأثقل)
+ * يوجد أي احتمال لتعارض بين ما يُعرَض هنا وما يعمل فعلياً. مُجمَّعة بصرياً
+ * حسب الفئة (تشغيل / تنقّل وتكرار / عام) بدل قائمة مسطّحة واحدة طويلة —
+ * مع نمو عدد الاختصارات، القائمة المسطّحة تصبح أصعب مسحاً بالعين. محتوى
+ * ثابت بالكامل بلا حالة داخلية، فلا حاجة لتحميلها كسولاً (بخلاف SettingsPanel الأثقل)
  */
 export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPanelProps) {
   const dialogRef = useDialogFocusTrap(isOpen, onClose)
@@ -56,19 +69,28 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
                 </IconButton>
               </div>
 
-              <ul className="flex flex-col gap-0.5">
-                {KEYBOARD_SHORTCUTS.map((shortcut) => (
-                  <li
-                    key={shortcut.description}
-                    className="flex items-center justify-between gap-3 rounded-md px-1.5 py-1.5 text-sm text-text-secondary"
-                  >
-                    <span>{shortcut.description}</span>
-                    <kbd className="shrink-0 rounded-sm border border-border bg-surface-elevated px-1.5 py-0.5 font-mono text-xs text-text-primary">
-                      {shortcut.displayKey}
-                    </kbd>
-                  </li>
+              <div className="flex flex-col gap-3">
+                {GROUPED_SHORTCUTS.map(({ category, shortcuts }) => (
+                  <div key={category} className="flex flex-col gap-0.5">
+                    <h3 className="px-1.5 pb-0.5 font-mono text-[10px] font-medium tracking-wide text-text-muted">
+                      {category}
+                    </h3>
+                    <ul className="flex flex-col gap-0.5">
+                      {shortcuts.map((shortcut) => (
+                        <li
+                          key={shortcut.description}
+                          className="flex items-center justify-between gap-3 rounded-md px-1.5 py-1.5 text-sm text-text-secondary"
+                        >
+                          <span>{shortcut.description}</span>
+                          <kbd className="shrink-0 rounded-sm border border-border bg-surface-elevated px-1.5 py-0.5 font-mono text-xs text-text-primary">
+                            {shortcut.displayKey}
+                          </kbd>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </Card>
           </motion.div>
         </>
