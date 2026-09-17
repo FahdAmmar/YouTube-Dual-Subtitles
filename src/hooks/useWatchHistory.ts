@@ -38,7 +38,31 @@ function writeHistoryMap(map: HistoryMap): void {
 }
 
 function sourceToHistoryRef(source: VideoSource): HistorySourceRef {
-  return source.type === 'youtube' ? { type: 'youtube', videoId: source.videoId } : { type: 'local', fileName: source.fileName }
+  switch (source.type) {
+    case 'youtube':
+      return { type: 'youtube', videoId: source.videoId }
+    case 'vimeo':
+      return { type: 'vimeo', videoId: source.videoId, hash: source.hash }
+    case 'local':
+      return { type: 'local', fileName: source.fileName }
+  }
+}
+
+/** عنوان الفيديو (يوتيوب/Vimeo) أو اسم الملف (محلي) — مع بديل عام واسم سابق محفوظ إن تعذّر التقاط عنوان جديد بعد */
+function deriveDisplayName(source: VideoSource, videoTitle: string | null, previousDisplayName: string | undefined): string {
+  switch (source.type) {
+    case 'youtube':
+      return videoTitle || previousDisplayName || 'فيديو يوتيوب'
+    case 'vimeo':
+      return videoTitle || previousDisplayName || 'فيديو Vimeo'
+    case 'local':
+      return source.fileName
+  }
+}
+
+/** صورة مصغّرة ليوتيوب فقط (رابط عام قياسي بلا مفتاح API) — لا يوجد نمط رابط مماثل موثوق لـVimeo بلا استدعاء شبكي إضافي، وملف محلي لا يملك صورة أصلاً */
+function deriveThumbnailUrl(source: VideoSource): string | undefined {
+  return source.type === 'youtube' ? `https://img.youtube.com/vi/${source.videoId}/mqdefault.jpg` : undefined
 }
 
 /** قراءة مُدخل واحد بالمفتاح — تُستخدم لعرض تذكير ملفات الترجمة بمجرد تحميل فيديو له سجل سابق */
@@ -69,8 +93,8 @@ export function useRecordWatchHistory(
     const map = readHistoryMap()
     const previous = map[videoKey]
 
-    const displayName = source.type === 'youtube' ? videoTitle || previous?.displayName || 'فيديو يوتيوب' : source.fileName
-    const thumbnailUrl = source.type === 'youtube' ? `https://img.youtube.com/vi/${source.videoId}/mqdefault.jpg` : undefined
+    const displayName = deriveDisplayName(source, videoTitle, previous?.displayName)
+    const thumbnailUrl = deriveThumbnailUrl(source)
 
     map[videoKey] = {
       videoKey,

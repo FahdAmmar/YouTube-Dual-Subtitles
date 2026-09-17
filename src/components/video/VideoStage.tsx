@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { Play, Pause, FastForward, Rewind, Maximize, Minimize, RotateCcw, SkipBack, SkipForward, Volume2, Volume1, Repeat, AlertCircle } from 'lucide-react'
 import { YouTubePlayerView } from './YouTubePlayerView'
+import { VimeoPlayerView } from './VimeoPlayerView'
 import { LocalVideoPlayerView } from './LocalVideoPlayerView'
 import { VideoTopBar } from './VideoTopBar'
 import { VideoControlBar } from './VideoControlBar'
@@ -223,6 +224,12 @@ export function VideoStage({
     >
       {player.renderTarget.type === 'youtube' ? (
         <YouTubePlayerView
+          containerId={player.renderTarget.containerId}
+          isReady={player.isReady}
+          loadError={player.loadError}
+        />
+      ) : player.renderTarget.type === 'vimeo' ? (
+        <VimeoPlayerView
           containerId={player.renderTarget.containerId}
           isReady={player.isReady}
           loadError={player.loadError}

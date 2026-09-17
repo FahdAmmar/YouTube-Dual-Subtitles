@@ -2,10 +2,12 @@ import { Clock, FileVideo, Captions, X } from 'lucide-react'
 import { useWatchHistoryEntries } from '@/hooks/useWatchHistory'
 import { formatRelativeTime } from '@/lib/utils/formatRelativeTime'
 import { IconButton } from '@/components/ui/IconButton'
+import type { WatchHistoryEntry } from '@/types/history.types'
 
 interface WatchHistoryListProps {
-  /** فيديو يوتيوب: يُحمَّل مباشرة بنقرة واحدة، بلا أي خطوة إضافية */
+  /** فيديو يوتيوب أو Vimeo: يُحمَّل مباشرة بنقرة واحدة، بلا أي خطوة إضافية */
   onSelectYoutube: (videoId: string) => void
+  onSelectVimeo: (videoId: string, hash: string | null) => void
   /**
    * فيديو محلي: لا يمكن إعادة فتح الملف تلقائياً (قيد أمان المتصفح الأساسي
    * يمنع أي موقع من الوصول لملف على القرص بلا اختيار المستخدم له صراحةً
@@ -20,10 +22,24 @@ interface WatchHistoryListProps {
  * (localStorage)، ولا يُعرَض إطلاقاً إن كان السجل فارغاً (لا حاجة لحالة
  * "فارغ" هنا؛ VideoUrlForm أسفله يكفي وحده لأول زيارة)
  */
-export function WatchHistoryList({ onSelectYoutube, onSelectLocal }: WatchHistoryListProps) {
+export function WatchHistoryList({ onSelectYoutube, onSelectVimeo, onSelectLocal }: WatchHistoryListProps) {
   const { entries, removeEntry, clearHistory } = useWatchHistoryEntries()
 
   if (entries.length === 0) return null
+
+  function handleSelect(source: WatchHistoryEntry['source']) {
+    switch (source.type) {
+      case 'youtube':
+        onSelectYoutube(source.videoId)
+        return
+      case 'vimeo':
+        onSelectVimeo(source.videoId, source.hash)
+        return
+      case 'local':
+        onSelectLocal(source.fileName)
+        return
+    }
+  }
 
   return (
     <div className="mb-4 flex w-full flex-col gap-2">
@@ -52,11 +68,7 @@ export function WatchHistoryList({ onSelectYoutube, onSelectLocal }: WatchHistor
             >
               <button
                 type="button"
-                onClick={() =>
-                  entry.source.type === 'youtube'
-                    ? onSelectYoutube(entry.source.videoId)
-                    : onSelectLocal(entry.source.fileName)
-                }
+                onClick={() => handleSelect(entry.source)}
                 className="flex min-w-0 flex-1 items-center gap-2.5 rounded-sm p-0.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
               >
                 {entry.thumbnailUrl ? (

@@ -1,10 +1,15 @@
 /**
  * إشارة خفيفة لمصدر فيديو ضمن سجل المشاهدات — بخلاف VideoSource الحيّ،
  * لا تحمل أي مرجع Object URL (يموت مع إغلاق التبويب فلا معنى لتخزينه)،
- * بل فقط ما يكفي لإعادة بناء VideoSource لاحقاً: معرّف يوتيوب مباشرة، أو
- * اسم الملف المحلي (لإظهاره للمستخدم كتذكير عند إعادة اختياره يدوياً)
+ * بل فقط ما يكفي لإعادة بناء VideoSource لاحقاً: معرّف يوتيوب/Vimeo
+ * مباشرة (مع تجزئة الخصوصية لـVimeo إن وُجدت — بدونها تفشل إعادة تشغيل
+ * فيديوهات Vimeo غير المُدرجة تلقائياً من السجل)، أو اسم الملف المحلي
+ * (لإظهاره للمستخدم كتذكير عند إعادة اختياره يدوياً)
  */
-export type HistorySourceRef = { type: 'youtube'; videoId: string } | { type: 'local'; fileName: string }
+export type HistorySourceRef =
+  | { type: 'youtube'; videoId: string }
+  | { type: 'vimeo'; videoId: string; hash: string | null }
+  | { type: 'local'; fileName: string }
 
 /** مُدخل واحد في سجل المشاهدات — فيديو واحد بكل ما يلزم لعرضه واستئنافه */
 export interface WatchHistoryEntry {

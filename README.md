@@ -31,16 +31,17 @@ No backend. No database. No API keys. Everything runs in the browser.
 - Mobile‑tuned controls: comfortable touch‑sized buttons throughout, an always‑visible (not hover‑only) seek handle, the volume slider gives way to a simple mute toggle on narrow screens to avoid crowding the control bar, and text inputs are sized to avoid iOS Safari's auto‑zoom‑on‑focus
 - Full RTL/LTR support with automatic per‑line text direction detection
 
-### 🎬 Two Ways to Watch
+### 🎬 Three Ways to Watch
 
-- **YouTube URL** — paste any link, works exactly as before
+- **YouTube or Vimeo URL** — paste any link from either provider; the app auto‑detects which one from the URL itself, no need to pick a provider first. Vimeo's privacy‑hash suffix (`vimeo.com/12345/abcdef`, used for unlisted/private videos) is captured and passed through automatically — without it, an unlisted video would extract an ID successfully but then fail to actually play
 - **Local video file** — upload a file straight from your device (MP4, WebM, MOV, MKV...); it never leaves the browser (played via a local Object URL, nothing is uploaded to any server)
-- Both paths lead to the *exact same* viewing experience — same custom control bar, same keyboard shortcuts, same dual‑subtitle overlay and transcript panel. A single unified player interface (`useVideoPlayer`) sits in front of both, so no other part of the app needs to know or care which one is active
+- All three paths lead to the *exact same* viewing experience — same custom control bar, same keyboard shortcuts, same dual‑subtitle overlay and transcript panel. A single unified player interface (`useVideoPlayer`) sits in front of all three (`useYouTubePlayer` / `useVimeoPlayer` / `useLocalVideoPlayer`), so no other part of the app needs to know or care which one is active
+- Vimeo's own player API is fully promise‑based (unlike YouTube's synchronous getters) — `useVimeoPlayer` bridges this by caching the live position from the `timeupdate` event in a ref, so the rest of the app can keep reading the current time synchronously. Quality selection and playback‑rate changes are wired to Vimeo's real API and degrade gracefully (silently, no crash) on free/non‑Pro accounts where Vimeo itself restricts those controls
 
 ### 📼 Watch History
 
-- A "continue watching" list appears above the URL/file form, showing every recently‑watched video with its title (fetched from YouTube's own `getVideoData()`), thumbnail, and a relative timestamp (`Intl.RelativeTimeFormat`, no library)
-- **YouTube entries resume with a single click** — the exact same URL is resubmitted automatically, and playback resumes from the saved position
+- A "continue watching" list appears above the URL/file form, showing every recently‑watched video with its title (fetched from the provider's own API — `getVideoData()` on YouTube, `getVideoTitle()` on Vimeo), thumbnail (YouTube only — Vimeo has no equivalent predictable, key‑free thumbnail URL), and a relative timestamp (`Intl.RelativeTimeFormat`, no library)
+- **YouTube and Vimeo entries resume with a single click** — the exact same URL (privacy hash included, for Vimeo) is resubmitted automatically, and playback resumes from the saved position
 - **Local video entries cannot auto‑resume** — browsers fundamentally do not allow a site to reopen a file from disk without the user selecting it again, so clicking a local entry instead switches straight to the "local file" tab and shows a clear reminder of the exact file name to pick, rather than pretending to do something it structurally cannot
 - **Subtitle files are activated automatically** — their full text content (not just the file name) is saved to `IndexedDB` on upload, keyed by (video, track, file name). Revisiting the same video from history re‑parses that stored content through the exact same upload pipeline with zero manual steps — no re‑upload, no reminder. If the content isn't available (older browser, private‑browsing restrictions, or a file uploaded before this feature existed), the UI falls back to a clear reminder ("أعد رفع: ar.srt") instead of pretending nothing changed
 - Per‑entry removal and a "clear all" action — both fully clean up *everything* tied to that video (saved playback position, sync offset, and subtitle content in `IndexedDB`), not just the visible history row; capped at 40 entries (oldest pruned automatically)
@@ -78,7 +79,8 @@ No backend. No database. No API keys. Everything runs in the browser.
 ### 🚀 Technical Highlights
 
 - **Type Safety**: Full TypeScript codebase, strict null checks, shared types across parsing, sync, and UI
-- **Player adapter pattern**: `useYouTubePlayer` and `useLocalVideoPlayer` independently implement the same control‑surface shape; `useVideoPlayer` composes them behind one interface, so `VideoControlBar`, `SubtitleOverlay`, and the keyboard shortcuts hook are entirely source‑agnostic
+- **Player adapter pattern**: `useYouTubePlayer`, `useVimeoPlayer`, and `useLocalVideoPlayer` independently implement the same control‑surface shape; `useVideoPlayer` composes all three behind one interface, so `VideoControlBar`, `SubtitleOverlay`, and the keyboard shortcuts hook are entirely source‑agnostic
+- **Self‑hosted fonts, installable app**: IBM Plex (Sans, Sans Arabic, Mono) is served from `public/fonts` instead of Google Fonts CDN — one less external dependency on the critical rendering path. A full PWA setup (`vite-plugin-pwa`, auto‑updating service worker, manifest, home‑screen icons) means the app can be installed and opens instantly on repeat visits
 - **Isolated Re‑renders**: Video time is exposed as an imperative getter via `useSyncExternalStore`; only subscriber components update on tick, and transcript cards are memoized so only the active one re‑renders during playback
 - **`overflow-x: clip`, not `hidden`**: the global horizontal‑overflow safety net in `index.css` deliberately uses `clip` — `hidden` on `html`/`body` is a well‑known way to silently break `position: sticky` on descendants (it creates a new scroll/formatting context), which would have broken the mobile sticky video. `clip` gets the same "no horizontal scrollbar" result without that side effect.
 - **Resilient by design**: every external browser/YouTube/media API call (`matchMedia`, `scrollIntoView`, the Fullscreen API, `HTMLMediaElement.play()`, and the entire YouTube postMessage bridge) is wrapped defensively — a temporary hiccup degrades gracefully instead of crashing the app
@@ -92,9 +94,34 @@ No backend. No database. No API keys. Everything runs in the browser.
 
 ```
 ├── 📁 public
+│   ├── 📁 fonts
+│   │   ├── 📁 LICENSES
+│   │   │   ├── 📄 IBM-Plex-Mono-LICENSE.txt
+│   │   │   ├── 📄 IBM-Plex-Sans-Arabic-LICENSE.txt
+│   │   │   └── 📄 IBM-Plex-Sans-LICENSE.txt
+│   │   ├── 🔤 IBMPlexMono-Medium.woff2
+│   │   ├── 🔤 IBMPlexMono-Regular.woff2
+│   │   ├── 🔤 IBMPlexMono-SemiBold.woff2
+│   │   ├── 🔤 IBMPlexSans-Bold.woff2
+│   │   ├── 🔤 IBMPlexSans-Medium.woff2
+│   │   ├── 🔤 IBMPlexSans-Regular.woff2
+│   │   ├── 🔤 IBMPlexSans-SemiBold.woff2
+│   │   ├── 🔤 IBMPlexSansArabic-Bold.woff2
+│   │   ├── 🔤 IBMPlexSansArabic-Medium.woff2
+│   │   ├── 🔤 IBMPlexSansArabic-Regular.woff2
+│   │   └── 🔤 IBMPlexSansArabic-SemiBold.woff2
+│   ├── 🖼️ apple-touch-icon.png
+│   ├── 🖼️ favicon-16x16.png
+│   ├── 🖼️ favicon-32x32.png
+│   ├── 🖼️ favicon.svg
+│   ├── 🖼️ og-image.png
+│   ├── 🖼️ pwa-192x192.png
+│   ├── 🖼️ pwa-512x512.png
+│   └── 🖼️ screenshot.png
 ├── 📁 src
 │   ├── 📁 __tests__
 │   │   ├── 📁 testHelpers
+│   │   │   ├── 📄 mockVimeoPlayer.ts
 │   │   │   ├── 📄 mockYouTubePlayer.ts
 │   │   │   └── 📄 resetIndexedDb.ts
 │   │   ├── 📄 bilingual-upload.test.tsx
@@ -120,6 +147,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📄 sync-offset-persistence.test.tsx
 │   │   ├── 📄 transcript-search.test.tsx
 │   │   ├── 📄 video-progress.test.tsx
+│   │   ├── 📄 vimeo-playback.test.tsx
 │   │   ├── 📄 watch-history.test.tsx
 │   │   └── 📄 setup.ts
 │   ├── 📁 components
@@ -162,6 +190,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │       ├── 📄 VideoStage.tsx
 │   │       ├── 📄 VideoTopBar.tsx
 │   │       ├── 📄 VideoUrlForm.tsx
+│   │       ├── 📄 VimeoPlayerView.tsx
 │   │       ├── 📄 WatchHistoryList.tsx
 │   │       └── 📄 YouTubePlayerView.tsx
 │   ├── 📁 constants
@@ -191,6 +220,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   ├── 📄 useTheme.ts
 │   │   ├── 📄 useVideoPlayer.ts
 │   │   ├── 📄 useVideoProgress.ts
+│   │   ├── 📄 useVimeoPlayer.ts
 │   │   ├── 📄 useWatchHistory.ts
 │   │   └── 📄 useYouTubePlayer.ts
 │   ├── 📁 lib
@@ -218,16 +248,21 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   ├── 📄 subtitleContentStore.ts
 │   │   │   ├── 📄 videoKey.test.ts
 │   │   │   └── 📄 videoKey.ts
+│   │   ├── 📁 vimeo
+│   │   │   ├── 📄 extractVimeoVideoId.test.ts
+│   │   │   ├── 📄 extractVimeoVideoId.ts
+│   │   │   └── 📄 loadVimeoPlayerAPI.ts
 │   │   └── 📁 youtube
 │   │       ├── 📄 extractVideoId.ts
 │   │       └── 📄 loadYouTubeIframeAPI.ts
 │   ├── 📁 styles
-│   │   └── 🎨 tokens.css
+│   │   └── 🎨 fonts.css
 │   ├── 📁 types
 │   │   ├── 📄 history.types.ts
 │   │   ├── 📄 subtitle.types.ts
 │   │   ├── 📄 theme.types.ts
 │   │   ├── 📄 video.types.ts
+│   │   ├── 📄 vimeo.types.ts
 │   │   └── 📄 youtube.types.ts
 │   ├── 📄 App.tsx
 │   ├── 🎨 index.css
@@ -292,8 +327,10 @@ npm run test      # automated regression tests (Vitest + Testing Library)
 ## 👏 Acknowledgments
 
 - [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference) — the playback engine this app is built around
+- [Vimeo Player SDK](https://developer.vimeo.com/player/sdk) — the second video engine, integrated behind the same player-adapter interface
 - [Lucide](https://lucide.dev/) — the icon set used throughout the interface
-- [IBM Plex](https://www.ibm.com/plex/) — the Sans Arabic and Mono typefaces used for content and console chrome
+- [IBM Plex](https://www.ibm.com/plex/) — the Sans, Sans Arabic, and Mono typefaces, self‑hosted under the SIL Open Font License (see `public/fonts/LICENSES`)
+- [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) — powers the installable PWA setup and its service worker
 - The React, Vite, Tailwind CSS, and Framer Motion communities, whose tools make an app like this possible with zero backend
 
 ---

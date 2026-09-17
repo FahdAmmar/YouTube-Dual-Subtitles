@@ -48,6 +48,7 @@ export function PreLoadScreen({ onVideoSourceSelected, pendingLocalFileName, onS
           </div>
           <WatchHistoryList
             onSelectYoutube={(videoId) => onVideoSourceSelected({ type: 'youtube', videoId })}
+            onSelectVimeo={(videoId, hash) => onVideoSourceSelected({ type: 'vimeo', videoId, hash })}
             onSelectLocal={onSelectLocalFromHistory}
           />
           <VideoUrlForm onVideoSourceSelected={onVideoSourceSelected} pendingLocalFileName={pendingLocalFileName} />

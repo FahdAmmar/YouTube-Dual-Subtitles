@@ -11,5 +11,12 @@ import type { VideoSource } from '@/types/video.types'
  * محلي مرتبطة بهوية الفيديو: استئناف موضع التشغيل، وحفظ إزاحة تزامن الترجمة
  */
 export function getVideoKey(source: VideoSource): string {
-  return source.type === 'youtube' ? `youtube:${source.videoId}` : `local:${source.fileName}`
+  switch (source.type) {
+    case 'youtube':
+      return `youtube:${source.videoId}`
+    case 'vimeo':
+      return `vimeo:${source.videoId}`
+    case 'local':
+      return `local:${source.fileName}`
+  }
 }

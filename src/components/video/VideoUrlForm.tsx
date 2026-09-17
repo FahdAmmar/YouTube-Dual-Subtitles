@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react'
 import { Play, AlertCircle, Upload, FileVideo, Info } from 'lucide-react'
 import { extractYouTubeVideoId } from '@/lib/youtube/extractVideoId'
+import { extractVimeoVideoId } from '@/lib/vimeo/extractVimeoVideoId'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import type { VideoSource } from '@/types/video.types'
@@ -34,15 +35,17 @@ const METHOD_TAB_CLASSNAME = (isActive: boolean) =>
   )
 
 /**
- * نموذج بدء المشاهدة — طريقتان مانعتان لبعضهما (radiogroup): رابط يوتيوب،
- * أو رفع ملف فيديو محلي من الجهاز مباشرة. كلا المسارين يُفضيان لنفس تجربة
- * المشاهدة والتحكم بلا أي فرق — نفس شريط التحكم، نفس اختصارات لوحة
- * المفاتيح، نفس الترجمة المزدوجة (انظر useVideoPlayer الذي يوحّد التحكم
- * بمصدري الفيديو خلف واجهة واحدة، فلا يعرف أي مكوّن آخر الفرق بينهما)
+ * نموذج بدء المشاهدة — طريقتان مانعتان لبعضهما (radiogroup): رابط فيديو
+ * (يوتيوب أو Vimeo، يُكتشَف تلقائياً من الرابط نفسه)، أو رفع ملف فيديو
+ * محلي من الجهاز مباشرة. كل المسارات تُفضي لنفس تجربة المشاهدة والتحكم
+ * بلا أي فرق — نفس شريط التحكم، نفس اختصارات لوحة المفاتيح، نفس الترجمة
+ * المزدوجة (انظر useVideoPlayer الذي يوحّد التحكم بمصادر الفيديو الثلاثة
+ * خلف واجهة واحدة، فلا يعرف أي مكوّن آخر الفرق بينها)
  *
- * التحقق من صحة رابط يوتيوب يتم بالكامل عبر extractYouTubeVideoId قبل أي
- * محاولة لبناء عنصر iframe (OWASP Input Validation). التحقق من الملف
- * المحلي يعتمد على نوع MIME أولاً، ثم الامتداد كمرجعية إضافية
+ * التحقق من صحة الرابط يتم بالكامل عبر extractYouTubeVideoId/
+ * extractVimeoVideoId قبل أي محاولة لبناء عنصر iframe (OWASP Input
+ * Validation). التحقق من الملف المحلي يعتمد على نوع MIME أولاً، ثم
+ * الامتداد كمرجعية إضافية
  */
 export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: VideoUrlFormProps) {
   const [activeTab, setActiveTab] = useState<InputMethod>('url')
@@ -72,15 +75,24 @@ export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: Vi
 
   function handleUrlSubmit(event: FormEvent) {
     event.preventDefault()
-    const result = extractYouTubeVideoId(inputValue)
 
-    if (!result.success || !result.videoId) {
-      setUrlError(result.error ?? 'رابط غير صالح')
+    // كشف تلقائي للمزوّد من الرابط نفسه بدل إجبار المستخدم على اختيار
+    // "يوتيوب" أو "Vimeo" يدوياً قبل اللصق — يوتيوب أولاً لأنه الأكثر شيوعاً
+    const youtubeResult = extractYouTubeVideoId(inputValue)
+    if (youtubeResult.success && youtubeResult.videoId) {
+      setUrlError(null)
+      onVideoSourceSelected({ type: 'youtube', videoId: youtubeResult.videoId })
       return
     }
 
-    setUrlError(null)
-    onVideoSourceSelected({ type: 'youtube', videoId: result.videoId })
+    const vimeoResult = extractVimeoVideoId(inputValue)
+    if (vimeoResult.success && vimeoResult.videoId) {
+      setUrlError(null)
+      onVideoSourceSelected({ type: 'vimeo', videoId: vimeoResult.videoId, hash: vimeoResult.hash })
+      return
+    }
+
+    setUrlError('الرجاء إدخال رابط يوتيوب أو Vimeo صالح')
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -146,12 +158,12 @@ export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: Vi
 
       {activeTab === 'url' ? (
         <form onSubmit={handleUrlSubmit} className="flex w-full flex-col gap-2.5">
-          <label htmlFor="youtube-url" className="font-mono text-[11px] tracking-wide text-text-muted">
+          <label htmlFor="video-url" className="font-mono text-[11px] tracking-wide text-text-muted">
             VIDEO_URL
           </label>
           <div className="flex flex-col gap-2.5 sm:flex-row">
             <input
-              id="youtube-url"
+              id="video-url"
               type="text"
               inputMode="url"
               dir="ltr"
@@ -160,15 +172,16 @@ export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: Vi
               onChange={(event) => setInputValue(event.target.value)}
               className="h-12 flex-1 rounded-md border border-border bg-surface-elevated/60 px-4 font-mono text-base text-text-primary backdrop-blur-sm transition-colors placeholder:text-text-muted hover:border-text-muted/50 focus-visible:border-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console/60 focus-visible:ring-offset-0 sm:text-sm"
               aria-invalid={Boolean(urlError)}
-              aria-describedby={urlError ? 'youtube-url-error' : undefined}
+              aria-describedby={urlError ? 'video-url-error' : undefined}
             />
             <Button type="submit" size="md" className="h-12 shrink-0">
               <Play size={17} aria-hidden="true" />
               تشغيل
             </Button>
           </div>
+          <p className="text-xs text-text-muted">يدعم روابط يوتيوب وVimeo</p>
           {urlError && (
-            <p id="youtube-url-error" role="alert" className="flex items-center gap-1.5 text-sm text-error">
+            <p id="video-url-error" role="alert" className="flex items-center gap-1.5 text-sm text-error">
               <AlertCircle size={15} aria-hidden="true" />
               {urlError}
             </p>

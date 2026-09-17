@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss'
 
 // نظام التصميم (Design System) الخاص بالتطبيق
-// جميع الألوان معرّفة كمتغيرات CSS (انظر src/styles/tokens.css) حتى تعمل
+// جميع الألوان معرّفة كمتغيرات CSS (انظر :root في src/index.css) حتى تعمل
 // بشكل صحيح مع التبديل بين الوضع الداكن والفاتح دون إعادة بناء الأنماط
 export default {
   darkMode: ['selector', '[data-theme="dark"]'],

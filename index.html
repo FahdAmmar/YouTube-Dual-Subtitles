@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0B0E14" />
 
+    <!-- الأيقونات: SVG قابل للتحجيم للمتصفحات الحديثة + PNG احتياطي للأقدم، وapple-touch-icon مخصّص لـiOS (لا يدعم SVG لأيقونات الشاشة الرئيسية) -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
     <!--
       سكربت مضمّن (Inline) يُنفَّذ قبل أي رسم للصفحة، لتطبيق السمة الصحيحة
       (الداكنة أو الفاتحة) فوراً دون وميض مرئي (Flash of Wrong Theme).
@@ -34,14 +40,16 @@
       content="شاهد فيديوهات يوتيوب مع ترجمتين متزامنتين بلغتين مختلفتين في آن واحد."
     />
     <meta property="og:type" content="website" />
-
-    <!-- ربط مسبق بخوادم الخطوط لتسريع التحميل الأولي (تحسين LCP) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet"
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="مترجم يوتيوب المزدوج" />
+    <meta
+      name="twitter:description"
+      content="شاهد فيديوهات يوتيوب مع ترجمتين متزامنتين بلغتين مختلفتين في آن واحد."
     />
+    <meta name="twitter:image" content="/og-image.png" />
 
     <title>مترجم يوتيوب المزدوج | ترجمتان متزامنتان بلغتين مختلفتين</title>
   </head>
