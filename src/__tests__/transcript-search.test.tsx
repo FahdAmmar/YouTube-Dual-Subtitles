@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { installMockYouTubeApi, type MockYouTubePlayer } from './testHelpers/mockYouTubePlayer'
+import { fullText } from './testHelpers/fullText'
 
 let activePlayer: MockYouTubePlayer | null = null
 
@@ -66,14 +67,16 @@ describe('transcript search', () => {
     await loadVideoWithSubtitles()
 
     expect(screen.getByText('شكراً لمشاهدتكم')).toBeInTheDocument()
-    expect(screen.getByText('This is an example about coffee')).toBeInTheDocument()
+    // نص الترجمة الأجنبية أصبح كلمات منفصلة منذ ميزة "انقر على كلمة
+    // لرؤية معناها" — انظر توثيق fullText
+    expect(screen.getByText(fullText('This is an example about coffee'))).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'coffee' } })
 
     await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
     expect(screen.getByText('هذا مثال على القهوة العربية')).toBeInTheDocument()
     expect(screen.queryByText('شكراً لمشاهدتكم')).not.toBeInTheDocument()
-    expect(screen.queryByText('Welcome to this video')).not.toBeInTheDocument()
+    expect(screen.queryByText(fullText('Welcome to this video'))).not.toBeInTheDocument()
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
     errorSpy.mockRestore()
@@ -89,7 +92,7 @@ describe('transcript search', () => {
 
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'WELCOME' } })
     await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
-    expect(screen.getByText('Welcome to this video')).toBeInTheDocument()
+    expect(screen.getByText(fullText('Welcome to this video'))).toBeInTheDocument()
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
     errorSpy.mockRestore()
@@ -152,7 +155,7 @@ describe('transcript search', () => {
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'coffee' } })
     await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
 
-    fireEvent.click(screen.getByText('This is an example about coffee'))
+    fireEvent.click(screen.getByText(fullText('This is an example about coffee')))
 
     await waitFor(() => expect(activePlayer?.getCurrentTime()).toBe(5))
 

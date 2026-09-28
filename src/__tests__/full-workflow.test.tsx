@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from '../App'
 import { installMockYouTubeApi, type MockYouTubePlayer } from './testHelpers/mockYouTubePlayer'
+import { fullText } from './testHelpers/fullText'
 
 let activePlayer: MockYouTubePlayer | null = null
 
@@ -62,10 +63,11 @@ describe('full dual-subtitle workflow', () => {
       expect(screen.getByText('en.srt')).toBeInTheDocument()
     })
 
-    // يجب أن يظهر النصان في لوحة النص المتزامن
+    // يجب أن يظهر النصان في لوحة النص المتزامن — نص الترجمة الأجنبية
+    // أصبح كلمات منفصلة منذ ميزة "انقر على كلمة لرؤية معناها" (fullText)
     await waitFor(() => {
       expect(screen.getByText('مرحباً بكم في هذا الفيديو')).toBeInTheDocument()
-      expect(screen.getByText('Welcome to this video')).toBeInTheDocument()
+      expect(screen.getByText(fullText('Welcome to this video'))).toBeInTheDocument()
     })
 
     // ضبط إزاحة التزامن لمسار المصدر (زر +) عدة مرات

@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from 'react'
-import { Play, Pause, FastForward, Rewind, Maximize, Minimize, RotateCcw, SkipBack, SkipForward, Volume2, Volume1, Repeat, AlertCircle } from 'lucide-react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { Play, Pause, FastForward, Rewind, Maximize, Minimize, RotateCcw, SkipBack, SkipForward, Volume2, Volume1, Repeat, Mic, AlertCircle } from 'lucide-react'
 import { YouTubePlayerView } from './YouTubePlayerView'
 import { VimeoPlayerView } from './VimeoPlayerView'
 import { LocalVideoPlayerView } from './LocalVideoPlayerView'
@@ -11,6 +11,7 @@ import { useFullscreen } from '@/hooks/useFullscreen'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useFocusRetention } from '@/hooks/useFocusRetention'
 import { useSceneRepeat } from '@/hooks/useSceneRepeat'
+import { useShadowingMode } from '@/hooks/useShadowingMode'
 import type { UseVideoPlayerResult } from '@/hooks/useVideoPlayer'
 import { MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE } from '@/hooks/useYouTubePlayer'
 import { formatPlaybackRate } from '@/lib/utils/formatPlaybackRate'
@@ -66,6 +67,12 @@ export function VideoStage({
 
   const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
 
+  // مصفوفة أزمنة بداية المقاطع فقط (بلا بقية بيانات PairedSlice) لتغذية
+  // علامات الكثافة على شريط التقدّم — مُخزَّنة بـ useMemo كي لا يُعاد
+  // إنشاء مصفوفة جديدة (وبالتالي إعادة رسم كل علامة) عند أي إعادة رسم
+  // لـ VideoStage لا علاقة لها بالمقاطع نفسها (مثال: وميض تغذية راجعة اختصار)
+  const segmentStartTimes = useMemo(() => slices.map((slice) => slice.start), [slices])
+
   // استعادة التركيز من iframe يوتيوب بعد كل تفاعل pointer — يضمن استجابة
   // اختصارات لوحة المفاتيح دوماً (انظر useFocusRetention للتفاصيل)
   useFocusRetention(stageRef, player.isReady)
@@ -80,6 +87,8 @@ export function VideoStage({
     slices,
     isPlaying,
   )
+
+  const { isEnabled: isShadowingEnabled, toggle: toggleShadowing } = useShadowingMode(player, slices, isPlaying)
 
   // يعرض تغذية راجعة لحظية (وميض أيقونة) لمدة قصيرة ثم يُخفيها تلقائياً؛
   // يُعيد ضبط المؤقّت في كل استدعاء حتى تبقى الأيقونة ظاهرة عند الضغط
@@ -199,6 +208,15 @@ export function VideoStage({
     [findCurrentScene, repeatScene, showShortcutFeedback],
   )
 
+  // اختصار "s": تفعيل/إيقاف وضع التظليل (توقّف تلقائي بعد كل مقطع للتدرّب على النطق)
+  const handleToggleShadowing = useCallback(() => {
+    toggleShadowing()
+    showShortcutFeedback(
+      isShadowingEnabled ? 'إيقاف وضع التظليل' : 'تفعيل وضع التظليل',
+      <Mic size={20} aria-hidden="true" />,
+    )
+  }, [toggleShadowing, isShadowingEnabled, showShortcutFeedback])
+
   useKeyboardShortcuts(player.isReady, {
     onTogglePlayPause: handleTogglePlayPause,
     onSpeedUp: handleSpeedUp,
@@ -213,6 +231,7 @@ export function VideoStage({
     onRepeatScene: handleRepeatScene,
     onShowHelp: onOpenShortcutsHelp,
     onFocusSearch,
+    onToggleShadowing: handleToggleShadowing,
   })
 
   return (
@@ -246,6 +265,16 @@ export function VideoStage({
       {player.isReady && (
         <>
           <VideoTopBar languageCode={sourceTrack.languageCode} onBack={onChangeVideo} />
+
+          {/* شارة تذكيرية بأن وضع التظليل مفعَّل — تبقى ظاهرة طوال الوضع
+              (بخلاف تغذية شريط الاختصارات الراجعة اللحظية أعلاه) لأن أثره
+              يمتد لكل مقطع لاحق في الفيديو، لا لحظة واحدة عابرة */}
+          {isShadowingEnabled && (
+            <div className="pointer-events-none absolute start-3 top-14 z-10 flex items-center gap-1.5 rounded-md bg-black/75 px-2.5 py-1 font-mono text-[11px] text-white shadow-elevated backdrop-blur-sm">
+              <Mic size={12} className="text-console" aria-hidden="true" />
+              <span>وضع التظليل</span>
+            </div>
+          )}
 
           {/* مؤشر تكرار المشهد النشط — يبقى ظاهراً طوال فترة التكرار
               ليُذكِّر المستخدم بأن المقطع الحالي يُعاد تشغيله N مرات،
@@ -287,6 +316,9 @@ export function VideoStage({
               onSetPlaybackRate={player.setPlaybackRate}
               qualityLevels={player.qualityLevels}
               currentQuality={player.currentQuality}
+              segmentStartTimes={segmentStartTimes}
+              isShadowingEnabled={isShadowingEnabled}
+              onToggleShadowing={handleToggleShadowing}
             />
           </div>
         </>

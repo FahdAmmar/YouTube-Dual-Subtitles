@@ -1,5 +1,9 @@
-import { forwardRef, memo } from 'react'
+import { forwardRef, memo, useState, type MouseEvent } from 'react'
+import { Volume2 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { isSpeechSupported, speakText } from '@/lib/utils/textToSpeech'
+import { tokenizeIntoWords, isWhitespaceToken, stripSurroundingPunctuation } from '@/lib/utils/wordTokenize'
+import { WordDefinitionCard } from './WordDefinitionCard'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import type { ViewMode } from '@/types/theme.types'
 
@@ -9,6 +13,10 @@ interface SliceCardProps {
   isActive: boolean
   viewMode: ViewMode
   onSeek: (seconds: number) => void
+  /** رمز لغة المسار الأجنبي (ISO 639-1) — يُمرَّر لمحرّك النطق ليختار صوتاً مناسباً */
+  translationLang?: string
+  /** رمز لغة المسار المرجعي — يُستخدم للنطق فقط عند غياب نص الترجمة الأجنبية في هذا المقطع */
+  sourceLang?: string
   /**
    * نسبة التقدّم (0–100) داخل المقطع النشط حالياً فقط — غير محدَّدة لبقية
    * البطاقات دوماً. تغذّي مؤشر الإبراز الحي أسفل البطاقة (انظر التعليق
@@ -38,82 +46,159 @@ function formatTimestamp(seconds: number): string {
  * يمنح "قسم النص" ككل حضوراً أوضح وأكبر مقارنة بالتصميم السابق
  */
 function SliceCardImpl(
-  { slice, index, isActive, viewMode, onSeek, activeProgressPercent }: SliceCardProps,
-  ref: React.ForwardedRef<HTMLButtonElement>,
+  {
+    slice,
+    index,
+    isActive,
+    viewMode,
+    onSeek,
+    translationLang,
+    sourceLang,
+    activeProgressPercent,
+  }: SliceCardProps,
+  ref: React.ForwardedRef<HTMLDivElement>,
 ) {
   const showSource = viewMode !== 'translation' && slice.sourceText
   const showTranslation = viewMode !== 'source' && slice.translationText
 
+  // النص المُراد نطقه: النص الأجنبي أولاً (هدف تعلّم اللغة الأساسي)، وإلا
+  // النص المرجعي — بحسب ما هو ظاهر فعلياً في وضع العرض الحالي (viewMode)
+  const speakableText = showTranslation ? slice.translationText : showSource ? slice.sourceText : null
+  const speakableLang = showTranslation ? translationLang : sourceLang
+  const canSpeak = isSpeechSupported() && Boolean(speakableText)
+
+  // البحث عن معنى كلمة مُتاح فقط للنص الأجنبي (هدف تعلّم اللغة)، وفقط حين
+  // يُعرَف رمز لغته — القاموس المستخدَم (dictionaryapi.dev) يحتاج رمز
+  // لغة صريحاً لكل طلب بحث
+  const canLookupWords = Boolean(translationLang)
+  const [activeLookupWord, setActiveLookupWord] = useState<string | null>(null)
+
+  function handleWordClick(event: MouseEvent, rawToken: string) {
+    // إيقاف الانتشار: الكلمة عنصر داخل زر القفز الأب، والنقر عليها يجب أن
+    // يفتح بطاقة التعريف فقط، لا أن "يُسرّب" قفزاً غير مقصود للفيديو أيضاً
+    event.stopPropagation()
+    const cleanedWord = stripSurroundingPunctuation(rawToken)
+    if (!cleanedWord) return
+    setActiveLookupWord(cleanedWord)
+  }
+
   return (
-    <button
-      ref={ref}
-      type="button"
-      onClick={() => onSeek(slice.start)}
-      aria-current={isActive ? 'true' : undefined}
-      className={cn(
-        'flex w-full flex-col gap-2 rounded-md border-s-2 px-3.5 py-3.5 text-start transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.99]',
-        isActive
-          ? 'border-console bg-console/[0.07] shadow-glow-console animate-glow-pulse motion-reduce:animate-none'
-          : 'border-transparent hover:bg-surface-elevated',
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            'font-mono text-[10px] tracking-wider',
-            isActive ? 'text-console' : 'text-text-muted',
-          )}
-        >
-          SEG_{String(index + 1).padStart(3, '0')}
-        </span>
-        <span className="font-mono text-[10px] text-text-muted">{formatTimestamp(slice.start)}</span>
-      </div>
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => onSeek(slice.start)}
+        aria-current={isActive ? 'true' : undefined}
+        className={cn(
+          'flex w-full flex-col gap-2 rounded-md border-s-2 px-3.5 py-3.5 text-start transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.99]',
+          isActive
+            ? 'border-console bg-console/[0.07] shadow-glow-console animate-glow-pulse motion-reduce:animate-none'
+            : 'border-transparent hover:bg-surface-elevated',
+        )}
+      >
+        <div className="flex items-center gap-2 pe-7">
+          <span
+            className={cn(
+              'font-mono text-[10px] tracking-wider',
+              isActive ? 'text-console' : 'text-text-muted',
+            )}
+          >
+            SEG_{String(index + 1).padStart(3, '0')}
+          </span>
+          <span className="font-mono text-[10px] text-text-muted">{formatTimestamp(slice.start)}</span>
+        </div>
 
-      {/* النص العربي المرجعي — أصغر وأخف وزناً، ليتوازن بصرياً مع النص الأجنبي الأساسي أدناه */}
-      {showSource && (
-        <p
-          dir="auto"
-          className={cn(
-            'text-[13px] italic leading-snug',
-            isActive ? 'text-text-secondary' : 'text-text-muted',
-          )}
-        >
-          {slice.sourceText}
-        </p>
-      )}
+        {/* النص العربي المرجعي — أصغر وأخف وزناً، ليتوازن بصرياً مع النص الأجنبي الأساسي أدناه */}
+        {showSource && (
+          <p
+            dir="auto"
+            className={cn(
+              'text-[13px] italic leading-snug',
+              isActive ? 'text-text-secondary' : 'text-text-muted',
+            )}
+          >
+            {slice.sourceText}
+          </p>
+        )}
 
-      {/* النص الأجنبي الأساسي — أكبر وأوضح، هو محور القراءة أثناء المتابعة */}
-      {showTranslation && (
-        <p
-          dir="auto"
-          className={cn(
-            'text-[17px] font-semibold leading-snug',
-            isActive ? 'text-text-primary' : 'text-text-secondary',
-          )}
-        >
-          {slice.translationText}
-        </p>
-      )}
+        {/* النص الأجنبي الأساسي — أكبر وأوضح، هو محور القراءة أثناء المتابعة.
+            كل كلمة عنصر <span> قابل للنقر منفصل (لا <button>؛ تداخل عنصرَي
+            button غير صالح في HTML) لفتح بطاقة تعريفها أسفل المقطع */}
+        {showTranslation && (
+          <p
+            dir="auto"
+            className={cn(
+              'text-[17px] font-semibold leading-snug',
+              isActive ? 'text-text-primary' : 'text-text-secondary',
+            )}
+          >
+            {canLookupWords
+              ? tokenizeIntoWords(slice.translationText ?? '').map((token, tokenIndex) =>
+                  isWhitespaceToken(token) ? (
+                    <span key={tokenIndex}>{token}</span>
+                  ) : (
+                    <span
+                      key={tokenIndex}
+                      onClick={(event) => handleWordClick(event, token)}
+                      className="cursor-pointer rounded-sm transition-colors hover:bg-console/15 hover:text-console"
+                    >
+                      {token}
+                    </span>
+                  ),
+                )
+              : slice.translationText}
+          </p>
+        )}
 
-      {/* مؤشر الإبراز الحي: يعرض تقدّم القراءة داخل المقطع النشط لحظياً،
-          فيُترجم خاصية "الإبراز" من مجرد تلوين ثابت إلى مؤشر تفاعلي دقيق
-          يعكس اللحظة الفعلية ضمن نافذة المقطع الزمنية بأكملها */}
-      {isActive && typeof activeProgressPercent === 'number' && (
-        <div
-          className="h-0.5 w-full overflow-hidden rounded-full bg-console/15"
-          role="progressbar"
-          aria-label="تقدّم قراءة المقطع الحالي"
-          aria-valuenow={Math.round(activeProgressPercent)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
+        {/* مؤشر الإبراز الحي: يعرض تقدّم القراءة داخل المقطع النشط لحظياً،
+            فيُترجم خاصية "الإبراز" من مجرد تلوين ثابت إلى مؤشر تفاعلي دقيق
+            يعكس اللحظة الفعلية ضمن نافذة المقطع الزمنية بأكملها */}
+        {isActive && typeof activeProgressPercent === 'number' && (
           <div
-            className="h-full rounded-full bg-console transition-[width] duration-150 ease-linear"
-            style={{ width: `${activeProgressPercent}%` }}
+            className="h-0.5 w-full overflow-hidden rounded-full bg-console/15"
+            role="progressbar"
+            aria-label="تقدّم قراءة المقطع الحالي"
+            aria-valuenow={Math.round(activeProgressPercent)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="h-full rounded-full bg-console transition-[width] duration-150 ease-linear"
+              style={{ width: `${activeProgressPercent}%` }}
+            />
+          </div>
+        )}
+      </button>
+
+      {/* زر نطق نص المقطع بصوت الجهاز (Web Speech API) — عنصر شقيق لزر
+          القفز أعلاه وليس متداخلاً بداخله (تداخل عنصرَي button غير صالح
+          في HTML)، ومموضع فوقه بإحداثيات مطلقة؛ لأنه أعلى ترتيباً بصرياً
+          في نفس السياق التراكمي (Stacking Context)، فإن نقرة المستخدم في
+          مساحته تصل إليه هو حصراً ولا "تُسرّب" إلى زر القفز أسفله */}
+      {canSpeak && speakableText && (
+        <button
+          type="button"
+          onClick={() => speakText(speakableText, speakableLang)}
+          aria-label="نطق نص هذا المقطع بصوت الجهاز"
+          className="absolute end-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-text-muted opacity-70 transition-opacity duration-150 hover:opacity-100 hover:text-console focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+        >
+          <Volume2 size={12} aria-hidden="true" />
+        </button>
+      )}
+
+      {/* بطاقة تعريف الكلمة المنقورة — عنصر شقيق لزر القفز أيضاً، بنفس منطق
+          زر النطق أعلاه، ومموضعة أسفل البطاقة بتدفّق طبيعي (لا إحداثيات
+          مطلقة) لأن محتواها متغيّر الطول بحسب طول التعريف الفعلي */}
+      {activeLookupWord && translationLang && (
+        <div className="mt-1 px-1">
+          <WordDefinitionCard
+            word={activeLookupWord}
+            languageCode={translationLang}
+            nativeLanguageCode={sourceLang}
+            onClose={() => setActiveLookupWord(null)}
           />
         </div>
       )}
-    </button>
+    </div>
   )
 }
 

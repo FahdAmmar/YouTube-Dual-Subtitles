@@ -7,6 +7,7 @@ import { VideoStage } from '@/components/video/VideoStage'
 import { MobileActiveCaption } from '@/components/video/MobileActiveCaption'
 import { KeyboardShortcutsPanel } from '@/components/video/KeyboardShortcutsPanel'
 import { ConsolePanel } from '@/components/console/ConsolePanel'
+import { GlossaryPanel } from '@/components/console/GlossaryPanel'
 import { useVideoPlayer } from '@/hooks/useVideoPlayer'
 import { useSubtitleTrack } from '@/hooks/useSubtitleTrack'
 import { useResizableSidebarWidth } from '@/hooks/useResizableSidebarWidth'
@@ -53,6 +54,7 @@ export function AppShell() {
   const [videoSource, setVideoSource] = useState<VideoSource | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false)
+  const [isGlossaryOpen, setIsGlossaryOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('both')
   // اسم ملف فيديو محلي مطلوب إعادة اختياره يدوياً (نقر مُدخل محلي في سجل
   // المشاهدات) — انظر توثيق useWatchHistory لسبب عدم إمكانية فتحه تلقائياً
@@ -248,6 +250,7 @@ export function AppShell() {
             onSeek={player.seekTo}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenShortcutsHelp={() => setIsShortcutsHelpOpen(true)}
+            onOpenGlossary={() => setIsGlossaryOpen(true)}
             sidebarPosition={sidebarPosition.position}
             onToggleSidebarPosition={sidebarPosition.toggle}
             rememberedSourceFileName={historyEntry?.subtitleFileNames.source}
@@ -275,6 +278,8 @@ export function AppShell() {
       </Suspense>
 
       <KeyboardShortcutsPanel isOpen={isShortcutsHelpOpen} onClose={() => setIsShortcutsHelpOpen(false)} />
+
+      <GlossaryPanel isOpen={isGlossaryOpen} onClose={() => setIsGlossaryOpen(false)} />
     </div>
   )
 }

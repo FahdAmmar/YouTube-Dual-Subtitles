@@ -5,6 +5,9 @@ import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
 import { Slider } from '@/components/ui/Slider'
 import { TrackStyleControl } from './FontSizeControl'
+import { StorageUsagePanel } from './StorageUsagePanel'
+import { VoiceSelector } from './VoiceSelector'
+import { isSpeechSupported } from '@/lib/utils/textToSpeech'
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import type { SubtitleTrackState } from '@/types/subtitle.types'
@@ -77,6 +80,15 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
                 onChange={(patch) => updateTrackStyle('trackB', patch)}
               />
 
+              {isSpeechSupported() && (
+                <>
+                  <VoiceSelector key={trackB.languageCode} languageCode={trackB.languageCode} languageLabel={trackB.languageLabel} />
+                  {trackA.languageCode !== trackB.languageCode && (
+                    <VoiceSelector key={trackA.languageCode} languageCode={trackA.languageCode} languageLabel={trackA.languageLabel} />
+                  )}
+                </>
+              )}
+
               <div className="flex flex-col gap-4 border-s-4 border-border ps-4">
                 <h3 className="text-sm font-semibold text-text-primary">صندوق الترجمة</h3>
 
@@ -117,6 +129,8 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
                 <RotateCcw size={15} aria-hidden="true" />
                 استعادة الإعدادات الافتراضية
               </Button>
+
+              <StorageUsagePanel isOpen={isOpen} />
             </Card>
           </motion.div>
         </>

@@ -9,6 +9,8 @@ export const STORAGE_KEYS = {
   VIDEO_PROGRESS: 'ydc:video-progress',
   SYNC_OFFSETS: 'ydc:sync-offsets',
   WATCH_HISTORY: 'ydc:watch-history',
+  GLOSSARY: 'ydc:glossary',
+  SPEECH_VOICES: 'ydc:speech-voices',
 } as const
 
 /**

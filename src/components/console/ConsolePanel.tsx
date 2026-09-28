@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload, Keyboard, Search, X } from 'lucide-react'
+import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload, Keyboard, Search, X, BookMarked } from 'lucide-react'
 import { ViewModeToggle } from './ViewModeToggle'
 import { SourceFileRow } from './SourceFileRow'
 import { DownloadSubtitles } from './DownloadSubtitles'
@@ -39,6 +39,7 @@ interface ConsolePanelProps {
   onSeek: (seconds: number) => void
   onOpenSettings: () => void
   onOpenShortcutsHelp: () => void
+  onOpenGlossary: () => void
   sidebarPosition: SidebarPosition
   onToggleSidebarPosition: () => void
   rememberedSourceFileName?: string
@@ -69,6 +70,7 @@ export function ConsolePanel({
   onSeek,
   onOpenSettings,
   onOpenShortcutsHelp,
+  onOpenGlossary,
   sidebarPosition,
   onToggleSidebarPosition,
   rememberedSourceFileName,
@@ -160,6 +162,9 @@ export function ConsolePanel({
             </IconButton>
             <IconButton aria-label="فتح إعدادات حجم ولون الترجمة" onClick={onOpenSettings} className="h-8 w-8">
               <SlidersHorizontal size={14} aria-hidden="true" />
+            </IconButton>
+            <IconButton aria-label="فتح المفردات الشخصية" onClick={onOpenGlossary} className="h-8 w-8">
+              <BookMarked size={14} aria-hidden="true" />
             </IconButton>
             <IconButton aria-label="عرض اختصارات لوحة المفاتيح" onClick={onOpenShortcutsHelp} className="h-8 w-8">
               <Keyboard size={14} aria-hidden="true" />
@@ -270,6 +275,8 @@ export function ConsolePanel({
         isPlaying={isPlaying}
         viewMode={viewMode}
         onSeek={onSeek}
+        translationLang={translationTrack.languageCode}
+        sourceLang={sourceTrack.languageCode}
         isSearchActive={isSearchActive}
       />
     </aside>

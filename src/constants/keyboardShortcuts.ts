@@ -16,6 +16,8 @@ export interface KeyboardShortcutHandlers {
   onShowHelp: () => void
   /** التركيز على حقل البحث داخل النص المفرَّغ — اختصار "/" */
   onFocusSearch: () => void
+  /** تفعيل/إيقاف وضع التظليل (توقّف تلقائي بعد كل مقطع) — اختصار "s" */
+  onToggleShadowing: () => void
 }
 
 /** فئات العرض في لوحة المساعدة فقط — لا علاقة لها بالمعالجة الفعلية في useKeyboardShortcuts، فقط لتجميع القائمة بصرياً بدل قائمة مسطّحة واحدة طويلة */
@@ -143,5 +145,12 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutDefinition[] = [
     description: 'التركيز على حقل البحث في النص المفرَّغ',
     category: 'عام',
     action: (h) => h.onFocusSearch(),
+  },
+  {
+    matchKeys: ['s', 'S'],
+    displayKey: 'S',
+    description: 'تفعيل/إيقاف وضع التظليل (توقّف تلقائي بعد كل مقطع)',
+    category: 'تنقّل وتكرار',
+    action: (h) => h.onToggleShadowing(),
   },
 ]

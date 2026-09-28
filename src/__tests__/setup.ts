@@ -29,6 +29,22 @@ if (typeof window.ResizeObserver === 'undefined') {
   window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver
 }
 
+// jsdom لا يوفّر Web Speech API إطلاقاً — محاكاة بسيطة للمُنشئ العام كي لا
+// تفشل اختبارات textToSpeech.ts (نطق نص المقطع) بسبب غياب هذا المُنشئ فقط،
+// بمعزل تام عن المنطق الفعلي المُختبَر (window.speechSynthesis نفسه يُحاكى
+// داخل كل اختبار على حدة حسب الحاجة)
+if (typeof window.SpeechSynthesisUtterance === 'undefined') {
+  class SpeechSynthesisUtteranceMock {
+    text: string
+    lang = ''
+    constructor(text: string) {
+      this.text = text
+    }
+  }
+  window.SpeechSynthesisUtterance =
+    SpeechSynthesisUtteranceMock as unknown as typeof SpeechSynthesisUtterance
+}
+
 // مطابقة اتجاه الصفحة الفعلي المضبوط في index.html (dir="rtl" lang="ar")
 // — Testing Library تُركّب المكوّنات مباشرة داخل document جديد لا يمرّ
 // بـ index.html إطلاقاً، فبدون هذا السطر تُختبر الواجهة بافتراض LTR خاطئ

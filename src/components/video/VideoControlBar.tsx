@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Gauge } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Gauge, Mic } from 'lucide-react'
 import { usePlayerTime } from '@/hooks/usePlayerTime'
 import { cn } from '@/lib/utils/cn'
 import { formatPlaybackRate } from '@/lib/utils/formatPlaybackRate'
@@ -22,6 +22,11 @@ interface VideoControlBarProps {
   onSetPlaybackRate: (rate: number) => void
   qualityLevels: string[]
   currentQuality: string
+  /** أزمنة بداية كل مقطع ترجمة (بالثواني) — تُرسم كعلامات كثافة صغيرة فوق شريط التقدّم */
+  segmentStartTimes?: number[]
+  /** وضع التظليل الحالي (توقّف تلقائي بعد كل مقطع) — للزر المرئي، المكافئ اللمسي لاختصار "s" */
+  isShadowingEnabled: boolean
+  onToggleShadowing: () => void
 }
 
 /** خيارات سرعة التشغيل القياسية المعروضة في القائمة — تطابق المجموعة الشائعة في يوتيوب نفسه */
@@ -79,6 +84,9 @@ export function VideoControlBar({
   onSetPlaybackRate,
   qualityLevels,
   currentQuality,
+  segmentStartTimes,
+  isShadowingEnabled,
+  onToggleShadowing,
 }: VideoControlBarProps) {
   const isPlaying = playerState === YT_PLAYER_STATE.PLAYING
   const currentTime = usePlayerTime(getCurrentTime, isPlaying)
@@ -135,6 +143,24 @@ export function VideoControlBar({
             style={{ width: `${progressPercent}%` }}
           />
         </div>
+
+        {/* علامات كثافة المقاطع: تُظهر بلمحة أين تتركّز المقاطع المترجمة
+            على طول الفيديو، فتسهّل التنقّل السريع لمقطع معيّن بدل السحب
+            العشوائي. insetInlineStart (وليس left) عمداً — يبقى صحيحاً في
+            كلا اتجاهي الصفحة (RTL/LTR) بلا أي شرط إضافي. pointer-events-none
+            لأنها طبقة معلوماتية بحتة فوق شريط تفاعلي بالفعل (input أدناه) */}
+        {duration > 0 && segmentStartTimes && segmentStartTimes.length > 0 && (
+          <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+            {segmentStartTimes.map((start, index) => (
+              <span
+                key={index}
+                className="absolute top-1/2 h-1.5 w-px -translate-y-1/2 bg-white/50"
+                style={{ insetInlineStart: `${Math.min(100, Math.max(0, (start / duration) * 100))}%` }}
+              />
+            ))}
+          </div>
+        )}
+
         <input
           type="range"
           min={0}
@@ -190,6 +216,20 @@ export function VideoControlBar({
               className="hidden h-1 w-14 cursor-pointer appearance-none rounded-full bg-white/25 accent-console sm:block sm:w-16"
             />
           </div>
+
+          <button
+            type="button"
+            onClick={onToggleShadowing}
+            aria-label={isShadowingEnabled ? 'إيقاف وضع التظليل' : 'تفعيل وضع التظليل (توقّف تلقائي بعد كل مقطع)'}
+            aria-pressed={isShadowingEnabled}
+            title="وضع التظليل: توقّف تلقائي بعد كل مقطع للتدرّب على النطق"
+            className={cn(
+              'flex h-8 min-w-8 items-center justify-center rounded-sm px-1.5 transition-[color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+              isShadowingEnabled ? 'text-console' : 'text-white hover:text-console',
+            )}
+          >
+            <Mic size={15} aria-hidden="true" />
+          </button>
 
           <div ref={rateMenuRef} className="relative">
             <button

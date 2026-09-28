@@ -11,6 +11,9 @@ interface TranscriptListProps {
   isPlaying: boolean
   viewMode: ViewMode
   onSeek: (seconds: number) => void
+  /** رموز لغة المسارين (ISO 639-1) — تُمرَّر لأزرار نطق المقطع في كل بطاقة */
+  translationLang?: string
+  sourceLang?: string
   /**
    * صحيح أثناء وجود عبارة بحث نشطة — يُستخدم لأمرين معاً: (1) تعطيل
    * التمرير التلقائي للمقطع النشط، فلا يُفلت هذا التمرير قائمة نتائج
@@ -38,12 +41,14 @@ export function TranscriptList({
   isPlaying,
   viewMode,
   onSeek,
+  translationLang,
+  sourceLang,
   isSearchActive,
 }: TranscriptListProps) {
   const currentTime = usePlayerTime(getCurrentTime, isPlaying)
   const activeSlice = useMemo(() => findActiveCue(slices, currentTime), [slices, currentTime])
 
-  const activeItemRef = useRef<HTMLButtonElement>(null)
+  const activeItemRef = useRef<HTMLDivElement>(null)
   const listContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -120,6 +125,8 @@ export function TranscriptList({
             isActive={isActive}
             viewMode={viewMode}
             onSeek={onSeek}
+            translationLang={translationLang}
+            sourceLang={sourceLang}
             activeProgressPercent={activeProgressPercent}
           />
         )

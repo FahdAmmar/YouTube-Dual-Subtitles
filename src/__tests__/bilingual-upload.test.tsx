@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from '../App'
 import { installMockYouTubeApi } from './testHelpers/mockYouTubePlayer'
+import { fullText } from './testHelpers/fullText'
 
 beforeEach(() => {
   installMockYouTubeApi()
@@ -60,9 +61,11 @@ describe('bilingual subtitle upload', () => {
     })
 
     // النص الإنجليزي (الترجمة) يظهر أيضاً في نفس اللوحة — كلا المسارين مُعبّآن
+    // نص الترجمة الأجنبية أصبح كلمات منفصلة (كل كلمة عنصر خاص بها) منذ
+    // إضافة ميزة "انقر على كلمة لرؤية معناها" — انظر توثيق fullText
     await waitFor(() => {
-      expect(screen.getByText('Welcome to this video')).toBeInTheDocument()
-      expect(screen.getByText('This is an example of the translation')).toBeInTheDocument()
+      expect(screen.getByText(fullText('Welcome to this video'))).toBeInTheDocument()
+      expect(screen.getByText(fullText('This is an example of the translation'))).toBeInTheDocument()
     })
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
