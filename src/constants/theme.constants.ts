@@ -11,6 +11,10 @@ export const STORAGE_KEYS = {
   WATCH_HISTORY: 'ydc:watch-history',
   GLOSSARY: 'ydc:glossary',
   SPEECH_VOICES: 'ydc:speech-voices',
+  SPEECH_RATE: 'ydc:speech-rate',
+  BOOKMARKS: 'ydc:bookmarks',
+  LEARNING_STATS: 'ydc:learning-stats',
+  SIDEBAR_WIDTH: 'dual-subtitles:sidebar-width',
 } as const
 
 /**

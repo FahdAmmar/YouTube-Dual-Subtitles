@@ -15,7 +15,7 @@ export interface SubtitleCue {
 }
 
 /** الصيغ المدعومة لملفات الترجمة */
-export type SubtitleFormat = 'srt' | 'vtt'
+export type SubtitleFormat = 'srt' | 'vtt' | 'ass'
 
 /** معرّف فريد لكل مسار ترجمة داخل التطبيق (المسار الأول أو الثاني) */
 export type SubtitleTrackId = 'trackA' | 'trackB'

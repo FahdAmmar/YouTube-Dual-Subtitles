@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Volume2 } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { useSpeechVoices } from '@/hooks/useSpeechVoices'
-import { filterVoicesByLanguage, getSavedVoiceUri, saveVoiceUri } from '@/lib/utils/speechVoices'
-import { speakText } from '@/lib/utils/textToSpeech'
+import { filterVoicesByLanguage, getSavedVoiceUri, saveVoiceUri, describeVoiceLanguage } from '@/lib/utils/speechVoices'
 import { getLanguageByCode } from '@/constants/languages'
+import { VoicePickerModal } from './VoicePickerModal'
 
 interface VoiceSelectorProps {
   languageCode: string
@@ -13,34 +13,33 @@ interface VoiceSelectorProps {
 const AUTO_VALUE = ''
 
 /**
- * اختيار صوت النطق للغة مسار معيّن من الأصوات المتاحة فعلياً على هذا
- * الجهاز. الاختيار محفوظ لكل لغة على حدة (لا صوت عالمي واحد، فالصوت
- * الألماني لا ينطق العربية) ويُستخدم تلقائياً في أزرار نطق المقاطع
+ * صفّ اختيار صوت النطق للغة مسار معيّن ضمن لوحة الإعدادات: يعرض ملخّص
+ * الاختيار الحالي، ويفتح VoicePickerModal لاستعراض كل الأصوات المتاحة
+ * فعلياً على هذا الجهاز مع معاينة صوتية لكل واحد. الاختيار محفوظ لكل
+ * لغة على حدة (الصوت الألماني لا ينطق العربية) ويُستخدم تلقائياً في
+ * أزرار نطق المقاطع
  */
 export function VoiceSelector({ languageCode, languageLabel }: VoiceSelectorProps) {
   const allVoices = useSpeechVoices()
   const voices = filterVoicesByLanguage(allVoices, languageCode)
-  const localVoices = voices.filter((voice) => voice.localService)
-  const networkVoices = voices.filter((voice) => !voice.localService)
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
 
-  // القيمة المحفوظة تُقرأ فوراً (قد تكون قائمة الأصوات فارغة بعد لأن Chrome
-  // يحمّلها لاحقاً)، وتُعرض فقط إن كان الصوت متاحاً فعلاً، وإلا "تلقائي"
-  const [selectedUri, setSelectedUri] = useState(() => getSavedVoiceUri(languageCode) ?? AUTO_VALUE)
-  const effectiveUri = voices.some((voice) => voice.voiceURI === selectedUri) ? selectedUri : AUTO_VALUE
+  // القيمة المحفوظة تُعرض فقط إن كان الصوت لا يزال متاحاً فعلياً، وإلا "تلقائي"
+  const savedUri = getSavedVoiceUri(languageCode)
+  const selectedUri = savedUri && voices.some((voice) => voice.voiceURI === savedUri) ? savedUri : AUTO_VALUE
+  const selectedVoice = voices.find((voice) => voice.voiceURI === selectedUri)
 
-  const selectId = `voice-select-${languageCode}`
-  const sample = getLanguageByCode(languageCode)?.speechSample
+  const sample = getLanguageByCode(languageCode)?.speechSample ?? ''
 
-  function handleChange(uri: string) {
-    setSelectedUri(uri)
-    saveVoiceUri(languageCode, uri || null)
+  function handleSelect(voiceUri: string | null) {
+    saveVoiceUri(languageCode, voiceUri)
   }
 
   return (
     <div className="flex flex-col gap-2 border-s-4 border-border ps-4">
-      <label htmlFor={selectId} className="text-sm font-semibold text-text-primary">
+      <span className="text-sm font-semibold text-text-primary">
         صوت نطق {languageLabel}
-      </label>
+      </span>
 
       {voices.length === 0 ? (
         <p className="text-xs text-text-muted">
@@ -49,48 +48,38 @@ export function VoiceSelector({ languageCode, languageLabel }: VoiceSelectorProp
         </p>
       ) : (
         <>
-          <div className="flex items-center gap-2">
-            <select
-              id={selectId}
-              value={effectiveUri}
-              onChange={(event) => handleChange(event.target.value)}
-              className="min-w-0 flex-1 rounded-md border border-border bg-surface-elevated px-2 py-1.5 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
-            >
-              <option value={AUTO_VALUE}>تلقائي (الصوت الافتراضي للمتصفح)</option>
-              {localVoices.length > 0 && (
-                <optgroup label="أصوات محلية (نظام التشغيل)">
-                  {localVoices.map((voice) => (
-                    <option key={voice.voiceURI} value={voice.voiceURI}>
-                      {voice.name} — {voice.lang}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {networkVoices.length > 0 && (
-                <optgroup label="أصوات شبكية (عبر الإنترنت)">
-                  {networkVoices.map((voice) => (
-                    <option key={voice.voiceURI} value={voice.voiceURI}>
-                      {voice.name} — {voice.lang}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
+          <button
+            type="button"
+            aria-label={`تغيير صوت نطق ${languageLabel} — الحالي: ${selectedVoice?.name ?? 'تلقائي'}`}
+            onClick={() => setIsPickerOpen(true)}
+            className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-start transition-colors hover:border-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          >
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-medium text-text-primary">
+                {selectedVoice?.name ?? 'تلقائي'}
+              </span>
+              <span className="truncate text-xs text-text-muted">
+                {selectedVoice ? describeVoiceLanguage(selectedVoice.lang) : 'صوت المتصفح الافتراضي لهذه اللغة'}
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-console">
+              تغيير
+              <ChevronLeft size={14} aria-hidden="true" />
+            </span>
+          </button>
 
-            {sample && (
-              <button
-                type="button"
-                onClick={() => speakText(sample, languageCode)}
-                aria-label={`تجربة صوت ${languageLabel}`}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-text-secondary transition-colors hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
-              >
-                <Volume2 size={15} aria-hidden="true" />
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-text-muted">
-            {voices.length} صوت متاح لهذه اللغة ({localVoices.length} محلي، {networkVoices.length} شبكي)
-          </p>
+          <p className="text-xs text-text-muted">{voices.length} صوت متاح لهذه اللغة</p>
+
+          <VoicePickerModal
+            isOpen={isPickerOpen}
+            onClose={() => setIsPickerOpen(false)}
+            languageCode={languageCode}
+            languageLabel={languageLabel}
+            sample={sample}
+            voices={voices}
+            selectedUri={selectedUri}
+            onSelect={handleSelect}
+          />
         </>
       )}
     </div>

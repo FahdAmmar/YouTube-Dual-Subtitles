@@ -10,11 +10,13 @@ const OPTIONS: { mode: ViewMode; label: string }[] = [
   { mode: 'source', label: 'SOURCE' },
   { mode: 'translation', label: 'TRANSLATION' },
   { mode: 'both', label: 'BOTH' },
+  { mode: 'recall', label: 'RECALL' },
 ]
 
 /**
  * مجموعة أزرار قوسية بطراز الكونسول التقني للتبديل بين عرض المصدر فقط،
- * الترجمة فقط، أو كليهما معاً — تتحكم في كل من الترجمة المُطبَّقة فوق
+ * الترجمة فقط، أو كليهما معاً، أو الاستدعاء (المصدر ظاهر والترجمة
+ * مخفية حتى تكشفها بنفسك لاختبار فهمك) — تتحكم في كل من الترجمة المُطبَّقة فوق
  * الفيديو وقائمة النص المتزامن معاً من مكان واحد
  */
 export function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {

@@ -1,14 +1,18 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Play, Pause, FastForward, Rewind, Maximize, Minimize, RotateCcw, SkipBack, SkipForward, Volume2, Volume1, Repeat, Mic, AlertCircle } from 'lucide-react'
+import { Play, Pause, FastForward, Rewind, Maximize, Minimize, RotateCcw, SkipBack, SkipForward, Volume2, Volume1, Repeat, Mic, AlertCircle, Star } from 'lucide-react'
 import { YouTubePlayerView } from './YouTubePlayerView'
 import { VimeoPlayerView } from './VimeoPlayerView'
 import { LocalVideoPlayerView } from './LocalVideoPlayerView'
 import { VideoTopBar } from './VideoTopBar'
 import { VideoControlBar } from './VideoControlBar'
+import { usePictureInPicture } from '@/hooks/usePictureInPicture'
 import { SubtitleOverlay } from './SubtitleOverlay'
 import { PlaybackShortcutToast, type PlaybackShortcutFeedback } from './PlaybackShortcutToast'
 import { useFullscreen } from '@/hooks/useFullscreen'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useMediaSession } from '@/hooks/useMediaSession'
+import { DOUBLE_TAP_SEEK_SECONDS } from '@/lib/utils/touchGestures'
+import { VideoGestureLayer } from './VideoGestureLayer'
 import { useFocusRetention } from '@/hooks/useFocusRetention'
 import { useSceneRepeat } from '@/hooks/useSceneRepeat'
 import { useShadowingMode } from '@/hooks/useShadowingMode'
@@ -29,6 +33,10 @@ interface VideoStageProps {
   onOpenShortcutsHelp: () => void
   onFocusSearch: () => void
   slices: PairedSlice[]
+  revealedIndex: number | null
+  onToggleReveal: () => void
+  /** Bookmarks the segment playing now; true = added, false = removed, null = no segment is playing */
+  onToggleActiveBookmark: () => boolean | null
 }
 
 let shortcutFeedbackIdCounter = 0
@@ -53,9 +61,16 @@ export function VideoStage({
   onOpenShortcutsHelp,
   onFocusSearch,
   slices,
+  revealedIndex,
+  onToggleReveal,
+  onToggleActiveBookmark,
 }: VideoStageProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const { isFullscreen, toggleFullscreen } = useFullscreen(stageRef)
+  const pictureInPicture = usePictureInPicture(
+    player.renderTarget.type === 'local' ? player.renderTarget.videoRef : null,
+    player.isReady,
+  )
   const [shortcutFeedback, setShortcutFeedback] = useState<PlaybackShortcutFeedback | null>(null)
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const slicesRef = useRef(slices)
@@ -144,6 +159,19 @@ export function VideoStage({
     showShortcutFeedback('1×', <RotateCcw size={20} aria-hidden="true" />)
   }, [showShortcutFeedback])
 
+  const handleSeekBy = useCallback(
+    (direction: 1 | -1) => {
+      const p = playerRef.current
+      const upperBound = p.duration > 0 ? p.duration : Number.POSITIVE_INFINITY
+      p.seekTo(Math.min(upperBound, Math.max(0, p.getCurrentTime() + direction * DOUBLE_TAP_SEEK_SECONDS)))
+      showShortcutFeedback(
+        `${direction > 0 ? '+' : '−'}${DOUBLE_TAP_SEEK_SECONDS} ث`,
+        direction > 0 ? <FastForward size={20} aria-hidden="true" /> : <Rewind size={20} aria-hidden="true" />,
+      )
+    },
+    [showShortcutFeedback],
+  )
+
   const handlePrevScene = useCallback(() => {
     const p = playerRef.current
     const currentSlices = slicesRef.current
@@ -217,6 +245,31 @@ export function VideoStage({
     )
   }, [toggleShadowing, isShadowingEnabled, showShortcutFeedback])
 
+  useMediaSession({
+    enabled: player.isReady,
+    title: player.videoTitle,
+    isPlaying,
+    duration: player.duration,
+    playbackRate: player.playbackRate,
+    getCurrentTime: player.getCurrentTime,
+    controls: {
+      onPlay: () => playerRef.current.play(),
+      onPause: () => playerRef.current.pause(),
+      onSeekTo: (seconds) => playerRef.current.seekTo(seconds),
+      onPrevScene: handlePrevScene,
+      onNextScene: handleNextScene,
+    },
+  })
+
+  const handleToggleBookmark = useCallback(() => {
+    const added = onToggleActiveBookmark()
+    if (added === null) return
+    showShortcutFeedback(
+      added ? 'أُضيفت الجملة إلى المفضلة' : 'أُزيلت الجملة من المفضلة',
+      <Star size={20} aria-hidden="true" />,
+    )
+  }, [onToggleActiveBookmark, showShortcutFeedback])
+
   useKeyboardShortcuts(player.isReady, {
     onTogglePlayPause: handleTogglePlayPause,
     onSpeedUp: handleSpeedUp,
@@ -232,6 +285,8 @@ export function VideoStage({
     onShowHelp: onOpenShortcutsHelp,
     onFocusSearch,
     onToggleShadowing: handleToggleShadowing,
+    onToggleTranslationReveal: onToggleReveal,
+    onToggleBookmark: handleToggleBookmark,
   })
 
   return (
@@ -264,6 +319,16 @@ export function VideoStage({
 
       {player.isReady && (
         <>
+          {/* First in the fragment on purpose: everything after it (top bar, subtitles,
+              control bar) stacks above it and stays tappable */}
+          <VideoGestureLayer
+            onTogglePlay={handleTogglePlayPause}
+            onSeekBackward={() => handleSeekBy(-1)}
+            onSeekForward={() => handleSeekBy(1)}
+            onPrevScene={handlePrevScene}
+            onNextScene={handleNextScene}
+          />
+
           <VideoTopBar languageCode={sourceTrack.languageCode} onBack={onChangeVideo} />
 
           {/* شارة تذكيرية بأن وضع التظليل مفعَّل — تبقى ظاهرة طوال الوضع
@@ -294,6 +359,9 @@ export function VideoStage({
             getCurrentTime={player.getCurrentTime}
             isPlaying={isPlaying}
             viewMode={viewMode}
+            slices={slices}
+            revealedIndex={revealedIndex}
+            onToggleReveal={onToggleReveal}
             stageRef={stageRef}
           />
 
@@ -319,6 +387,8 @@ export function VideoStage({
               segmentStartTimes={segmentStartTimes}
               isShadowingEnabled={isShadowingEnabled}
               onToggleShadowing={handleToggleShadowing}
+              onTogglePictureInPicture={pictureInPicture.isSupported ? pictureInPicture.toggle : undefined}
+              isPictureInPictureActive={pictureInPicture.isActive}
             />
           </div>
         </>

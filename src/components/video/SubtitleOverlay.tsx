@@ -5,6 +5,9 @@ import { useActiveCue } from '@/hooks/useActiveCue'
 import { useDraggableOverlayPosition } from '@/hooks/useDraggableOverlayPosition'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import { cn } from '@/lib/utils/cn'
+import { findActiveCue } from '@/lib/subtitles/findActiveCue'
+import { getVisibleTracks } from '@/lib/subtitles/visibleTracks'
+import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import type { SubtitleTrackState } from '@/types/subtitle.types'
 import type { ViewMode } from '@/types/theme.types'
 
@@ -14,6 +17,10 @@ interface SubtitleOverlayProps {
   getCurrentTime: () => number
   isPlaying: boolean
   viewMode: ViewMode
+  /** Recall mode: paired segments and the revealed one, to know if the playing segment is revealed */
+  slices: PairedSlice[]
+  revealedIndex: number | null
+  onToggleReveal: () => void
   /** مرجع "مسرح" الفيديو الكامل — الحدود التي يُحصر ضمنها سحب الترجمة (لا يمكن سحبها خارج الفيديو) */
   stageRef: RefObject<HTMLDivElement>
 }
@@ -47,6 +54,9 @@ export function SubtitleOverlay({
   getCurrentTime,
   isPlaying,
   viewMode,
+  slices,
+  revealedIndex,
+  onToggleReveal,
   stageRef,
 }: SubtitleOverlayProps) {
   const { settings } = useSubtitleSettings()
@@ -63,15 +73,18 @@ export function SubtitleOverlay({
     currentTime - translationTrack.syncOffsetSeconds,
   )
 
-  const showSource = viewMode !== 'translation' && activeSource
-  const showTranslation = viewMode !== 'source' && activeTranslation
+  const isRevealed = revealedIndex !== null && findActiveCue(slices, currentTime)?.originalIndex === revealedIndex
+  const visibleTracks = getVisibleTracks(viewMode, isRevealed)
+  const showSource = visibleTracks.source && activeSource
+  const showTranslation = visibleTracks.translation && activeTranslation
+  const showRevealPrompt = viewMode === 'recall' && !isRevealed && Boolean(activeTranslation)
 
   // يحافظ على نفس النسبة السابقة بين عرض السطرين (88% للمرجعي مقابل 94%
   // للأساسي) لكن كليهما الآن يتحرّكان معاً بمقدار واحد يتحكم به المستخدم
   const translationWidthPercent = settings.subtitleWidthPercent
   const sourceWidthPercent = settings.subtitleWidthPercent * (88 / 94)
 
-  if (!showSource && !showTranslation) return null
+  if (!showSource && !showTranslation && !showRevealPrompt) return null
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4 sm:bottom-6">
@@ -132,6 +145,16 @@ export function SubtitleOverlay({
             </motion.p>
           )}
         </AnimatePresence>
+
+        {showRevealPrompt && (
+          <button
+            type="button"
+            onClick={onToggleReveal}
+            className="rounded-md bg-black/70 px-3 py-1.5 text-sm font-medium text-white/85 transition-colors hover:bg-black/85 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          >
+            اكشف الترجمة (R)
+          </button>
+        )}
       </div>
     </div>
   )

@@ -1,3 +1,4 @@
+import { MotionConfig } from 'framer-motion'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { SubtitleSettingsProvider } from '@/context/SubtitleSettingsContext'
 import { AppShell } from '@/components/layout/AppShell'
@@ -12,11 +13,14 @@ import { ErrorBoundary } from '@/components/system/ErrorBoundary'
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <SubtitleSettingsProvider>
-          <AppShell />
-        </SubtitleSettingsProvider>
-      </ThemeProvider>
+      {/* Framer Motion ignores the CSS media rule; "user" follows the OS setting */}
+      <MotionConfig reducedMotion="user">
+        <ThemeProvider>
+          <SubtitleSettingsProvider>
+            <AppShell />
+          </SubtitleSettingsProvider>
+        </ThemeProvider>
+      </MotionConfig>
     </ErrorBoundary>
   )
 }

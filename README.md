@@ -49,15 +49,23 @@ No backend. No database. No API keys. Everything runs in the browser.
 
 ### 🌐 Dual Subtitle Power
 
-- Upload **any two independent SRT/VTT files** (different sources, different segmentations)
-- **Upload a single bilingual SRT/VTT file** — each cue containing both languages (typically one line per language) is automatically split into the two tracks by detecting each line's writing direction (RTL → source, LTR → translation), with a positional fallback for same‑direction language pairs; both tracks appear with the exact same design as if two separate files were uploaded
+- Upload **any two independent SRT / VTT / ASS / SSA files** (different sources, different segmentations)
+- **ASS / SSA support** — styled subtitle files (anime, fansubs) load like any other: the `Format:` line decides the columns, override tags such as `{\an8}` are stripped, `\N` becomes a line break, and typesetting drawings and `Comment:` lines are skipped. Styles, positioning and karaoke effects are intentionally not rendered — only the text and timing are used
+- **Upload a single bilingual SRT/VTT/ASS file** — each cue containing both languages (typically one line per language) is automatically split into the two tracks by detecting each line's writing direction (RTL → source, LTR → translation), with a positional fallback for same‑direction language pairs; both tracks appear with the exact same design as if two separate files were uploaded
 - Frame‑accurate sync using `O(log n)` binary‑search cue lookup
 - Per‑track manual sync offset (±15s) to correct mistimed files — baked directly into the transcript highlight, so it never drifts from what's burned into the video overlay. The offset is remembered per (video, subtitle file) pair and restored automatically next time you open the same combination
 - Live transcript panel with the active segment highlighted in real time, including an animated progress bar tracking position within that exact segment
 - **Search the transcript** — filters both source and translation text live as you type (press `/` to jump straight to the search field), click any result to seek the video there instantly. Segment numbers keep their original position (`SEG_047` stays `SEG_047` even filtered down to one result), and the active‑segment auto‑scroll pauses while searching so it doesn't yank a manually‑browsed result list back to the live position every few seconds
+- **Bookmarked sentences** — star any segment in the transcript, or press `B` to bookmark the one playing right now. The star button next to the search field filters the list to your favourites. Bookmarks are stored per video, keyed by segment position plus a hash of its text (so changing the sync offset never loses them, while a different subtitle file never matches wrongly), and they are included in the JSON backup
 - **Draggable burned‑in captions** — drag the subtitle bubble anywhere within the video frame (e.g. to avoid covering on‑screen text), constrained to the video's own bounds; double‑click to reset, position persists across sessions
-- Toggle view mode: source only, translation only, or both side‑by‑side
+- Toggle view mode: source only, translation only, both side‑by‑side, or **RECALL** — the source line stays visible while the translation is hidden until you reveal it (`R`, or the on‑screen *reveal* button on the video and the mobile strip). Only the segment currently playing can be revealed, so every new sentence starts as a fresh prompt
 - Export subtitles as SRT — source only, translation only, or merged bilingual file
+
+### 💾 Your Data, Portable
+
+- **Glossary export** — one click in the vocabulary panel downloads your saved words as a headerless CSV (word, translation, definition, example, part of speech, language) ready for Anki's import mapping. Cells that could run as spreadsheet formulas (`=`, `+`, `-`, `@`) are neutralised, since word text originates from untrusted subtitle files
+- **Backup & restore** — Settings → *Backup* exports settings, watch history, sync offsets, glossary and the full subtitle file contents to a single JSON file. Restoring validates the whole file first (format, version, allow-listed keys, per-file size caps) and only then writes; a failed write rolls `localStorage` back to its previous state
+- **Learning stats** — the home screen shows your day streak, time watched over the last 7 days (with a small chart), saved words and bookmarked sentences. Time is counted only while a video is actually playing and stored per local calendar day on your device; a day counts toward the streak after one minute, and the streak stays alive through today until midnight. Long gaps (a sleeping laptop) are not counted, and the stats are included in the JSON backup. Nothing leaves your browser
 
 ### ⌨️ Playback & Keyboard Shortcuts
 
@@ -70,11 +78,17 @@ No backend. No database. No API keys. Everything runs in the browser.
 - `1` — repeat the current scene **twice** · `2` — **three** times · `3` — **four** times (a persistent on‑screen badge tracks loop progress, e.g. `2/3`)
 - `?` — open the in‑app **keyboard shortcuts help panel** (also reachable via a button in the console header) — lists every shortcut above, grouped into categories (Playback / Navigation & Repeat / General) instead of one long flat list
 - `/` — focus the transcript search field
+- `R` — in RECALL view mode, reveal / hide the translation of the current segment
+- `B` — bookmark / un‑bookmark the sentence currently playing
 - All shortcuts work identically whether watching a YouTube video or a local file
 - All shortcuts are automatically disabled while typing in any text field, and ignore modifier‑key combos (`Ctrl`/`Cmd`/`Alt`) so they never fight with browser shortcuts
 - **Focus retention**: clicking the YouTube video moves keyboard focus into its cross‑origin iframe, whose keydown events never reach the parent document. A `focusin` listener on `document` detects the instant focus lands on the iframe and reclaims it for the stage container immediately, so shortcuts keep responding reliably — the keydown listener is also registered in the capture phase as a defensive measure
 - Every shortcut has an on‑screen flash indicator (à la YouTube/Netflix) confirming the action, plus a clickable equivalent in the control bar (a speed menu) for mouse/touch users
 - **Not included: a YouTube resolution/quality picker.** YouTube [officially discontinued](https://developers.google.com/youtube/iframe_api_reference) programmatic quality control for embeds — `setPlaybackQuality` and the `vq` load‑time hint are both documented no‑ops today, so a quality selector for YouTube videos here would just be a fake control that does nothing. Quality is fully automatic (adaptive bitrate) on YouTube's side. This doesn't apply to local file uploads, which always play at their native, unmodified quality.
+
+**System media controls** — lock screen, headset and keyboard media keys drive the player through the Media Session API (all sources). *Previous / next track* jump between subtitle segments, and the seek buttons and scrubber work as usual. Browsers without the API simply ignore this.
+
+**Touch gestures** (phones and tablets only — with a mouse the player behaves exactly as before): tap to play/pause, double‑tap the left or right third to skip 10 s back/forward (keep tapping to keep skipping), and swipe left/right to jump to the next/previous subtitle segment. Vertical swipes still scroll the page, and the control bar, top bar and draggable subtitles stay above the gesture layer.
 
 ### 🚀 Technical Highlights
 
@@ -83,6 +97,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 - **Self‑hosted fonts, installable app**: IBM Plex (Sans, Sans Arabic, Mono) is served from `public/fonts` instead of Google Fonts CDN — one less external dependency on the critical rendering path. A full PWA setup (`vite-plugin-pwa`, auto‑updating service worker, manifest, home‑screen icons) means the app can be installed and opens instantly on repeat visits
 - **Isolated Re‑renders**: Video time is exposed as an imperative getter via `useSyncExternalStore`; only subscriber components update on tick, and transcript cards are memoized so only the active one re‑renders during playback
 - **`overflow-x: clip`, not `hidden`**: the global horizontal‑overflow safety net in `index.css` deliberately uses `clip` — `hidden` on `html`/`body` is a well‑known way to silently break `position: sticky` on descendants (it creates a new scroll/formatting context), which would have broken the mobile sticky video. `clip` gets the same "no horizontal scrollbar" result without that side effect.
+- **Reduced motion**: the OS `prefers-reduced-motion` setting is honoured for both CSS animations (run once, no infinite loops) and Framer Motion (`MotionConfig reducedMotion="user"` disables transform animations app-wide)
 - **Resilient by design**: every external browser/YouTube/media API call (`matchMedia`, `scrollIntoView`, the Fullscreen API, `HTMLMediaElement.play()`, and the entire YouTube postMessage bridge) is wrapped defensively — a temporary hiccup degrades gracefully instead of crashing the app
 - **Performance**: binary‑search cue matching, 2 MB subtitle file size cap, code‑split settings panel
 - **Security**: XSS‑safe by construction, no `dangerouslySetInnerHTML`, strict URL validation, `youtube-nocookie.com`; local video files are validated by MIME type/extension and never transmitted anywhere
@@ -231,6 +246,7 @@ No backend. No database. No API keys. Everything runs in the browser.
 │   │   │   ├── 📄 pairCues.ts
 │   │   │   ├── 📄 parseSRT.ts
 │   │   │   ├── 📄 parseSubtitleFile.ts
+│   │   │   ├── 📄 parseASS.ts
 │   │   │   ├── 📄 parseVTT.ts
 │   │   │   ├── 📄 serializeSRT.ts
 │   │   │   ├── 📄 splitBilingualCues.test.ts

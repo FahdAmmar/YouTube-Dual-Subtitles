@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { filterSlicesByQuery } from './filterSlices'
+import { filterSlicesByQuery, filterBookmarkedSlices } from './filterSlices'
+import { makeBookmarkId } from '@/lib/utils/bookmarkStore'
 import type { PairedSlice } from './pairCues'
 
 function makeSlice(overrides: Partial<PairedSlice>): PairedSlice {
@@ -62,5 +63,25 @@ describe('filterSlicesByQuery', () => {
     const slice = makeSlice({ sourceText: null, translationText: 'Hello' })
     expect(filterSlicesByQuery([slice], 'hello')).toEqual([slice])
     expect(filterSlicesByQuery([slice], 'nonexistent')).toEqual([])
+  })
+})
+
+describe('filterBookmarkedSlices', () => {
+  const slices = [0, 1, 2].map((index) => ({
+    id: `slice-${index}`,
+    originalIndex: index,
+    start: index,
+    end: index + 1,
+    sourceText: `src ${index}`,
+    translationText: null,
+  }))
+
+  it('keeps only slices whose bookmark id is in the set, preserving order', () => {
+    const wanted = new Set(slices.filter((slice) => slice.originalIndex !== 1).map(makeBookmarkId))
+    expect(filterBookmarkedSlices(slices, wanted).map((slice) => slice.id)).toEqual(['slice-0', 'slice-2'])
+  })
+
+  it('returns nothing when there are no bookmarks', () => {
+    expect(filterBookmarkedSlices(slices, new Set())).toEqual([])
   })
 })

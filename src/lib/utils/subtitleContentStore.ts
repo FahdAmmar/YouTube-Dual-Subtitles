@@ -22,11 +22,11 @@ const SAVED_AT_INDEX = 'savedAt'
 // سقف أقل من سجل المشاهدات (40) بعمد: كل فيديو قد يملك مسارين (مصدر +
 // ترجمة)، ومحتوى الملفات أثقل بكثير من نص/رقم قصير، فسقف أصغر هنا يوازن
 // بين الفائدة الفعلية واستهلاك حصة IndexedDB المخصصة للمتصفح
-const MAX_STORED_FILES = 30
+export const MAX_STORED_FILES = 30
 
 export type SubtitleTrackId = 'source' | 'translation'
 
-interface StoredSubtitleFile {
+export interface StoredSubtitleFile {
   key: string
   content: string
   savedAt: number
@@ -156,5 +156,45 @@ export async function deleteSubtitleContentForVideo(videoKey: string): Promise<v
     db.close()
   } catch {
     // تجاهل بصمت — انظر التوثيق أعلى الملف
+  }
+}
+
+/** كل الملفات المحفوظة — لتصدير نسخة احتياطية؛ يعيد [] عند أي فشل، بنفس فلسفة بقية الملف */
+export async function getAllSubtitleFiles(): Promise<StoredSubtitleFile[]> {
+  if (!isIndexedDbAvailable()) return []
+
+  try {
+    const db = await openDatabase()
+    const tx = db.transaction(STORE_NAME, 'readonly')
+    const files = await new Promise<StoredSubtitleFile[]>((resolve, reject) => {
+      const request = tx.objectStore(STORE_NAME).getAll()
+      request.onsuccess = () => resolve(request.result as StoredSubtitleFile[])
+      request.onerror = () => reject(request.error as Error)
+    })
+    db.close()
+    return files
+  } catch {
+    return []
+  }
+}
+
+/**
+ * يكتب ملفات مستعادة من نسخة احتياطية محافظاً على savedAt الأصلي (ليبقى ترتيب
+ * التقليم صحيحاً). على عكس بقية الملف يرمي عند الفشل: المستخدم طلب الاستعادة
+ * صراحةً ويجب أن يعرف إن لم تنجح
+ */
+export async function restoreSubtitleFiles(files: readonly StoredSubtitleFile[]): Promise<void> {
+  if (files.length === 0) return
+  if (!isIndexedDbAvailable()) throw new Error('IndexedDB unavailable')
+
+  const db = await openDatabase()
+  try {
+    const tx = db.transaction(STORE_NAME, 'readwrite')
+    const store = tx.objectStore(STORE_NAME)
+    for (const file of files) store.put(file)
+    await awaitTransaction(tx)
+    await pruneOldestEntries(db)
+  } finally {
+    db.close()
   }
 }

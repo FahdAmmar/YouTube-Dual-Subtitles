@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Gauge, Mic } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Gauge, Mic, PictureInPicture2 } from 'lucide-react'
 import { usePlayerTime } from '@/hooks/usePlayerTime'
 import { cn } from '@/lib/utils/cn'
 import { formatPlaybackRate } from '@/lib/utils/formatPlaybackRate'
@@ -27,6 +27,9 @@ interface VideoControlBarProps {
   /** وضع التظليل الحالي (توقّف تلقائي بعد كل مقطع) — للزر المرئي، المكافئ اللمسي لاختصار "s" */
   isShadowingEnabled: boolean
   onToggleShadowing: () => void
+  /** Omit to hide the button (sources that can't use native PiP) */
+  onTogglePictureInPicture?: () => void
+  isPictureInPictureActive?: boolean
 }
 
 /** خيارات سرعة التشغيل القياسية المعروضة في القائمة — تطابق المجموعة الشائعة في يوتيوب نفسه */
@@ -87,6 +90,8 @@ export function VideoControlBar({
   segmentStartTimes,
   isShadowingEnabled,
   onToggleShadowing,
+  onTogglePictureInPicture,
+  isPictureInPictureActive = false,
 }: VideoControlBarProps) {
   const isPlaying = playerState === YT_PLAYER_STATE.PLAYING
   const currentTime = usePlayerTime(getCurrentTime, isPlaying)
@@ -286,6 +291,22 @@ export function VideoControlBar({
             >
               AUTO
             </span>
+          )}
+
+          {onTogglePictureInPicture && (
+            <button
+              type="button"
+              onClick={onTogglePictureInPicture}
+              aria-label={isPictureInPictureActive ? 'إغلاق وضع صورة داخل صورة' : 'تشغيل وضع صورة داخل صورة'}
+              aria-pressed={isPictureInPictureActive}
+              title="صورة داخل صورة (الفيديو فقط، بدون الترجمة)"
+              className={cn(
+                'flex h-8 min-w-8 items-center justify-center rounded-sm px-1.5 transition-[color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+                isPictureInPictureActive ? 'text-console' : 'text-white hover:text-console',
+              )}
+            >
+              <PictureInPicture2 size={15} aria-hidden="true" />
+            </button>
           )}
 
           <button

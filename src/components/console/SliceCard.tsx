@@ -1,6 +1,7 @@
 import { forwardRef, memo, useState, type MouseEvent } from 'react'
-import { Volume2 } from 'lucide-react'
+import { Star, Volume2 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { getVisibleTracks } from '@/lib/subtitles/visibleTracks'
 import { isSpeechSupported, speakText } from '@/lib/utils/textToSpeech'
 import { tokenizeIntoWords, isWhitespaceToken, stripSurroundingPunctuation } from '@/lib/utils/wordTokenize'
 import { WordDefinitionCard } from './WordDefinitionCard'
@@ -12,6 +13,10 @@ interface SliceCardProps {
   index: number
   isActive: boolean
   viewMode: ViewMode
+  /** Recall mode only: has this segment's translation been revealed? */
+  isTranslationRevealed?: boolean
+  isBookmarked?: boolean
+  onToggleBookmark?: (slice: PairedSlice) => void
   onSeek: (seconds: number) => void
   /** رمز لغة المسار الأجنبي (ISO 639-1) — يُمرَّر لمحرّك النطق ليختار صوتاً مناسباً */
   translationLang?: string
@@ -51,6 +56,9 @@ function SliceCardImpl(
     index,
     isActive,
     viewMode,
+    isTranslationRevealed = false,
+    isBookmarked = false,
+    onToggleBookmark,
     onSeek,
     translationLang,
     sourceLang,
@@ -58,8 +66,10 @@ function SliceCardImpl(
   }: SliceCardProps,
   ref: React.ForwardedRef<HTMLDivElement>,
 ) {
-  const showSource = viewMode !== 'translation' && slice.sourceText
-  const showTranslation = viewMode !== 'source' && slice.translationText
+  const visibleTracks = getVisibleTracks(viewMode, isTranslationRevealed)
+  const showSource = visibleTracks.source && slice.sourceText
+  const showTranslation = visibleTracks.translation && slice.translationText
+  const isTranslationHidden = viewMode === 'recall' && !isTranslationRevealed && Boolean(slice.translationText)
 
   // النص المُراد نطقه: النص الأجنبي أولاً (هدف تعلّم اللغة الأساسي)، وإلا
   // النص المرجعي — بحسب ما هو ظاهر فعلياً في وضع العرض الحالي (viewMode)
@@ -95,7 +105,7 @@ function SliceCardImpl(
             : 'border-transparent hover:bg-surface-elevated',
         )}
       >
-        <div className="flex items-center gap-2 pe-7">
+        <div className="flex items-center gap-2 pe-14">
           <span
             className={cn(
               'font-mono text-[10px] tracking-wider',
@@ -117,6 +127,12 @@ function SliceCardImpl(
             )}
           >
             {slice.sourceText}
+          </p>
+        )}
+
+        {isTranslationHidden && (
+          <p className="font-mono text-[11px] tracking-wide text-text-muted">
+            ••• الترجمة مخفية
           </p>
         )}
 
@@ -174,6 +190,21 @@ function SliceCardImpl(
           في HTML)، ومموضع فوقه بإحداثيات مطلقة؛ لأنه أعلى ترتيباً بصرياً
           في نفس السياق التراكمي (Stacking Context)، فإن نقرة المستخدم في
           مساحته تصل إليه هو حصراً ولا "تُسرّب" إلى زر القفز أسفله */}
+      {onToggleBookmark && (
+        <button
+          type="button"
+          onClick={() => onToggleBookmark(slice)}
+          aria-pressed={isBookmarked}
+          aria-label={isBookmarked ? 'إزالة هذا المقطع من المفضلة' : 'إضافة هذا المقطع إلى المفضلة'}
+          className={cn(
+            'absolute end-9 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-opacity duration-150 hover:opacity-100 hover:text-console focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+            isBookmarked ? 'text-console opacity-100' : 'text-text-muted opacity-70',
+          )}
+        >
+          <Star size={12} className={isBookmarked ? 'fill-current' : undefined} aria-hidden="true" />
+        </button>
+      )}
+
       {canSpeak && speakableText && (
         <button
           type="button"

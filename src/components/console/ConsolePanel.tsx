@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload, Keyboard, Search, X, BookMarked } from 'lucide-react'
+import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload, Keyboard, Search, X, BookMarked, Star } from 'lucide-react'
 import { ViewModeToggle } from './ViewModeToggle'
 import { SourceFileRow } from './SourceFileRow'
 import { DownloadSubtitles } from './DownloadSubtitles'
 import { TranscriptList } from './TranscriptList'
 import { IconButton } from '@/components/ui/IconButton'
 import { cn } from '@/lib/utils/cn'
-import { filterSlicesByQuery } from '@/lib/subtitles/filterSlices'
+import { filterBookmarkedSlices, filterSlicesByQuery } from '@/lib/subtitles/filterSlices'
+import { SUBTITLE_FILE_ACCEPT } from '@/lib/subtitles/parseSubtitleFile'
 import type { SubtitleTrackState, TrackOffsetControls } from '@/types/subtitle.types'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import type { ViewMode } from '@/types/theme.types'
@@ -33,6 +34,9 @@ interface ConsolePanelProps {
   onUploadBilingual: (file: File) => void
   slices: PairedSlice[]
   viewMode: ViewMode
+  revealedIndex: number | null
+  bookmarkedIds: ReadonlySet<string>
+  onToggleBookmark: (slice: PairedSlice) => void
   onViewModeChange: (mode: ViewMode) => void
   getCurrentTime: () => number
   isPlaying: boolean
@@ -64,6 +68,9 @@ export function ConsolePanel({
   onUploadBilingual,
   slices,
   viewMode,
+  revealedIndex,
+  bookmarkedIds,
+  onToggleBookmark,
   onViewModeChange,
   getCurrentTime,
   isPlaying,
@@ -89,10 +96,12 @@ export function ConsolePanel({
   const [searchQuery, setSearchQuery] = useState('')
   const trimmedSearchQuery = searchQuery.trim()
   const isSearchActive = trimmedSearchQuery.length > 0
-  const filteredSlices = useMemo(
-    () => filterSlicesByQuery(slices, trimmedSearchQuery),
-    [slices, trimmedSearchQuery],
-  )
+  const [showBookmarksOnly, setShowBookmarksOnly] = useState(false)
+  const isFilterActive = isSearchActive || showBookmarksOnly
+  const filteredSlices = useMemo(() => {
+    const scoped = showBookmarksOnly ? filterBookmarkedSlices(slices, bookmarkedIds) : slices
+    return filterSlicesByQuery(scoped, trimmedSearchQuery)
+  }, [slices, bookmarkedIds, showBookmarksOnly, trimmedSearchQuery])
 
   // Escape: يمسح نص البحث أولاً إن وُجد، وإلا يُفرغ التركيز عن الحقل —
   // تماماً كسلوك حقول البحث المألوف في تطبيقات أخرى (مثال: GitHub)
@@ -235,36 +244,46 @@ export function ConsolePanel({
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-console" aria-hidden="true" />
           <h2 className="font-mono text-[11px] font-medium tracking-wide text-text-muted">
-            TRANSCRIPT — {isSearchActive ? `${filteredSlices.length}/${slices.length}` : slices.length} SEG
+            TRANSCRIPT — {isFilterActive ? `${filteredSlices.length}/${slices.length}` : slices.length} SEG
           </h2>
         </div>
 
         {slices.length > 0 && (
-          <div className="relative">
-            <Search
-              size={12}
-              className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-text-muted"
-              aria-hidden="true"
-            />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder="ابحث في النص… (/)"
-              aria-label="البحث داخل النص المفرَّغ"
-              className="w-full rounded-md border border-border bg-surface-elevated py-1.5 ps-8 pe-8 text-xs text-text-primary placeholder:text-text-muted focus:border-console focus:outline-none focus:ring-1 focus:ring-console"
-            />
-            {searchQuery && (
-              <IconButton
-                aria-label="مسح البحث"
-                onClick={() => setSearchQuery('')}
-                className="absolute end-1 top-1/2 h-6 w-6 -translate-y-1/2"
-              >
-                <X size={12} aria-hidden="true" />
-              </IconButton>
-            )}
+          <div className="flex items-center gap-1">
+            <div className="relative min-w-0 flex-1">
+              <Search
+                size={12}
+                className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-text-muted"
+                aria-hidden="true"
+              />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="ابحث في النص… (/)"
+                aria-label="البحث داخل النص المفرَّغ"
+                className="w-full rounded-md border border-border bg-surface-elevated py-1.5 ps-8 pe-8 text-xs text-text-primary placeholder:text-text-muted focus:border-console focus:outline-none focus:ring-1 focus:ring-console"
+              />
+              {searchQuery && (
+                <IconButton
+                  aria-label="مسح البحث"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute end-1 top-1/2 h-6 w-6 -translate-y-1/2"
+                >
+                  <X size={12} aria-hidden="true" />
+                </IconButton>
+              )}
+            </div>
+            <IconButton
+              aria-label={showBookmarksOnly ? 'عرض كل الجمل' : 'عرض المفضلة فقط'}
+              aria-pressed={showBookmarksOnly}
+              onClick={() => setShowBookmarksOnly((current) => !current)}
+              className={cn('h-8 w-8 shrink-0', showBookmarksOnly && 'bg-console/15 text-console')}
+            >
+              <Star size={14} className={showBookmarksOnly ? 'fill-current' : undefined} aria-hidden="true" />
+            </IconButton>
           </div>
         )}
       </div>
@@ -274,6 +293,10 @@ export function ConsolePanel({
         getCurrentTime={getCurrentTime}
         isPlaying={isPlaying}
         viewMode={viewMode}
+        revealedIndex={revealedIndex}
+        bookmarkedIds={bookmarkedIds}
+        onToggleBookmark={onToggleBookmark}
+        isBookmarksOnly={showBookmarksOnly}
         onSeek={onSeek}
         translationLang={translationTrack.languageCode}
         sourceLang={sourceTrack.languageCode}
@@ -350,7 +373,7 @@ function BilingualFileRow({ state, onFileSelected }: BilingualFileRowProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".srt,.vtt"
+          accept={SUBTITLE_FILE_ACCEPT}
           className="sr-only"
           aria-label="رفع ملف ترجمة ثنائي اللغة"
           onChange={handleChange}

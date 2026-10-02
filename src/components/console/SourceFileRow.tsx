@@ -2,6 +2,7 @@ import { useRef, type ChangeEvent } from 'react'
 import { Upload, CheckCircle2, Loader2, XCircle, History } from 'lucide-react'
 import { SyncOffsetControl } from '@/components/subtitles/SyncOffsetControl'
 import { cn } from '@/lib/utils/cn'
+import { SUBTITLE_FILE_ACCEPT } from '@/lib/subtitles/parseSubtitleFile'
 import type { SubtitleTrackState, TrackOffsetControls } from '@/types/subtitle.types'
 
 interface SourceFileRowProps {
@@ -46,7 +47,7 @@ export function SourceFileRow({ track, accentClassName, onFileSelected, offsetCo
         <input
           ref={fileInputRef}
           type="file"
-          accept=".srt,.vtt"
+          accept={SUBTITLE_FILE_ACCEPT}
           className="sr-only"
           aria-label={`رفع ملف ترجمة ${track.languageLabel}`}
           onChange={handleChange}

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Slider } from '@/components/ui/Slider'
 import { TrackStyleControl } from './FontSizeControl'
 import { StorageUsagePanel } from './StorageUsagePanel'
+import { BackupPanel } from './BackupPanel'
 import { VoiceSelector } from './VoiceSelector'
 import { isSpeechSupported } from '@/lib/utils/textToSpeech'
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap'
@@ -131,6 +132,7 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
               </Button>
 
               <StorageUsagePanel isOpen={isOpen} />
+              <BackupPanel />
             </Card>
           </motion.div>
         </>

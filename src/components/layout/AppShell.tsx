@@ -17,9 +17,14 @@ import { useVideoProgress } from '@/hooks/useVideoProgress'
 import { useSyncOffsetPersistence } from '@/hooks/useSyncOffsetPersistence'
 import { useRecordWatchHistory, useAutoRestoreSubtitles, getHistoryEntryByKey } from '@/hooks/useWatchHistory'
 import { useSubtitleUploadHandlers } from '@/hooks/useSubtitleUploadHandlers'
+import { useTranslationReveal } from '@/hooks/useTranslationReveal'
+import { useBookmarks } from '@/hooks/useBookmarks'
+import { useWatchTimeTracker } from '@/hooks/useWatchTimeTracker'
+import { makeBookmarkId } from '@/lib/utils/bookmarkStore'
+import { findActiveCue } from '@/lib/subtitles/findActiveCue'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import { useThemeContext } from '@/context/ThemeContext'
-import { pairCuesIntoSlices } from '@/lib/subtitles/pairCues'
+import { pairCuesIntoSlices, type PairedSlice } from '@/lib/subtitles/pairCues'
 import { getVideoKey } from '@/lib/utils/videoKey'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { VideoSource } from '@/types/video.types'
@@ -160,7 +165,22 @@ export function AppShell() {
     ],
   )
 
+  const { revealedIndex, toggleReveal } = useTranslationReveal(slices, player.getCurrentTime, viewMode)
+
+  const videoKey = useMemo(() => (videoSource ? getVideoKey(videoSource) : null), [videoSource])
+  const { bookmarkedIds, toggleBookmark } = useBookmarks(videoKey)
+  const handleToggleSliceBookmark = useCallback(
+    (slice: PairedSlice) => void toggleBookmark(makeBookmarkId(slice)),
+    [toggleBookmark],
+  )
+  const { getCurrentTime } = player
+  const handleToggleActiveBookmark = useCallback((): boolean | null => {
+    const active = findActiveCue(slices, getCurrentTime())
+    return active ? toggleBookmark(makeBookmarkId(active)) : null
+  }, [slices, getCurrentTime, toggleBookmark])
+
   const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
+  useWatchTimeTracker(isPlaying)
 
   // المرحلة الأولى: لا يوجد فيديو بعد — انظر توثيق PreLoadScreen لسبب استخلاصها
   if (!videoSource) {
@@ -205,6 +225,9 @@ export function AppShell() {
             onOpenShortcutsHelp={() => setIsShortcutsHelpOpen(true)}
             onFocusSearch={() => searchInputRef.current?.focus()}
             slices={slices}
+            revealedIndex={revealedIndex}
+            onToggleReveal={toggleReveal}
+            onToggleActiveBookmark={handleToggleActiveBookmark}
           />
         </main>
 
@@ -216,6 +239,8 @@ export function AppShell() {
           getCurrentTime={player.getCurrentTime}
           isPlaying={isPlaying}
           viewMode={viewMode}
+          revealedIndex={revealedIndex}
+          onToggleReveal={toggleReveal}
         />
 
         <PanelResizeHandle
@@ -244,6 +269,9 @@ export function AppShell() {
             onUploadBilingual={onUploadBilingual}
             slices={slices}
             viewMode={viewMode}
+            revealedIndex={revealedIndex}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={handleToggleSliceBookmark}
             onViewModeChange={setViewMode}
             getCurrentTime={player.getCurrentTime}
             isPlaying={isPlaying}

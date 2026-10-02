@@ -3,6 +3,7 @@ import { Footer } from './Footer'
 import { BackgroundFX } from './BackgroundFX'
 import { VideoUrlForm } from '@/components/video/VideoUrlForm'
 import { WatchHistoryList } from '@/components/video/WatchHistoryList'
+import { LearningStatsCard } from '@/components/video/LearningStatsCard'
 import type { VideoSource } from '@/types/video.types'
 
 interface PreLoadScreenProps {
@@ -52,6 +53,7 @@ export function PreLoadScreen({ onVideoSourceSelected, pendingLocalFileName, onS
             onSelectLocal={onSelectLocalFromHistory}
           />
           <VideoUrlForm onVideoSourceSelected={onVideoSourceSelected} pendingLocalFileName={pendingLocalFileName} />
+          <LearningStatsCard />
         </div>
       </main>
       <Footer />

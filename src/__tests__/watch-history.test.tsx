@@ -158,6 +158,32 @@ describe('watch history', () => {
     errorSpy.mockRestore()
   })
 
+  it('restores an .ass subtitle file automatically, with its tags already stripped', async () => {
+    const ASS_SOURCE = [
+      '[Events]',
+      'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
+      'Dialogue: 0,0:00:01.00,0:00:04.00,Default,,0,0,0,,{\\an8}مرحباً',
+    ].join('\n')
+
+    render(<App />)
+    await loadYoutubeVideo()
+    fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), {
+      target: { files: [makeSubtitleFile('ar.ass', ASS_SOURCE)] },
+    })
+    await waitFor(() => expect(screen.getByText('ar.ass')).toBeInTheDocument())
+    await waitFor(async () => {
+      expect(await getSubtitleContent('youtube:dQw4w9WgXcQ', 'source', 'ar.ass')).not.toBeNull()
+    })
+
+    goBackToPickerScreen()
+    fireEvent.click(await findHistorySelectButton(/فيديو تجريبي للاختبار/))
+    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+
+    await waitFor(() => expect(screen.getByText('ar.ass')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('مرحباً')).toBeInTheDocument())
+    expect(screen.queryByText(/an8/)).not.toBeInTheDocument()
+  })
+
   it('removes a single entry from history', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     render(<App />)

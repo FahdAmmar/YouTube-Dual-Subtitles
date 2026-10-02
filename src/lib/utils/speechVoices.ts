@@ -60,3 +60,36 @@ export function resolvePreferredVoice(languageCode: string): SpeechSynthesisVoic
   const voices = typeof synth?.getVoices === 'function' ? synth.getVoices() : []
   return voices.find((voice) => voice.voiceURI === savedUri)
 }
+
+/** سرعات النطق المتاحة للمستخدم (1 = السرعة الطبيعية) */
+export const SPEECH_RATES = [0.5, 0.75, 1, 1.25, 1.5] as const
+
+const DEFAULT_SPEECH_RATE = 1
+
+/** السرعة المحفوظة إن كانت ضمن القيم المسموحة؛ وإلا الافتراضية (حماية من بيانات تالفة) */
+export function getSpeechRate(): number {
+  try {
+    const stored = Number(window.localStorage.getItem(STORAGE_KEYS.SPEECH_RATE))
+    return (SPEECH_RATES as readonly number[]).includes(stored) ? stored : DEFAULT_SPEECH_RATE
+  } catch {
+    return DEFAULT_SPEECH_RATE
+  }
+}
+
+export function saveSpeechRate(rate: number): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.SPEECH_RATE, String(rate))
+  } catch {
+    // تجاهل أخطاء الكتابة بنفس نمط بقية المخازن
+  }
+}
+
+/** اسم اللغة بالعربية من وسم BCP-47 (مثل de-DE → الألمانية (ألمانيا))؛ يعود للوسم نفسه إن لم يُدعم */
+export function describeVoiceLanguage(tag: string): string {
+  const normalized = tag.replace('_', '-')
+  try {
+    return new Intl.DisplayNames(['ar'], { type: 'language' }).of(normalized) ?? tag
+  } catch {
+    return tag
+  }
+}

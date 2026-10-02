@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { usePlayerTime } from '@/hooks/usePlayerTime'
+import { makeBookmarkId } from '@/lib/utils/bookmarkStore'
 import { findActiveCue } from '@/lib/subtitles/findActiveCue'
 import { SliceCard } from './SliceCard'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
@@ -10,6 +11,12 @@ interface TranscriptListProps {
   getCurrentTime: () => number
   isPlaying: boolean
   viewMode: ViewMode
+  /** originalIndex of the segment revealed in recall mode, or null */
+  revealedIndex: number | null
+  bookmarkedIds: ReadonlySet<string>
+  onToggleBookmark: (slice: PairedSlice) => void
+  /** The favourites filter is on: an empty list means nothing is bookmarked yet */
+  isBookmarksOnly?: boolean
   onSeek: (seconds: number) => void
   /** رموز لغة المسارين (ISO 639-1) — تُمرَّر لأزرار نطق المقطع في كل بطاقة */
   translationLang?: string
@@ -40,6 +47,10 @@ export function TranscriptList({
   getCurrentTime,
   isPlaying,
   viewMode,
+  revealedIndex,
+  bookmarkedIds,
+  onToggleBookmark,
+  isBookmarksOnly,
   onSeek,
   translationLang,
   sourceLang,
@@ -47,6 +58,12 @@ export function TranscriptList({
 }: TranscriptListProps) {
   const currentTime = usePlayerTime(getCurrentTime, isPlaying)
   const activeSlice = useMemo(() => findActiveCue(slices, currentTime), [slices, currentTime])
+
+  // Hashed once per slice list, not on every playback tick
+  const bookmarkIdBySliceId = useMemo(
+    () => new Map(slices.map((slice) => [slice.id, makeBookmarkId(slice)])),
+    [slices],
+  )
 
   const activeItemRef = useRef<HTMLDivElement>(null)
   const listContainerRef = useRef<HTMLDivElement>(null)
@@ -90,6 +107,12 @@ export function TranscriptList({
               <br />
               لا يوجد مقطع يطابق عبارة البحث
             </>
+          ) : isBookmarksOnly ? (
+            <>
+              [ NO_BOOKMARKS ]
+              <br />
+              لم تحفظ أي جملة بعد — اضغط B أثناء التشغيل أو النجمة على أي مقطع
+            </>
           ) : (
             <>
               [ NO_TRANSCRIPT_DATA ]
@@ -124,6 +147,9 @@ export function TranscriptList({
             index={slice.originalIndex}
             isActive={isActive}
             viewMode={viewMode}
+            isTranslationRevealed={isActive && slice.originalIndex === revealedIndex}
+            isBookmarked={bookmarkedIds.has(bookmarkIdBySliceId.get(slice.id) ?? '')}
+            onToggleBookmark={onToggleBookmark}
             onSeek={onSeek}
             translationLang={translationLang}
             sourceLang={sourceLang}

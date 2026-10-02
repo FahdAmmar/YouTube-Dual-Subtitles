@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react'
 import { parseSubtitleFile, SubtitleParseError } from '@/lib/subtitles/parseSubtitleFile'
+import { detectLanguageFromCues } from '@/lib/subtitles/detectLanguage'
+import { getLanguageByCode } from '@/constants/languages'
 import type { SubtitleCue, SubtitleTrackState } from '@/types/subtitle.types'
 
 /** الحد الأقصى/الأدنى المسموح به للإزاحة اليدوية — نطاق معقول يغطي كل الحالات الواقعية */
@@ -16,6 +18,13 @@ function createEmptyState(languageCode: string, languageLabel: string): Subtitle
     errorMessage: null,
     syncOffsetSeconds: 0,
   }
+}
+
+/** Language fields to apply for these cues; empty when detection is inconclusive (keep current) */
+function detectedLanguageFields(cues: SubtitleCue[]): Pick<SubtitleTrackState, 'languageCode' | 'languageLabel'> | null {
+  const code = detectLanguageFromCues(cues)
+  const language = code ? getLanguageByCode(code) : undefined
+  return language ? { languageCode: language.code, languageLabel: language.labelAr } : null
 }
 
 function clampOffset(value: number): number {
@@ -45,8 +54,10 @@ export function useSubtitleTrack(initialLanguageCode: string, initialLanguageLab
 
     try {
       const cues = await parseSubtitleFile(file)
+      const detected = detectedLanguageFields(cues)
       setTrack((previous) => ({
         ...previous,
+        ...detected,
         fileName: file.name,
         cues,
         status: 'ready',
@@ -83,8 +94,10 @@ export function useSubtitleTrack(initialLanguageCode: string, initialLanguageLab
    * يتصرف تماماً كرفع ملف ناجح (تصفير الإزاحة، تسجيل اسم الملف، حالة ready)
    */
   const loadCues = useCallback((cues: SubtitleCue[], fileName: string) => {
+    const detected = detectedLanguageFields(cues)
     setTrack((previous) => ({
       ...previous,
+      ...detected,
       fileName,
       cues,
       status: 'ready',

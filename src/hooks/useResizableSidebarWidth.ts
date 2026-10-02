@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { STORAGE_KEYS } from '@/constants/theme.constants'
 import { useLocalStorage } from './useLocalStorage'
 import type { SidebarPosition } from './useSidebarPosition'
 
-const STORAGE_KEY = 'dual-subtitles:sidebar-width'
+const STORAGE_KEY = STORAGE_KEYS.SIDEBAR_WIDTH
 const DEFAULT_WIDTH = 380
 const MIN_WIDTH = 300
 // أقصى عرض كنسبة من عرض منطقة المحتوى الكلية (وليس رقماً ثابتاً) حتى يبقى

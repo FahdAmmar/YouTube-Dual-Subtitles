@@ -18,6 +18,10 @@ export interface KeyboardShortcutHandlers {
   onFocusSearch: () => void
   /** تفعيل/إيقاف وضع التظليل (توقّف تلقائي بعد كل مقطع) — اختصار "s" */
   onToggleShadowing: () => void
+  /** كشف/إخفاء ترجمة المقطع الحالي في وضع الاستدعاء (RECALL) — اختصار "r" */
+  onToggleTranslationReveal: () => void
+  /** إضافة/إزالة المقطع الجاري تشغيله من المفضلة — اختصار "b" */
+  onToggleBookmark: () => void
 }
 
 /** فئات العرض في لوحة المساعدة فقط — لا علاقة لها بالمعالجة الفعلية في useKeyboardShortcuts، فقط لتجميع القائمة بصرياً بدل قائمة مسطّحة واحدة طويلة */
@@ -152,5 +156,19 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutDefinition[] = [
     description: 'تفعيل/إيقاف وضع التظليل (توقّف تلقائي بعد كل مقطع)',
     category: 'تنقّل وتكرار',
     action: (h) => h.onToggleShadowing(),
+  },
+  {
+    matchKeys: ['r', 'R'],
+    displayKey: 'R',
+    description: 'كشف/إخفاء الترجمة في وضع الاستدعاء (RECALL)',
+    category: 'عام',
+    action: (h) => h.onToggleTranslationReveal(),
+  },
+  {
+    matchKeys: ['b', 'B'],
+    displayKey: 'B',
+    description: 'إضافة/إزالة الجملة الحالية من المفضلة',
+    category: 'عام',
+    action: (h) => h.onToggleBookmark(),
   },
 ]

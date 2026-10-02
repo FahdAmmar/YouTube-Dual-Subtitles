@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { usePlayerTime } from '@/hooks/usePlayerTime'
 import { findActiveCue } from '@/lib/subtitles/findActiveCue'
+import { getVisibleTracks } from '@/lib/subtitles/visibleTracks'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import type { ViewMode } from '@/types/theme.types'
 
@@ -9,6 +10,9 @@ interface MobileActiveCaptionProps {
   getCurrentTime: () => number
   isPlaying: boolean
   viewMode: ViewMode
+  /** originalIndex of the segment revealed in recall mode, or null */
+  revealedIndex: number | null
+  onToggleReveal: () => void
 }
 
 /**
@@ -29,7 +33,14 @@ interface MobileActiveCaptionProps {
  * مع توقيت الترجمة المحروقة فوق الفيديو (SubtitleOverlay) دون أي ازدواجية
  * في منطق التزامن
  */
-export function MobileActiveCaption({ slices, getCurrentTime, isPlaying, viewMode }: MobileActiveCaptionProps) {
+export function MobileActiveCaption({
+  slices,
+  getCurrentTime,
+  isPlaying,
+  viewMode,
+  revealedIndex,
+  onToggleReveal,
+}: MobileActiveCaptionProps) {
   const currentTime = usePlayerTime(getCurrentTime, isPlaying)
 
   const activeSlice = useMemo(() => findActiveCue(slices, currentTime), [slices, currentTime])
@@ -37,8 +48,11 @@ export function MobileActiveCaption({ slices, getCurrentTime, isPlaying, viewMod
   // لا نعرض الشريط إطلاقاً قبل رفع أي ملف ترجمة — لا فائدة من صندوق فارغ
   if (slices.length === 0) return null
 
-  const showSource = viewMode !== 'translation' && activeSlice?.sourceText
-  const showTranslation = viewMode !== 'source' && activeSlice?.translationText
+  const isRevealed = revealedIndex !== null && activeSlice?.originalIndex === revealedIndex
+  const visibleTracks = getVisibleTracks(viewMode, isRevealed)
+  const showSource = visibleTracks.source && activeSlice?.sourceText
+  const showTranslation = visibleTracks.translation && activeSlice?.translationText
+  const showRevealPrompt = viewMode === 'recall' && !isRevealed && Boolean(activeSlice?.translationText)
 
   return (
     <div
@@ -56,6 +70,15 @@ export function MobileActiveCaption({ slices, getCurrentTime, isPlaying, viewMod
             <p dir="auto" className="text-[17px] font-semibold leading-snug text-text-primary">
               {activeSlice.translationText}
             </p>
+          )}
+          {showRevealPrompt && (
+            <button
+              type="button"
+              onClick={onToggleReveal}
+              className="min-h-11 w-fit rounded-md border border-border px-4 text-sm font-medium text-text-secondary transition-colors hover:border-console hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+            >
+              اكشف الترجمة
+            </button>
           )}
         </>
       ) : (

@@ -1,14 +1,21 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, BookMarked, Trash2 } from 'lucide-react'
+import { X, BookMarked, Trash2, Download } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { IconButton } from '@/components/ui/IconButton'
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap'
 import { useGlossary } from '@/hooks/useGlossary'
+import { glossaryToCsv } from '@/lib/utils/glossaryExport'
+import { downloadTextFile } from '@/lib/subtitles/serializeSRT'
 
 interface GlossaryPanelProps {
   isOpen: boolean
   onClose: () => void
+}
+
+function exportFileName(): string {
+  return `glossary_${new Date().toISOString().slice(0, 10)}.csv`
 }
 
 /**
@@ -65,6 +72,16 @@ export function GlossaryPanel({ isOpen, onClose }: GlossaryPanelProps) {
                   <X size={19} aria-hidden="true" />
                 </IconButton>
               </div>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={entries.length === 0}
+                onClick={() => downloadTextFile(glossaryToCsv(entries), exportFileName())}
+              >
+                <Download size={14} aria-hidden="true" />
+                تصدير المفردات (CSV)
+              </Button>
 
               {entries.length === 0 ? (
                 <p className="text-sm text-text-muted">

@@ -147,6 +147,8 @@
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      /* a 0.01ms infinite loop would strobe; run once and stop */
+      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }

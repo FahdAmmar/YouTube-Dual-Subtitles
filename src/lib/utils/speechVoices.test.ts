@@ -5,6 +5,10 @@ import {
   getSavedVoiceUri,
   saveVoiceUri,
   resolvePreferredVoice,
+  SPEECH_RATES,
+  getSpeechRate,
+  saveSpeechRate,
+  describeVoiceLanguage,
 } from './speechVoices'
 
 function voice(name: string, lang: string, voiceURI = name, localService = true) {
@@ -63,5 +67,25 @@ describe('speechVoices', () => {
     Object.defineProperty(window, 'speechSynthesis', { value: {}, configurable: true, writable: true })
     saveVoiceUri('de', 'Anna')
     expect(resolvePreferredVoice('de')).toBeUndefined()
+  })
+
+  it('defaults the speech rate to 1 and persists a valid choice', () => {
+    expect(getSpeechRate()).toBe(1)
+    saveSpeechRate(1.5)
+    expect(getSpeechRate()).toBe(1.5)
+    expect(SPEECH_RATES).toContain(1.5)
+  })
+
+  it('ignores a corrupted or unsupported stored rate', () => {
+    window.localStorage.setItem('ydc:speech-rate', '99')
+    expect(getSpeechRate()).toBe(1)
+    window.localStorage.setItem('ydc:speech-rate', 'abc')
+    expect(getSpeechRate()).toBe(1)
+  })
+
+  it('describes a language tag in Arabic, falling back to the raw tag when invalid', () => {
+    expect(describeVoiceLanguage('de-DE')).toContain('الألمانية')
+    expect(describeVoiceLanguage('de_AT')).toContain('الألمانية')
+    expect(describeVoiceLanguage('???')).toBe('???')
   })
 })

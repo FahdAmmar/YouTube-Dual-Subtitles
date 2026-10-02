@@ -1,3 +1,4 @@
+import { makeBookmarkId } from '@/lib/utils/bookmarkStore'
 import type { PairedSlice } from './pairCues'
 
 /**
@@ -17,4 +18,9 @@ export function filterSlicesByQuery(slices: PairedSlice[], query: string): Paire
     const translation = slice.translationText?.toLowerCase() ?? ''
     return source.includes(normalizedQuery) || translation.includes(normalizedQuery)
   })
+}
+
+/** يُبقي المقاطع المحفوظة في المفضلة فقط (بترتيبها الأصلي) */
+export function filterBookmarkedSlices(slices: PairedSlice[], bookmarkedIds: ReadonlySet<string>): PairedSlice[] {
+  return slices.filter((slice) => bookmarkedIds.has(makeBookmarkId(slice)))
 }

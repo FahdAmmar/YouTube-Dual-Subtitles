@@ -5,7 +5,7 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
 /** أي مسار (أو كلاهما) يُعرض حالياً فوق الفيديو وفي لوحة النص المتزامن */
-export type ViewMode = 'both' | 'source' | 'translation'
+export type ViewMode = 'both' | 'source' | 'translation' | 'recall'
 
 /** إعدادات العرض الخاصة بمسار ترجمة واحد (قابلة للتخصيص من المستخدم) */
 export interface SubtitleStyleSettings {
