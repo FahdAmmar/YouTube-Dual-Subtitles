@@ -46,3 +46,12 @@ describe('VideoControlBar picture-in-picture button', () => {
     expect(onToggle).toHaveBeenCalledOnce()
   })
 })
+
+describe('VideoControlBar time display', () => {
+  // In a right-to-left page the browser reorders "0:04 / 0:30" into "0:30 / 0:04" unless the text is forced left-to-right
+  it('is laid out left-to-right so elapsed time is shown before the total', () => {
+    renderBar({ duration: 30 })
+    const display = screen.getByText('0:00 / 0:30')
+    expect(display).toHaveAttribute('dir', 'ltr')
+  })
+})

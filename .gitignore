@@ -5,3 +5,7 @@ dist-ssr
 CLAUDE.local.md
 .claude/settings.local.json
 .DS_Store
+.kilo/
+*.tsbuildinfo
+.vite/
+.vercel

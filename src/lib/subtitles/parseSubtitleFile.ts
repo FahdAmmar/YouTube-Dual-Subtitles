@@ -2,6 +2,8 @@ import type { SubtitleCue, SubtitleFormat } from '@/types/subtitle.types'
 import { parseSRT } from './parseSRT'
 import { parseVTT } from './parseVTT'
 import { parseASS } from './parseASS'
+import { dedupeRollingCues } from './dedupeRollingCues'
+import { alignCueWords } from './cueWords'
 
 /** حد أقصى لحجم ملف الترجمة المقبول (2 ميغابايت كافية جداً لأي فيديو طويل) */
 export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024
@@ -49,7 +51,10 @@ export async function parseSubtitleFile(file: File): Promise<SubtitleCue[]> {
   }
 
   const format = detectFormat(file, content)
-  const cues = format === 'ass' ? parseASS(content) : format === 'vtt' ? parseVTT(content) : parseSRT(content)
+  const cues =
+    format === 'ass'
+      ? parseASS(content)
+      : dedupeRollingCues(format === 'vtt' ? parseVTT(content) : parseSRT(content)).map(alignCueWords)
 
   if (cues.length === 0) {
     throw new SubtitleParseError('لم يتم العثور على أي مقطع ترجمة صالح داخل الملف')

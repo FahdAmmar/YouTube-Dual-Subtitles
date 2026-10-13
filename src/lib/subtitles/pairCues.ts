@@ -1,4 +1,4 @@
-import type { SubtitleCue } from '@/types/subtitle.types'
+import type { CueWord, SubtitleCue } from '@/types/subtitle.types'
 import { findActiveCue } from './findActiveCue'
 
 /** مقطع موحّد يجمع نص المسارين معاً عند نفس النافذة الزمنية، لعرضه في قائمة النص */
@@ -14,6 +14,22 @@ export interface PairedSlice {
   end: number
   sourceText: string | null
   translationText: string | null
+  /** Word start times (already shifted by the track's offset), when the file carried them */
+  sourceWords?: CueWord[]
+  translationWords?: CueWord[]
+}
+
+/** Only present when there are words, so slices without timings stay exactly as before */
+function wordFields(sourceWords?: CueWord[], translationWords?: CueWord[]) {
+  return {
+    ...(sourceWords ? { sourceWords } : {}),
+    ...(translationWords ? { translationWords } : {}),
+  }
+}
+
+/** Words move with their track's manual offset exactly like the cue itself */
+function shiftWords(cue: SubtitleCue | null | undefined, offsetSeconds: number): CueWord[] | undefined {
+  return cue?.words?.map((word) => ({ text: word.text, start: word.start + offsetSeconds }))
 }
 
 /**
@@ -76,6 +92,7 @@ export function pairCuesIntoSlices(
         end: realEnd,
         sourceText: cue.text,
         translationText: matchedTranslation?.text ?? null,
+        ...wordFields(shiftWords(cue, sourceOffsetSeconds), shiftWords(matchedTranslation, translationOffsetSeconds)),
       }
     }
 
@@ -90,6 +107,7 @@ export function pairCuesIntoSlices(
       end: realEnd,
       sourceText: matchedSource?.text ?? null,
       translationText: cue.text,
+      ...wordFields(shiftWords(matchedSource, sourceOffsetSeconds), shiftWords(cue, translationOffsetSeconds)),
     }
   })
 }

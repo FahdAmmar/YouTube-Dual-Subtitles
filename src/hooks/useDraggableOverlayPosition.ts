@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { useLocalStorage } from './useLocalStorage'
-import { STORAGE_KEYS } from '@/constants/theme.constants'
+import { ZERO_OFFSET, type LineOffset } from '@/lib/subtitles/subtitleLayout'
 
-/** إزاحة الترجمة عن موضعها الافتراضي (أسفل الفيديو، وسط أفقياً)، كنسبة مئوية من أبعاد الفيديو — وليس بكسل مطلق، لتبقى صحيحة مهما تغيّر حجم النافذة أو الشاشة */
-export interface OverlayPositionOffset {
-  xPercent: number
-  yPercent: number
-}
-
-const DEFAULT_OFFSET: OverlayPositionOffset = { xPercent: 0, yPercent: 0 }
+/** Pointer travel (px) under which a press is a click, not a drag — lets words inside a line stay clickable */
+const DRAG_THRESHOLD_PX = 4
 
 interface DragState {
   startClientX: number
@@ -24,53 +18,48 @@ interface DragState {
 }
 
 export interface UseDraggableOverlayPositionResult {
-  /** إزاحة الترجمة الحالية كتحويل CSS جاهز للتطبيق مباشرة عبر style */
   transformPx: { x: number; y: number }
   isDragging: boolean
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void
+  /** Resets the element to its default spot */
   onDoubleClick: () => void
+  /** True when the last press moved far enough to be a drag; a click handler uses it to ignore drag-ends */
+  wasDragged: () => boolean
 }
 
 /**
- * يتيح للمستخدم سحب نص الترجمة المحروق فوق الفيديو (SubtitleOverlay) إلى
- * أي موضع آخر *ضمن حدود الفيديو نفسه فقط* — مفيد إذا كانت الترجمة الافتراضية
- * تُغطّي عنصراً مهماً في الصورة (مثال: ترجمة حرفية على الشاشة أو وجه متحدث)
- *
- * التصميم يعتمد على CSS transform فوق الموضع الافتراضي الحالي (بدل إعادة
- * حساب top/left من الصفر)، فيبقى التوسّط الأفقي/السفلي الافتراضي كما هو
- * تماماً عند الإزاحة صفر (تجربة أول استخدام غير متأثرة إطلاقاً)
- *
- * @param containerRef مرجع لعنصر "مسرح" الفيديو الكامل — حدود السحب المسموحة
- * @param overlayRef مرجع للعنصر القابل للسحب نفسه (لقياس أبعاده الفعلية الحالية)
+ * Drag mechanics for one overlay element, kept inside the video bounds.
+ * Controlled: the saved `offset` comes from the caller and `onCommit` fires once when a drag ends,
+ * so persistence stays in one place (useSubtitleLayout).
  */
 export function useDraggableOverlayPosition(
   containerRef: RefObject<HTMLDivElement>,
   overlayRef: RefObject<HTMLDivElement>,
+  offset: LineOffset,
+  onCommit: (offset: LineOffset) => void,
 ): UseDraggableOverlayPositionResult {
-  const [storedOffset, setStoredOffset] = useLocalStorage<OverlayPositionOffset>(
-    STORAGE_KEYS.SUBTITLE_OVERLAY_POSITION,
-    DEFAULT_OFFSET,
-  )
-  const [offset, setOffset] = useState(storedOffset)
+  const [dragOffset, setDragOffset] = useState<LineOffset | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
   const dragStateRef = useRef<DragState | null>(null)
-  const latestOffsetRef = useRef(offset)
-  latestOffsetRef.current = offset
+  const didDragRef = useRef(false)
+  const latestDragOffsetRef = useRef<LineOffset | null>(null)
+  const activeOffset = dragOffset ?? offset
+  const activeOffsetRef = useRef(activeOffset)
+  activeOffsetRef.current = activeOffset
+  const onCommitRef = useRef(onCommit)
+  onCommitRef.current = onCommit
 
-  // متابعة أبعاد الحاوية عبر ResizeObserver بدلاً من getBoundingClientRect
-  // أثناء كل إعادة رسم — هذا يمنع "Layout Thrashing" الذي يسبب تجمّد
-  // الأجهزة المحمولة أثناء التشغيل
+  // ResizeObserver instead of measuring on every render: avoids layout thrashing during playback
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     function updateSize() {
       const rect = container!.getBoundingClientRect()
-      setContainerSize((prev) => {
-        if (prev.width === rect.width && prev.height === rect.height) return prev
-        return { width: rect.width, height: rect.height }
-      })
+      setContainerSize((prev) =>
+        prev.width === rect.width && prev.height === rect.height ? prev : { width: rect.width, height: rect.height },
+      )
     }
 
     updateSize()
@@ -88,16 +77,16 @@ export function useDraggableOverlayPosition(
 
       const containerRect = container.getBoundingClientRect()
       const overlayRect = overlay.getBoundingClientRect()
-      const currentOffset = latestOffsetRef.current
+      const current = activeOffsetRef.current
 
+      didDragRef.current = false
+      latestDragOffsetRef.current = null
       dragStateRef.current = {
         startClientX: event.clientX,
         startClientY: event.clientY,
-        startTranslateXPx: (currentOffset.xPercent / 100) * containerRect.width,
-        startTranslateYPx: (currentOffset.yPercent / 100) * containerRect.height,
-        // الحد الأقصى/الأدنى للإزاحة الإضافية المسموحة بحيث لا تتجاوز حواف
-        // الترجمة حدود الفيديو في أي اتجاه — محسوبة من الموضع المُقاس فعلياً
-        // الآن (والذي يعكس بالفعل أي إزاحة سابقة محفوظة)
+        startTranslateXPx: (current.xPercent / 100) * containerRect.width,
+        startTranslateYPx: (current.yPercent / 100) * containerRect.height,
+        // Allowed extra travel so no edge of the element leaves the video, measured from where it sits now
         minDeltaX: containerRect.left - overlayRect.left,
         maxDeltaX: containerRect.right - overlayRect.right,
         minDeltaY: containerRect.top - overlayRect.top,
@@ -110,12 +99,8 @@ export function useDraggableOverlayPosition(
     [containerRef, overlayRef],
   )
 
-  const onDoubleClick = useCallback(() => {
-    // نقرة مزدوجة تُعيد الترجمة إلى موضعها الافتراضي — نفس نمط إعادة
-    // الضبط المُستخدم في مقبض تغيير حجم اللوحة الجانبية، للاتساق
-    setOffset(DEFAULT_OFFSET)
-    setStoredOffset(DEFAULT_OFFSET)
-  }, [setStoredOffset])
+  const onDoubleClick = useCallback(() => onCommitRef.current(ZERO_OFFSET), [])
+  const wasDragged = useCallback(() => didDragRef.current, [])
 
   useEffect(() => {
     if (!isDragging) return
@@ -126,22 +111,27 @@ export function useDraggableOverlayPosition(
 
       const rawDeltaX = event.clientX - dragState.startClientX
       const rawDeltaY = event.clientY - dragState.startClientY
+      if (!didDragRef.current) {
+        if (Math.hypot(rawDeltaX, rawDeltaY) < DRAG_THRESHOLD_PX) return
+        didDragRef.current = true
+      }
+
       const clampedDeltaX = Math.min(Math.max(rawDeltaX, dragState.minDeltaX), dragState.maxDeltaX)
       const clampedDeltaY = Math.min(Math.max(rawDeltaY, dragState.minDeltaY), dragState.maxDeltaY)
-
-      const newTranslateXPx = dragState.startTranslateXPx + clampedDeltaX
-      const newTranslateYPx = dragState.startTranslateYPx + clampedDeltaY
-
-      setOffset({
-        xPercent: (newTranslateXPx / dragState.containerWidth) * 100,
-        yPercent: (newTranslateYPx / dragState.containerHeight) * 100,
-      })
+      const next: LineOffset = {
+        xPercent: ((dragState.startTranslateXPx + clampedDeltaX) / dragState.containerWidth) * 100,
+        yPercent: ((dragState.startTranslateYPx + clampedDeltaY) / dragState.containerHeight) * 100,
+      }
+      latestDragOffsetRef.current = next
+      setDragOffset(next)
     }
 
     function endDrag() {
-      setIsDragging(false)
+      const committed = latestDragOffsetRef.current
       dragStateRef.current = null
-      setStoredOffset(latestOffsetRef.current)
+      setIsDragging(false)
+      setDragOffset(null)
+      if (committed) onCommitRef.current(committed)
     }
 
     window.addEventListener('pointermove', handlePointerMove)
@@ -160,17 +150,15 @@ export function useDraggableOverlayPosition(
       document.body.style.cursor = previousCursor
       document.body.style.userSelect = previousUserSelect
     }
-  }, [isDragging, setStoredOffset])
+  }, [isDragging])
 
-  // حساب التحويل بناءً على النسبة المئوية + أبعاد الحاوية المخزنة
-  // بدلاً من استدعاء getBoundingClientRect() عند كل إعادة رسم
   const transformPx = useMemo(
     () => ({
-      x: (offset.xPercent / 100) * containerSize.width,
-      y: (offset.yPercent / 100) * containerSize.height,
+      x: (activeOffset.xPercent / 100) * containerSize.width,
+      y: (activeOffset.yPercent / 100) * containerSize.height,
     }),
-    [offset.xPercent, offset.yPercent, containerSize.width, containerSize.height],
+    [activeOffset.xPercent, activeOffset.yPercent, containerSize.width, containerSize.height],
   )
 
-  return { transformPx, isDragging, onPointerDown, onDoubleClick }
+  return { transformPx, isDragging, onPointerDown, onDoubleClick, wasDragged }
 }

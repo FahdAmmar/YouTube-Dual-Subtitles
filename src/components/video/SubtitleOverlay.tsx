@@ -1,15 +1,22 @@
-import { useRef, type RefObject } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { type RefObject } from 'react'
 import { usePlayerTime } from '@/hooks/usePlayerTime'
 import { useActiveCue } from '@/hooks/useActiveCue'
-import { useDraggableOverlayPosition } from '@/hooks/useDraggableOverlayPosition'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import { cn } from '@/lib/utils/cn'
 import { findActiveCue } from '@/lib/subtitles/findActiveCue'
 import { getVisibleTracks } from '@/lib/subtitles/visibleTracks'
+import { SubtitleLine } from '@/components/subtitles/SubtitleLine'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
-import type { SubtitleTrackState } from '@/types/subtitle.types'
+import type { LineOffset, SubtitleLayout, SubtitleLine as SubtitleLineId, SubtitlePlacement } from '@/lib/subtitles/subtitleLayout'
+import type { SubtitleTrackState, WordSelection } from '@/types/subtitle.types'
 import type { ViewMode } from '@/types/theme.types'
+
+/** Default spot of the subtitle block per region. `bottom-[4.5rem]` clears the control bar; `top-16` clears the top bar. */
+const PLACEMENT_CLASSES: Record<SubtitlePlacement, string> = {
+  bottom: 'bottom-[4.5rem]',
+  middle: 'top-1/2 -translate-y-1/2',
+  top: 'top-16',
+}
 
 interface SubtitleOverlayProps {
   sourceTrack: SubtitleTrackState
@@ -21,32 +28,19 @@ interface SubtitleOverlayProps {
   slices: PairedSlice[]
   revealedIndex: number | null
   onToggleReveal: () => void
-  /** مرجع "مسرح" الفيديو الكامل — الحدود التي يُحصر ضمنها سحب الترجمة (لا يمكن سحبها خارج الفيديو) */
+  /** The whole video stage — drag bounds */
   stageRef: RefObject<HTMLDivElement>
+  layout: SubtitleLayout
+  onLineOffsetChange: (line: SubtitleLineId, offset: LineOffset) => void
+  /** A word of the translation line was clicked */
+  onWordSelect: (selection: WordSelection) => void
 }
 
 /**
- * الترجمة المزدوجة "المحروقة" فوق الفيديو مباشرة (Burned-in Subtitles)
- *
- * تراتبية بصرية مقصودة، مُعاد توازنها لملاءمة سياق تعلّم اللغة: النص
- * الأجنبي (translation) هو الهدف الأساسي الذي يتابعه المستخدم أثناء
- * الاستماع، فيُعرض بخط عريض وبحجمه الكامل كعنصر أساسي؛ بينما النص
- * العربي (source) نص مرجعي مساند يُراجَع عند الحاجة فقط، لذلك يُعرض بحجم
- * مصغّر (85% من القيمة المُعدّة) وبخط مائل أخف وزناً بصرياً — وهذا يعالج
- * أيضاً كون الحروف العربية تبدو "أثقل وأكبر بصرياً" من نظيرتها اللاتينية
- * عند نفس حجم الخط بالبكسل (فرق في مقاييس الخطوط بين الرسمين)، فتقليل
- * حجمها نسبياً يحقق توازناً بصرياً حقيقياً بين اللغتين بدل تفاوت الوزن
- * الحالي. لون كل لغة يبقى ثابتاً (ذهبي/أزرق مخضر) بغض النظر عن هذا الفرق
- * في الوزن، فيسهل تمييزهما حتى عند اختيار المستخدم ألواناً متشابهة.
- *
- * هذا هو المكوّن الوحيد إلى جانب VideoControlBar الذي يشترك في تحديثات
- * الوقت عالية التردد عبر usePlayerTime — بمعزل عن بقية شجرة المكوّنات
- *
- * قابلة للسحب: يمكن للمستخدم سحب فقاعة الترجمة لأي موضع آخر *ضمن حدود
- * الفيديو نفسه فقط* (انظر useDraggableOverlayPosition) — مفيد إذا كانت
- * تُغطّي عنصراً مهماً في الصورة. المنطقة الفارغة المحيطة تبقى
- * pointer-events-none كي لا تحجب النقر على الفيديو أو شريط التحكم أسفله؛
- * فقاعة الترجمة نفسها فقط هي pointer-events-auto وقابلة للسحب
+ * Burned-in dual subtitles. The translation (the language being learned) is large and bold; the source is a
+ * smaller reference line. Each line drags independently inside the video and the whole block can jump between
+ * top / middle / bottom (SubtitleQuickControls). The empty area stays pointer-events-none so the video and the
+ * control bar below stay clickable. Shares high-frequency time updates with VideoControlBar only (usePlayerTime).
  */
 export function SubtitleOverlay({
   sourceTrack,
@@ -58,20 +52,15 @@ export function SubtitleOverlay({
   revealedIndex,
   onToggleReveal,
   stageRef,
+  layout,
+  onLineOffsetChange,
+  onWordSelect,
 }: SubtitleOverlayProps) {
   const { settings } = useSubtitleSettings()
   const currentTime = usePlayerTime(getCurrentTime, isPlaying)
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const { transformPx, isDragging, onPointerDown, onDoubleClick } = useDraggableOverlayPosition(
-    stageRef,
-    overlayRef,
-  )
 
   const activeSource = useActiveCue(sourceTrack.cues, currentTime - sourceTrack.syncOffsetSeconds)
-  const activeTranslation = useActiveCue(
-    translationTrack.cues,
-    currentTime - translationTrack.syncOffsetSeconds,
-  )
+  const activeTranslation = useActiveCue(translationTrack.cues, currentTime - translationTrack.syncOffsetSeconds)
 
   const isRevealed = revealedIndex !== null && findActiveCue(slices, currentTime)?.originalIndex === revealedIndex
   const visibleTracks = getVisibleTracks(viewMode, isRevealed)
@@ -79,83 +68,55 @@ export function SubtitleOverlay({
   const showTranslation = visibleTracks.translation && activeTranslation
   const showRevealPrompt = viewMode === 'recall' && !isRevealed && Boolean(activeTranslation)
 
-  // يحافظ على نفس النسبة السابقة بين عرض السطرين (88% للمرجعي مقابل 94%
-  // للأساسي) لكن كليهما الآن يتحرّكان معاً بمقدار واحد يتحكم به المستخدم
-  const translationWidthPercent = settings.subtitleWidthPercent
-  const sourceWidthPercent = settings.subtitleWidthPercent * (88 / 94)
-
   if (!showSource && !showTranslation && !showRevealPrompt) return null
 
+  const commonLineProps = {
+    maxWidthPercent: settings.subtitleWidthPercent,
+    lineHeight: settings.subtitleLineHeight,
+    stageRef,
+    onOffsetChange: onLineOffsetChange,
+  }
+
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4 sm:bottom-6">
-      <div
-        ref={overlayRef}
-        data-testid="draggable-subtitle-overlay"
-        onPointerDown={onPointerDown}
-        onDoubleClick={onDoubleClick}
-        style={{ transform: `translate(${transformPx.x}px, ${transformPx.y}px)` }}
-        title="اسحب لتحريك الترجمة، أو انقر نقراً مزدوجاً لإعادتها لموضعها الافتراضي"
-        className={cn(
-          'pointer-events-auto flex touch-none select-none flex-col items-center gap-1.5 rounded-md ring-white/0 ring-offset-2 ring-offset-transparent transition-shadow hover:ring-2 hover:ring-white/25',
-          isDragging ? 'cursor-grabbing' : 'cursor-grab',
-        )}
-      >
-        {/* النص العربي المرجعي — أعلى، أصغر، وأخف وزناً بصرياً */}
-        <AnimatePresence mode="wait">
-          {showSource && (
-            <motion.p
-              key={`source-${activeSource.text}`}
-              dir="auto"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="whitespace-pre-line rounded-md bg-black/55 px-3 py-0.5 text-center italic"
-              style={{
-                fontSize: `${settings.trackA.fontSize * 0.85}px`,
-                color: settings.trackA.color,
-                maxWidth: `${sourceWidthPercent}%`,
-                lineHeight: settings.subtitleLineHeight,
-              }}
-            >
-              {activeSource.text}
-            </motion.p>
-          )}
-        </AnimatePresence>
+    <div className={cn('pointer-events-none absolute inset-x-0 flex flex-col items-center gap-1.5 px-4', PLACEMENT_CLASSES[layout.placement])}>
+      {showSource && (
+        <SubtitleLine
+          line="source"
+          text={activeSource.text}
+          fontSize={settings.trackA.fontSize}
+          color={settings.trackA.color}
+          offset={layout.source}
+          {...commonLineProps}
+        />
+      )}
 
-        {/* النص الأجنبي الأساسي — في موضع الترجمة القياسي الأقرب لحافة الشاشة، بأكبر وزن بصري */}
-        <AnimatePresence mode="wait">
-          {showTranslation && (
-            <motion.p
-              key={`translation-${activeTranslation.text}`}
-              dir="auto"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="whitespace-pre-line rounded-md bg-black/70 px-3.5 py-1.5 text-center font-bold shadow-elevated"
-              style={{
-                fontSize: `${settings.trackB.fontSize}px`,
-                color: settings.trackB.color,
-                maxWidth: `${translationWidthPercent}%`,
-                lineHeight: settings.subtitleLineHeight,
-              }}
-            >
-              {activeTranslation.text}
-            </motion.p>
-          )}
-        </AnimatePresence>
+      {showTranslation && (
+        <SubtitleLine
+          line="translation"
+          text={activeTranslation.text}
+          fontSize={settings.trackB.fontSize}
+          color={settings.trackB.color}
+          offset={layout.translation}
+          onWordClick={(word) =>
+            onWordSelect({
+              word,
+              sentence: activeTranslation.text,
+              time: activeTranslation.start + translationTrack.syncOffsetSeconds,
+            })
+          }
+          {...commonLineProps}
+        />
+      )}
 
-        {showRevealPrompt && (
-          <button
-            type="button"
-            onClick={onToggleReveal}
-            className="rounded-md bg-black/70 px-3 py-1.5 text-sm font-medium text-white/85 transition-colors hover:bg-black/85 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
-          >
-            اكشف الترجمة (R)
-          </button>
-        )}
-      </div>
+      {showRevealPrompt && (
+        <button
+          type="button"
+          onClick={onToggleReveal}
+          className="pointer-events-auto rounded-md bg-black/70 px-3 py-1.5 text-sm font-medium text-white/85 transition-colors hover:bg-black/85 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+        >
+          اكشف الترجمة (R)
+        </button>
+      )}
     </div>
   )
 }

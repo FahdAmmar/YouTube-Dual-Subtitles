@@ -1,6 +1,7 @@
 import { countBookmarks } from './bookmarkStore'
 import { getGlossaryEntries } from './glossaryStore'
-import { computeStreak, getLastDays, getWatchSecondsByDay, type DayStat } from './learningStatsStore'
+import { DAILY_REVIEW_GOAL, getReviewCountsByDay } from './reviewStatsStore'
+import { computeStreak, toDayKey, getLastDays, getWatchSecondsByDay, type DayStat } from './learningStatsStore'
 
 export const CHART_DAYS = 7
 
@@ -11,6 +12,8 @@ export interface LearningSummary {
   days: DayStat[]
   wordCount: number
   bookmarkCount: number
+  reviewsToday: number
+  reviewGoal: number
   /** False for a brand new learner, so the home screen can stay uncluttered */
   hasData: boolean
 }
@@ -21,13 +24,16 @@ export function getLearningSummary(today: Date = new Date()): LearningSummary {
   const weekSeconds = days.reduce((sum, day) => sum + day.seconds, 0)
   const wordCount = getGlossaryEntries().length
   const bookmarkCount = countBookmarks()
+  const reviewsByDay = getReviewCountsByDay()
 
   return {
-    streak: computeStreak(byDay, today),
+    streak: computeStreak(byDay, today, reviewsByDay),
     weekSeconds,
     days,
     wordCount,
     bookmarkCount,
-    hasData: byDay.size > 0 || wordCount > 0 || bookmarkCount > 0,
+    reviewsToday: reviewsByDay.get(toDayKey(today)) ?? 0,
+    reviewGoal: DAILY_REVIEW_GOAL,
+    hasData: byDay.size > 0 || reviewsByDay.size > 0 || wordCount > 0 || bookmarkCount > 0,
   }
 }

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 
 export interface PlaybackShortcutFeedback {
   /** معرّف فريد متزايد — يضمن إعادة تشغيل حركة الظهور حتى عند تكرار نفس الاختصار بسرعة */
@@ -24,7 +24,7 @@ export function PlaybackShortcutToast({ feedback }: PlaybackShortcutToastProps) 
     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
       <AnimatePresence>
         {feedback && (
-          <motion.div
+          <m.div
             key={feedback.id}
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -34,7 +34,7 @@ export function PlaybackShortcutToast({ feedback }: PlaybackShortcutToastProps) 
           >
             {feedback.icon}
             <span className="font-mono text-sm font-semibold tabular-nums">{feedback.label}</span>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

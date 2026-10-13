@@ -22,6 +22,8 @@ export interface KeyboardShortcutHandlers {
   onToggleTranslationReveal: () => void
   /** إضافة/إزالة المقطع الجاري تشغيله من المفضلة — اختصار "b" */
   onToggleBookmark: () => void
+  /** فتح/إغلاق وضع القراءة (نص متزامن بلا فيديو) — اختصار "t" */
+  onToggleReadingMode?: () => void
 }
 
 /** فئات العرض في لوحة المساعدة فقط — لا علاقة لها بالمعالجة الفعلية في useKeyboardShortcuts، فقط لتجميع القائمة بصرياً بدل قائمة مسطّحة واحدة طويلة */
@@ -170,5 +172,12 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutDefinition[] = [
     description: 'إضافة/إزالة الجملة الحالية من المفضلة',
     category: 'عام',
     action: (h) => h.onToggleBookmark(),
+  },
+  {
+    matchKeys: ['t', 'T'],
+    displayKey: 'T',
+    description: 'فتح/إغلاق وضع القراءة (النص المتزامن مع الصوت)',
+    category: 'عام',
+    action: (h) => h.onToggleReadingMode?.(),
   },
 ]

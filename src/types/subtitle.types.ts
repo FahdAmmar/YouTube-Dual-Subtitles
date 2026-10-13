@@ -4,6 +4,12 @@
  * الترجمة في كامل التطبيق، مما يضمن الاتساق بين المحلّل (Parser) والعرض (UI)
  */
 
+/** كلمة واحدة مع لحظة بدء نطقها (بالثواني) — متوفرة فقط في ملفات VTT التلقائية من يوتيوب */
+export interface CueWord {
+  readonly text: string
+  readonly start: number
+}
+
 /** مقطع ترجمة واحد: نص يظهر بين زمنين محددين (بالثواني) */
 export interface SubtitleCue {
   /** زمن بداية ظهور المقطع، بالثواني */
@@ -12,6 +18,8 @@ export interface SubtitleCue {
   readonly end: number
   /** نص الترجمة (قد يحتوي على عدة أسطر مفصولة بـ \n) */
   readonly text: string
+  /** توقيت كل كلمة إن وُجد في الملف؛ يطابق كلمات `text` بالترتيب تماماً أو يُحذف (انظر cueWords.ts) */
+  readonly words?: readonly CueWord[]
 }
 
 /** الصيغ المدعومة لملفات الترجمة */
@@ -48,4 +56,12 @@ export interface SubtitleTrackState {
 export interface TrackOffsetControls {
   nudgeSyncOffset: (direction: 1 | -1) => void
   resetSyncOffset: () => void
+}
+
+/** A word picked on the video, with the line it came from so a saved word can show its context */
+export interface WordSelection {
+  readonly word: string
+  readonly sentence: string
+  /** Video time (seconds) the line starts at */
+  readonly time: number
 }

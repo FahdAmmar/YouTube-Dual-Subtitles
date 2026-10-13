@@ -188,7 +188,7 @@ export function VideoControlBar({
           {isPlaying ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
         </button>
 
-        <span className="font-mono text-xs tabular-nums text-white/80">
+        <span dir="ltr" className="font-mono text-xs tabular-nums text-white/80">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
 

@@ -225,6 +225,8 @@ function SliceCardImpl(
             word={activeLookupWord}
             languageCode={translationLang}
             nativeLanguageCode={sourceLang}
+            sentence={slice.translationText}
+            sentenceTime={slice.start}
             onClose={() => setActiveLookupWord(null)}
           />
         </div>

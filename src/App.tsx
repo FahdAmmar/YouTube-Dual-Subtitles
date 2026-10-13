@@ -1,8 +1,11 @@
-import { MotionConfig } from 'framer-motion'
+import { LazyMotion, MotionConfig } from 'framer-motion'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { SubtitleSettingsProvider } from '@/context/SubtitleSettingsContext'
 import { AppShell } from '@/components/layout/AppShell'
 import { ErrorBoundary } from '@/components/system/ErrorBoundary'
+
+/** Loaded after the first paint; `strict` makes any accidental full `motion.*` import throw instead of re-bundling it */
+const loadMotionFeatures = () => import('@/lib/motion/domAnimationFeatures').then((module) => module.default)
 
 /**
  * جذر شجرة المكوّنات: ترتيب الموفّرات (Providers) هنا مقصود — السمة في
@@ -13,14 +16,16 @@ import { ErrorBoundary } from '@/components/system/ErrorBoundary'
 export default function App() {
   return (
     <ErrorBoundary>
-      {/* Framer Motion ignores the CSS media rule; "user" follows the OS setting */}
-      <MotionConfig reducedMotion="user">
-        <ThemeProvider>
-          <SubtitleSettingsProvider>
-            <AppShell />
-          </SubtitleSettingsProvider>
-        </ThemeProvider>
-      </MotionConfig>
+      <LazyMotion features={loadMotionFeatures} strict>
+        {/* Framer Motion ignores the CSS media rule; "user" follows the OS setting */}
+        <MotionConfig reducedMotion="user">
+          <ThemeProvider>
+            <SubtitleSettingsProvider>
+              <AppShell />
+            </SubtitleSettingsProvider>
+          </ThemeProvider>
+        </MotionConfig>
+      </LazyMotion>
     </ErrorBoundary>
   )
 }

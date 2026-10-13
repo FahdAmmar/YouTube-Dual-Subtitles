@@ -1,3 +1,6 @@
+import { getCachedLookup, makeLookupCacheKey, setCachedLookup } from './lookupCache'
+import { isOnlineLookupEnabled } from './lookupPreference'
+
 /** معنى كلمة بلغة المستخدم (عادةً العربية) + تعريفات من ويكاموس */
 export interface WordMeaning {
   partOfSpeech: string
@@ -17,6 +20,7 @@ export interface WordLookupResult {
 
 export type LookupOutcome =
   | { kind: 'found'; result: WordLookupResult }
+  | { kind: 'disabled' }
   | { kind: 'not-found' }
   | { kind: 'error' }
 
@@ -150,6 +154,12 @@ export async function lookupWord(
   const cleanedWord = word.trim()
   if (!cleanedWord) return { kind: 'not-found' }
 
+  const cacheKey = makeLookupCacheKey(cleanedWord, learningLanguage, nativeLanguage)
+  const cached = getCachedLookup(cacheKey)
+  if (cached) return { kind: 'found', result: cached }
+  // Only reached when nothing is cached: no word ever leaves the browser while this is off
+  if (!isOnlineLookupEnabled()) return { kind: 'disabled' }
+
   const canTranslate = Boolean(nativeLanguage) && nativeLanguage !== learningLanguage
   const [translationPart, meaningsPart] = await Promise.all([
     canTranslate
@@ -162,15 +172,14 @@ export async function lookupWord(
   const meanings = meaningsPart.status === 'ok' ? meaningsPart.value : []
 
   if (translation || meanings.length > 0) {
-    return {
-      kind: 'found',
-      result: {
-        word: cleanedWord,
-        translation: translation?.translation ?? null,
-        alternatives: translation?.alternatives ?? [],
-        meanings,
-      },
+    const result: WordLookupResult = {
+      word: cleanedWord,
+      translation: translation?.translation ?? null,
+      alternatives: translation?.alternatives ?? [],
+      meanings,
     }
+    setCachedLookup(cacheKey, result)
+    return { kind: 'found', result }
   }
 
   const hadError = translationPart.status === 'error' || meaningsPart.status === 'error'

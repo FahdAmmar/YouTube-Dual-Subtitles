@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
-import { Flame, Clock, BookMarked, Star } from 'lucide-react'
+import { Flame, Clock, BookMarked, Star, GraduationCap } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { formatDuration } from '@/lib/utils/formatDuration'
 import { getLearningSummary, CHART_DAYS } from '@/lib/utils/learningSummary'
@@ -41,10 +41,16 @@ export function LearningStatsCard() {
     <Card className="mt-6 p-4">
       <h2 className="mb-3 font-mono text-[11px] tracking-widest text-text-muted">LEARNING_STATS</h2>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <StatTile testId="stat-streak" icon={<Flame size={16} />} value={String(summary.streak)} label="أيام متتالية" />
         <StatTile testId="stat-week" icon={<Clock size={16} />} value={formatDuration(summary.weekSeconds)} label="هذا الأسبوع" />
         <StatTile testId="stat-words" icon={<BookMarked size={16} />} value={String(summary.wordCount)} label="كلمات محفوظة" />
+        <StatTile
+          testId="stat-reviews"
+          icon={<GraduationCap size={16} />}
+          value={`${summary.reviewsToday}/${summary.reviewGoal}`}
+          label="مراجعات اليوم"
+        />
         <StatTile testId="stat-bookmarks" icon={<Star size={16} />} value={String(summary.bookmarkCount)} label="جمل مفضلة" />
       </div>
 

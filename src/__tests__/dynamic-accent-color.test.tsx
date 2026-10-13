@@ -79,8 +79,8 @@ describe('dynamic site accent color', () => {
     fireEvent.click(screen.getByRole('button', { name: 'تشغيل' }))
 
     await waitFor(() => {
-      const activeSlice = screen.getAllByText('Hello').find((element) => element.closest('button'))?.closest('button')
-      expect(activeSlice).toHaveClass('animate-glow-pulse')
+      // The transcript marks its playing card with aria-current (words on the video are buttons too)
+      expect(document.querySelector('button[aria-current="true"]')).toHaveClass('animate-glow-pulse')
     })
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()

@@ -7,6 +7,9 @@ import { VideoStage } from '@/components/video/VideoStage'
 import { MobileActiveCaption } from '@/components/video/MobileActiveCaption'
 import { KeyboardShortcutsPanel } from '@/components/video/KeyboardShortcutsPanel'
 import { ConsolePanel } from '@/components/console/ConsolePanel'
+import { DropOverlay } from '@/components/system/DropOverlay'
+import { VideoKeyProvider } from '@/context/VideoKeyContext'
+import { useSubtitleFileDrop } from '@/hooks/useSubtitleFileDrop'
 import { GlossaryPanel } from '@/components/console/GlossaryPanel'
 import { useVideoPlayer } from '@/hooks/useVideoPlayer'
 import { useSubtitleTrack } from '@/hooks/useSubtitleTrack'
@@ -26,17 +29,39 @@ import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import { useThemeContext } from '@/context/ThemeContext'
 import { pairCuesIntoSlices, type PairedSlice } from '@/lib/subtitles/pairCues'
 import { getVideoKey } from '@/lib/utils/videoKey'
+import { retimeCues, toSyncedFileName } from '@/lib/subtitles/twoPointSync'
+import { cuesToSrt } from '@/lib/subtitles/serializeSRT'
+import { saveSubtitleContent } from '@/lib/utils/subtitleContentStore'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { VideoSource } from '@/types/video.types'
 import type { ViewMode } from '@/types/theme.types'
 
 // تحميل كسول (Code Splitting) للوحة إعدادات حجم/لون الترجمة: لا يحتاجها
 // معظم المستخدمين فور فتح الصفحة، فتحميلها عند الطلب فقط يقلّل حجم الحزمة الأولية
+// Loaded on first use: most sessions never open reading mode
+const ReadingView = lazy(() =>
+  import('@/components/reading/ReadingView').then((module) => ({
+    default: module.ReadingView,
+  })),
+)
 const SettingsPanel = lazy(() =>
   import('@/components/settings/SettingsPanel').then((module) => ({
     default: module.SettingsPanel,
   })),
 )
+
+const NORMAL_MAIN_CLASSES =
+  'sticky top-0 z-20 flex flex-col bg-bg p-3 sm:p-5 lg:static lg:z-auto lg:flex-1 lg:min-w-0 lg:overflow-y-auto'
+// Docked: full width on top for phones, a large card beside the transcript from lg up (always over 200x200, as the YouTube embed rules require)
+const MINI_PLAYER_CLASSES =
+  'fixed inset-x-0 top-0 z-[35] bg-black lg:inset-x-auto lg:start-6 lg:top-[4.5rem] lg:w-[var(--reading-video-width)] lg:overflow-hidden lg:rounded-xl lg:shadow-elevated'
+// Kept mounted and playing, but visually out of the way (local files only)
+const HIDDEN_PLAYER_CLASSES = 'pointer-events-none fixed bottom-0 start-0 h-px w-px overflow-hidden opacity-0'
+
+function getMainClassName(isReadingMode: boolean, hasMiniPlayer: boolean, videoOrderClass: string): string {
+  if (!isReadingMode) return `${NORMAL_MAIN_CLASSES} ${videoOrderClass}`
+  return hasMiniPlayer ? MINI_PLAYER_CLASSES : HIDDEN_PLAYER_CLASSES
+}
 
 /**
  * المكوّن المنسّق (Orchestrator) الرئيسي للتطبيق
@@ -60,6 +85,8 @@ export function AppShell() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false)
   const [isGlossaryOpen, setIsGlossaryOpen] = useState(false)
+  const [isReadingMode, setIsReadingMode] = useState(false)
+  const [isLocalVideoHidden, setIsLocalVideoHidden] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('both')
   // اسم ملف فيديو محلي مطلوب إعادة اختياره يدوياً (نقر مُدخل محلي في سجل
   // المشاهدات) — انظر توثيق useWatchHistory لسبب عدم إمكانية فتحه تلقائياً
@@ -120,6 +147,25 @@ export function AppShell() {
     translationTrack,
   )
 
+  /** Replaces a track's cues with ones mapped onto the video's timeline, and keeps them for the next visit */
+  function retimeTrack(trackId: 'source' | 'translation', trackHook: typeof sourceTrack, scale: number, offset: number) {
+    const { cues, fileName } = trackHook.track
+    if (!fileName) return
+    const retimed = retimeCues(cues, scale, offset)
+    const syncedFileName = toSyncedFileName(fileName)
+    trackHook.loadCues(retimed, syncedFileName)
+    if (videoSource) {
+      void saveSubtitleContent(getVideoKey(videoSource), trackId, syncedFileName, cuesToSrt(retimed))
+    }
+  }
+
+  const { isDragging: isDraggingFile } = useSubtitleFileDrop({
+    isEnabled: videoSource !== null,
+    isSourceLoaded: sourceTrack.track.status === 'ready',
+    onUploadSource: (file) => void onUploadSource(file),
+    onUploadTranslation: (file) => void onUploadTranslation(file),
+  })
+
   // اتجاه الصفحة الفعلي (مضبوط في index.html) — يُقرأ مباشرة لأنه لا
   // يتغيّر ديناميكياً في هذا التطبيق، فلا حاجة لحالة React أو مستمع أحداث
   const documentDirection = document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr'
@@ -136,6 +182,7 @@ export function AppShell() {
       return null
     })
     setPendingLocalFileName(null)
+    setIsReadingMode(false)
     // تصفير مساري الترجمة: بدونه يبقى ملف الفيديو السابق "جاهزاً" ظاهرياً
     // حتى بعد التبديل لفيديو مختلف تماماً — توقيته لا علاقة له بهذا
     // الفيديو الجديد إطلاقاً، وعرضه يُربك المستخدم بترجمة خاطئة تماماً
@@ -182,6 +229,13 @@ export function AppShell() {
   const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
   useWatchTimeTracker(isPlaying)
 
+  const toggleReadingMode = useCallback(() => setIsReadingMode((previous) => !previous), [])
+  // YouTube and Vimeo terms forbid hiding the player or playing only its audio,
+  // so those sources stay visible in a docked mini player; local files can be hidden
+  const canHideVideo = videoSource?.type === 'local'
+  const hasMiniPlayer = !(canHideVideo && isLocalVideoHidden)
+  const readingTitle = player.videoTitle ?? (videoSource?.type === 'local' ? videoSource.fileName : 'وضع القراءة')
+
   // المرحلة الأولى: لا يوجد فيديو بعد — انظر توثيق PreLoadScreen لسبب استخلاصها
   if (!videoSource) {
     return (
@@ -208,13 +262,14 @@ export function AppShell() {
   // على الشاشات الكبيرة (lg+): عمودان جنباً إلى جنب بارتفاع الشاشة كاملاً،
   // مع مقبض سحب بينهما (PanelResizeHandle) يتيح تغيير عرض اللوحة الجانبية
   return (
+    <VideoKeyProvider value={videoKey}>
     <div className="relative flex flex-col bg-bg lg:h-screen lg:overflow-hidden">
       <BackgroundFX />
       <Header />
 
       <div ref={sidebar.containerRef} className="flex flex-1 flex-col lg:min-h-0 lg:flex-row">
         <main
-          className={`sticky top-0 z-20 flex flex-col bg-bg p-3 sm:p-5 lg:static lg:z-auto lg:flex-1 lg:min-w-0 lg:overflow-y-auto ${flexOrder.video}`}
+          className={getMainClassName(isReadingMode, hasMiniPlayer, flexOrder.video)}
         >
           <VideoStage
             player={player}
@@ -228,9 +283,14 @@ export function AppShell() {
             revealedIndex={revealedIndex}
             onToggleReveal={toggleReveal}
             onToggleActiveBookmark={handleToggleActiveBookmark}
+            onToggleReadingMode={toggleReadingMode}
+            onViewModeChange={setViewMode}
+            isCompact={isReadingMode}
           />
         </main>
 
+        {/* في وضع القراءة تبقى هذه العناصر مُركَّبة (لا تضيع حالتها) لكنها مخفية */}
+        <div className={isReadingMode ? 'hidden' : 'contents'}>
         {/* شريط الجوال المدمج — جزء من الكتلة المثبّتة تحديداً لأنه يلي
             <main> مباشرة في نفس تدفق sticky؛ lg:hidden يمنع أي أثر على
             تخطيط الشاشات الكبيرة (ولا يحتاج أصناف order لأنه بلا عرض أصلاً هناك) */}
@@ -279,12 +339,16 @@ export function AppShell() {
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenShortcutsHelp={() => setIsShortcutsHelpOpen(true)}
             onOpenGlossary={() => setIsGlossaryOpen(true)}
+            onOpenReading={() => setIsReadingMode(true)}
+            onRetimeSource={(scale, offset) => retimeTrack('source', sourceTrack, scale, offset)}
+            onRetimeTranslation={(scale, offset) => retimeTrack('translation', translationTrack, scale, offset)}
             sidebarPosition={sidebarPosition.position}
             onToggleSidebarPosition={sidebarPosition.toggle}
             rememberedSourceFileName={historyEntry?.subtitleFileNames.source}
             rememberedTranslationFileName={historyEntry?.subtitleFileNames.translation}
             searchInputRef={searchInputRef}
           />
+        </div>
         </div>
       </div>
 
@@ -294,6 +358,30 @@ export function AppShell() {
           الحجم بجوار أي iframe خارجي */}
       {sidebar.isDragging && (
         <div className="fixed inset-0 z-50 cursor-col-resize" aria-hidden="true" />
+      )}
+
+      <DropOverlay isVisible={isDraggingFile} />
+
+      {isReadingMode && (
+        <Suspense fallback={null}>
+        <ReadingView
+          player={player}
+          slices={slices}
+          title={readingTitle}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          revealedIndex={revealedIndex}
+          bookmarkedIds={bookmarkedIds}
+          onToggleBookmark={handleToggleSliceBookmark}
+          sourceLanguageCode={sourceTrack.track.languageCode}
+          translationLanguageCode={translationTrack.track.languageCode}
+          isVideoVisible={hasMiniPlayer}
+          canHideVideo={canHideVideo}
+          onToggleVideoHidden={() => setIsLocalVideoHidden((previous) => !previous)}
+          onClose={() => setIsReadingMode(false)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+        </Suspense>
       )}
 
       <Suspense fallback={null}>
@@ -307,7 +395,12 @@ export function AppShell() {
 
       <KeyboardShortcutsPanel isOpen={isShortcutsHelpOpen} onClose={() => setIsShortcutsHelpOpen(false)} />
 
-      <GlossaryPanel isOpen={isGlossaryOpen} onClose={() => setIsGlossaryOpen(false)} />
+      <GlossaryPanel
+        isOpen={isGlossaryOpen}
+        onClose={() => setIsGlossaryOpen(false)}
+        onSeekToTime={(seconds) => player.seekTo(seconds)}
+      />
     </div>
+    </VideoKeyProvider>
   )
 }

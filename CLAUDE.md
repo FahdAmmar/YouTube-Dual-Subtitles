@@ -7,18 +7,22 @@ everything (including subtitle files) stays in the browser (`localStorage` + `In
 
 ## Stack
 - React 18 + TypeScript (strict, `noUncheckedIndexedAccess`)
-- Vite + `vite-plugin-pwa`
-- Tailwind CSS + Framer Motion
+- Vite 7 + `vite-plugin-pwa` (deploy settings: `BASE_PATH`, `SITE_URL` — see docs/ARCHITECTURE.md → Deployment)
+- `@tanstack/react-virtual` (reading-mode list: only cards near the screen are in the DOM)
+- Tailwind CSS + Framer Motion (through `LazyMotion` in `App.tsx`: use `m.div`, never `motion.div`; `strict` throws on the full component)
 - Vitest + React Testing Library
-- ESLint
+- ESLint 8 (deprecated upstream; a move to ESLint 9 flat config is pending)
+- Real-browser checks: `puppeteer-core` + `axe-core` (`npm run e2e`)
 
 ## Commands
 | Task | Command |
 |---|---|
 | Dev server | `npm run dev` |
-| Build | `npm run build` (runs `tsc -b` first) |
+| Type-check | `npm run typecheck` (same as `npx tsc --noEmit`, plus the Vite config) |
+| Build | `npm run build` (runs the type-check first) |
 | Tests | `npm test` |
 | Lint | `npm run lint` |
+| Real-browser a11y/CSP/layout check | `npm run build && npm run e2e` (needs Chrome: `CHROME_PATH`) |
 
 ## Architecture map
 - `src/hooks/` — one hook per concern (`useYouTubePlayer`, `useVimeoPlayer`,
@@ -27,7 +31,13 @@ everything (including subtitle files) stays in the browser (`localStorage` + `In
 - `src/lib/{youtube,vimeo,subtitles,utils}/` — pure, framework-free logic. Prefer
   putting new parsing/format logic here so it's independently testable.
 - `src/components/` — organized by feature area (`video`, `subtitles`, `settings`,
-  `console`, `layout`, `system`, `ui`). `ui/` is generic/reusable only.
+  `console`, `reading`, `layout`, `system`, `ui`). `ui/` is generic/reusable only.
+- `src/lib/{csp,deploy}/` — build-time helpers used by `vite.config.ts` (Content-Security-Policy,
+  base path, share-image URLs). Host files (`public/_headers`, `vercel.json`, `netlify.toml`)
+  must stay consistent: `src/lib/deploy/hostConfigs.test.ts` enforces it.
+- Subtitles on the video: `SubtitleOverlay` renders one `SubtitleLine` per language (each drags on its own via
+  `useDraggableOverlayPosition`); placement + offsets persist through `useSubtitleLayout` (one `localStorage` key,
+  normalized on read). Words of the translation line open `VideoWordCard`, which reuses the sidebar's `WordDefinitionCard`.
 - `src/context/` — cross-cutting UI state only (theme, subtitle settings). Don't reach
   for context for state that's local to one feature.
 - `src/__tests__/` — one file per behavior/bug, named after what it verifies.
@@ -38,6 +48,12 @@ everything (including subtitle files) stays in the browser (`localStorage` + `In
 - New persistent state goes through the existing `localStorage`/`IndexedDB` helpers
   (see `.claude/rules/state-persistence.md`), not ad-hoc reads/writes.
 - Every bug fix ships with a regression test that is confirmed to fail without the fix.
+- jsdom has no layout, scrolling or colour: a bug that only shows on screen (wrapping, overlap, contrast,
+  scroll position) needs a check in `e2e/` (real Chrome), not only a unit test.
+- Never set `Referrer-Policy: no-referrer`: YouTube embeds then refuse to play (error 153).
+- Text must reach WCAG AA (4.5:1). The accent colour is derived from the subtitle colour, so never rely on
+  `text-console` or `text-text-muted` for text; use `text-text-primary` / `text-text-secondary`.
+- Numbers around " / " inside RTL text swap places: wrap them in `dir="ltr"`.
 
 ## Where to look next
 - `.claude/rules/` — code style, testing conventions, persistence conventions

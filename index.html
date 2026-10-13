@@ -12,6 +12,14 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     <!--
+      تحميل مسبق لأكثر وزنين استخداماً من الخط العربي (400 للنص، 500 للتسميات): يبدأ تنزيلهما مع الصفحة بدل
+      انتظار وصول ملف الأنماط ثم اكتشاف الحاجة إليهما. crossorigin إلزامي للخطوط حتى لو كانت من نفس النطاق،
+      وإلا نزّلها المتصفح مرتين. وزنا Bold و Mono يُحمَّلان عند الحاجة فقط.
+    -->
+    <link rel="preload" href="/fonts/IBMPlexSansArabic-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/IBMPlexSansArabic-Medium.woff2" as="font" type="font/woff2" crossorigin />
+
+    <!--
       سكربت مضمّن (Inline) يُنفَّذ قبل أي رسم للصفحة، لتطبيق السمة الصحيحة
       (الداكنة أو الفاتحة) فوراً دون وميض مرئي (Flash of Wrong Theme).
       المفتاح 'ydc:theme-preference' يجب أن يبقى مطابقاً تماماً لقيمة

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { X, Play, Square, Check } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { IconButton } from '@/components/ui/IconButton'
@@ -88,7 +88,7 @@ export function VoicePickerModal({
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -96,7 +96,7 @@ export function VoicePickerModal({
             className="fixed inset-0 z-[60] bg-black/50"
             aria-hidden="true"
           />
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
@@ -183,7 +183,7 @@ export function VoicePickerModal({
                 </div>
               </div>
             </Card>
-          </motion.div>
+          </m.div>
         </>
       )}
     </AnimatePresence>

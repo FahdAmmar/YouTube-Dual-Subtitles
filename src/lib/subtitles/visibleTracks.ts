@@ -15,3 +15,10 @@ export function getVisibleTracks(viewMode: ViewMode, isTranslationRevealed: bool
     translation: viewMode === 'recall' ? isTranslationRevealed : viewMode !== 'source',
   }
 }
+
+/** One tap on the language button: both → translation only → source only → both. Recall mode exits to both. */
+export function nextViewMode(viewMode: ViewMode): ViewMode {
+  if (viewMode === 'both') return 'translation'
+  if (viewMode === 'translation') return 'source'
+  return 'both'
+}

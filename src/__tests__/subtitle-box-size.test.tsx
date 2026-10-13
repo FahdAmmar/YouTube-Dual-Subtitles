@@ -55,16 +55,20 @@ describe('subtitle box width and line-height settings', () => {
     activePlayer!.setTime(2)
     fireEvent.click(screen.getByRole('button', { name: 'تشغيل' }))
 
-    const overlay = await screen.findByTestId('draggable-subtitle-overlay')
-    const translationLine = await within(overlay).findByText('Welcome to this video')
-    const sourceLine = within(overlay).getByText('مرحباً بكم في هذا الفيديو')
+    const translationBox = await screen.findByTestId('subtitle-line-translation')
+    const sourceBox = screen.getByTestId('subtitle-line-source')
+    // Translation words are separate buttons (click-for-meaning), so the line is found by its element, not by text
+    const [translationLine] = translationBox.getElementsByTagName('p')
+    const sourceLine = within(sourceBox).getByText('مرحباً بكم في هذا الفيديو')
 
-    expect(translationLine.style.maxWidth).toBe('60%')
-    expect(translationLine.style.lineHeight).toBe('1.6')
+    // The cap is on each draggable box, not on its line: a percentage on a line is resolved against a box that is
+    // only as wide as the longest line, which forced that line to wrap its last word (see the e2e layout check)
+    expect(translationBox.style.maxWidth).toBe('60%')
+    expect(sourceBox.style.maxWidth).toBe('60%')
+    expect(translationLine?.style.maxWidth).toBe('100%')
+    expect(sourceLine.style.maxWidth).toBe('100%')
+    expect(translationLine?.style.lineHeight).toBe('1.6')
     expect(sourceLine.style.lineHeight).toBe('1.6')
-    // السطر المرجعي (العربي) يبقى أضيق قليلاً من السطر الأساسي، بنفس
-    // النسبة المتّبعة سابقاً كقيم ثابتة (88% مقابل 94%)
-    expect(Number.parseFloat(sourceLine.style.maxWidth)).toBeLessThan(60)
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
     errorSpy.mockRestore()

@@ -14,3 +14,9 @@
 - Comments explain *why*, not *what*; keep them short and in English.
 - Avoid new dependencies unless they solve a real, non-trivial problem — this app's
   bundle size and "no backend needed" simplicity are deliberate.
+- Animations use Framer Motion's lightweight `m` components (`m.div`, `m.p`) inside the `LazyMotion` in
+  `src/App.tsx`, never `motion.*`: the full component would pull the whole animation engine back into the
+  first download, and `LazyMotion strict` throws if it is used. Drag and layout animations need `domMax`
+  instead of `domAnimation` (`src/lib/motion/domAnimationFeatures.ts`) — add them only if a feature needs them.
+- Fonts are split by `unicode-range` (`src/styles/fonts.css`); `fontFiles.test.ts` fails if a file is missing or
+  unused. Do not add a font weight or family without a measured need: the UI chrome loads on every visit.

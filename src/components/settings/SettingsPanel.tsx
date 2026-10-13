@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { X, RotateCcw } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { IconButton } from '@/components/ui/IconButton'
@@ -9,6 +9,9 @@ import { StorageUsagePanel } from './StorageUsagePanel'
 import { BackupPanel } from './BackupPanel'
 import { VoiceSelector } from './VoiceSelector'
 import { isSpeechSupported } from '@/lib/utils/textToSpeech'
+import { clearLookupCache } from '@/lib/utils/lookupCache'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { STORAGE_KEYS } from '@/constants/theme.constants'
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import type { SubtitleTrackState } from '@/types/subtitle.types'
@@ -33,13 +36,14 @@ interface SettingsPanelProps {
 export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanelProps) {
   const { settings, updateTrackStyle, toggleBackdrop, setSubtitleWidthPercent, setSubtitleLineHeight, resetToDefaults } =
     useSubtitleSettings()
+  const [isOnlineLookupOn, setIsOnlineLookupOn] = useLocalStorage<boolean>(STORAGE_KEYS.ONLINE_LOOKUP, true)
   const dialogRef = useDialogFocusTrap(isOpen, onClose)
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -47,7 +51,7 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
             className="fixed inset-0 z-40 bg-black/50"
             aria-hidden="true"
           />
-          <motion.div
+          <m.div
             ref={dialogRef}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -126,6 +130,25 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
                 />
               </label>
 
+              <div className="flex flex-col gap-2 border-s-4 border-border ps-4">
+                <h3 className="text-sm font-semibold text-text-primary">الخصوصية</h3>
+                <label className="flex items-center justify-between gap-3 text-sm font-medium text-text-secondary">
+                  البحث عن معنى الكلمات عبر الإنترنت
+                  <input
+                    type="checkbox"
+                    checked={isOnlineLookupOn}
+                    onChange={(event) => setIsOnlineLookupOn(event.target.checked)}
+                    className="h-5 w-5 shrink-0 accent-console"
+                  />
+                </label>
+                <p className="text-xs leading-relaxed text-text-muted">
+                  عند النقر على كلمة تُرسَل هذه الكلمة وحدها إلى MyMemory وويكاموس. لا يُرسَل أي شيء آخر، والكلمات المبحوث عنها تُحفَظ على جهازك لتقليل الطلبات.
+                </p>
+                <Button variant="secondary" size="sm" onClick={clearLookupCache} className="w-fit">
+                  مسح الكلمات المحفوظة مؤقتاً
+                </Button>
+              </div>
+
               <Button variant="secondary" size="sm" onClick={resetToDefaults} className="mt-auto">
                 <RotateCcw size={15} aria-hidden="true" />
                 استعادة الإعدادات الافتراضية
@@ -134,7 +157,7 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
               <StorageUsagePanel isOpen={isOpen} />
               <BackupPanel />
             </Card>
-          </motion.div>
+          </m.div>
         </>
       )}
     </AnimatePresence>

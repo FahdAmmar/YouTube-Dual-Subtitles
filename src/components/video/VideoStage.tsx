@@ -7,6 +7,10 @@ import { VideoTopBar } from './VideoTopBar'
 import { VideoControlBar } from './VideoControlBar'
 import { usePictureInPicture } from '@/hooks/usePictureInPicture'
 import { SubtitleOverlay } from './SubtitleOverlay'
+import { VideoWordCard } from './VideoWordCard'
+import { SubtitleQuickControls } from '@/components/subtitles/SubtitleQuickControls'
+import { useSubtitleLayout } from '@/hooks/useSubtitleLayout'
+import { nextViewMode } from '@/lib/subtitles/visibleTracks'
 import { PlaybackShortcutToast, type PlaybackShortcutFeedback } from './PlaybackShortcutToast'
 import { useFullscreen } from '@/hooks/useFullscreen'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
@@ -19,7 +23,7 @@ import { useShadowingMode } from '@/hooks/useShadowingMode'
 import type { UseVideoPlayerResult } from '@/hooks/useVideoPlayer'
 import { MIN_PLAYBACK_RATE, MAX_PLAYBACK_RATE } from '@/hooks/useYouTubePlayer'
 import { formatPlaybackRate } from '@/lib/utils/formatPlaybackRate'
-import type { SubtitleTrackState } from '@/types/subtitle.types'
+import type { SubtitleTrackState, WordSelection } from '@/types/subtitle.types'
 import type { ViewMode } from '@/types/theme.types'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
@@ -37,6 +41,10 @@ interface VideoStageProps {
   onToggleReveal: () => void
   /** Bookmarks the segment playing now; true = added, false = removed, null = no segment is playing */
   onToggleActiveBookmark: () => boolean | null
+  onToggleReadingMode?: () => void
+  onViewModeChange: (mode: ViewMode) => void
+  /** Reading mode docks the player small: drop the overlays and controls the reading dock replaces */
+  isCompact?: boolean
 }
 
 let shortcutFeedbackIdCounter = 0
@@ -64,8 +72,14 @@ export function VideoStage({
   revealedIndex,
   onToggleReveal,
   onToggleActiveBookmark,
+  onToggleReadingMode,
+  onViewModeChange,
+  isCompact = false,
 }: VideoStageProps) {
   const stageRef = useRef<HTMLDivElement>(null)
+  const { layout, setLineOffset, cyclePlacement } = useSubtitleLayout()
+  const [selectedWord, setSelectedWord] = useState<WordSelection | null>(null)
+  const closeWordCard = useCallback(() => setSelectedWord(null), [])
   const { isFullscreen, toggleFullscreen } = useFullscreen(stageRef)
   const pictureInPicture = usePictureInPicture(
     player.renderTarget.type === 'local' ? player.renderTarget.videoRef : null,
@@ -287,6 +301,7 @@ export function VideoStage({
     onToggleShadowing: handleToggleShadowing,
     onToggleTranslationReveal: onToggleReveal,
     onToggleBookmark: handleToggleBookmark,
+    onToggleReadingMode,
   })
 
   return (
@@ -329,7 +344,22 @@ export function VideoStage({
             onNextScene={handleNextScene}
           />
 
-          <VideoTopBar languageCode={sourceTrack.languageCode} onBack={onChangeVideo} />
+          {!isCompact && (
+            <VideoTopBar
+              languageCode={sourceTrack.languageCode}
+              onBack={onChangeVideo}
+              trailingControls={
+                <SubtitleQuickControls
+                  viewMode={viewMode}
+                  onCycleViewMode={() => onViewModeChange(nextViewMode(viewMode))}
+                  sourceTrack={sourceTrack}
+                  translationTrack={translationTrack}
+                  placement={layout.placement}
+                  onCyclePlacement={cyclePlacement}
+                />
+              }
+            />
+          )}
 
           {/* شارة تذكيرية بأن وضع التظليل مفعَّل — تبقى ظاهرة طوال الوضع
               (بخلاف تغذية شريط الاختصارات الراجعة اللحظية أعلاه) لأن أثره
@@ -353,6 +383,7 @@ export function VideoStage({
             </div>
           )}
 
+          {!isCompact && (
           <SubtitleOverlay
             sourceTrack={sourceTrack}
             translationTrack={translationTrack}
@@ -363,10 +394,24 @@ export function VideoStage({
             revealedIndex={revealedIndex}
             onToggleReveal={onToggleReveal}
             stageRef={stageRef}
+            layout={layout}
+            onLineOffsetChange={setLineOffset}
+            onWordSelect={setSelectedWord}
           />
+          )}
+
+          {!isCompact && selectedWord && (
+            <VideoWordCard
+              selection={selectedWord}
+              languageCode={translationTrack.languageCode}
+              nativeLanguageCode={sourceTrack.languageCode}
+              onClose={closeWordCard}
+            />
+          )}
 
           <PlaybackShortcutToast feedback={shortcutFeedback} />
 
+          {!isCompact && (
           <div className="absolute inset-x-0 bottom-0">
             <VideoControlBar
               playerState={player.playerState}
@@ -391,6 +436,7 @@ export function VideoStage({
               isPictureInPictureActive={pictureInPicture.isActive}
             />
           </div>
+          )}
         </>
       )}
     </div>

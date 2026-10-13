@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { lookupWord } from './wordLookup'
+import { STORAGE_KEYS } from '@/constants/theme.constants'
 
 const WIKTIONARY_KAFFEE = {
   de: [
@@ -21,6 +22,9 @@ const MYMEMORY_KAFFEE = {
     { segment: 'Kaffee und Kuchen', translation: 'قهوة وكعك' },
   ],
 }
+
+// Successful lookups are cached, so every test starts from an empty cache
+beforeEach(() => window.localStorage.clear())
 
 type Route = { ok: boolean; status?: number; body?: unknown } | 'throw'
 
@@ -130,6 +134,43 @@ describe('lookupWord', () => {
   it('returns not-found for empty input without calling fetch', async () => {
     const fetchMock = mockFetch({ wiktionary: { ok: true, body: {} }, mymemory: { ok: true, body: {} } })
     expect((await lookupWord('   ', 'de', 'ar')).kind).toBe('not-found')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('answers a repeated word from the cache without another request', async () => {
+    const fetchMock = mockFetch({
+      wiktionary: { ok: true, body: WIKTIONARY_KAFFEE },
+      mymemory: { ok: true, body: MYMEMORY_KAFFEE },
+    })
+    await lookupWord('Kaffee', 'de', 'ar')
+    const callsAfterFirst = fetchMock.mock.calls.length
+
+    const second = await lookupWord('kaffee', 'de', 'ar')
+
+    expect(second.kind).toBe('found')
+    expect(fetchMock.mock.calls.length).toBe(callsAfterFirst)
+  })
+
+  it('does not cache failures, so a retry really retries', async () => {
+    const fetchMock = mockFetch({ wiktionary: 'throw', mymemory: 'throw' })
+    await lookupWord('Kaffee', 'de', 'ar')
+    const callsAfterFirst = fetchMock.mock.calls.length
+
+    await lookupWord('Kaffee', 'de', 'ar')
+
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirst)
+  })
+
+  it('sends nothing over the network while online lookup is switched off', async () => {
+    window.localStorage.setItem(STORAGE_KEYS.ONLINE_LOOKUP, 'false')
+    const fetchMock = mockFetch({
+      wiktionary: { ok: true, body: WIKTIONARY_KAFFEE },
+      mymemory: { ok: true, body: MYMEMORY_KAFFEE },
+    })
+
+    const outcome = await lookupWord('Kaffee', 'de', 'ar')
+
+    expect(outcome.kind).toBe('disabled')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

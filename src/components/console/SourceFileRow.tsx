@@ -1,7 +1,9 @@
 import { useRef, type ChangeEvent } from 'react'
 import { Upload, CheckCircle2, Loader2, XCircle, History } from 'lucide-react'
 import { SyncOffsetControl } from '@/components/subtitles/SyncOffsetControl'
+import { TwoPointSync } from '@/components/subtitles/TwoPointSync'
 import { cn } from '@/lib/utils/cn'
+import { toSyncedFileName } from '@/lib/subtitles/twoPointSync'
 import { SUBTITLE_FILE_ACCEPT } from '@/lib/subtitles/parseSubtitleFile'
 import type { SubtitleTrackState, TrackOffsetControls } from '@/types/subtitle.types'
 
@@ -12,6 +14,10 @@ interface SourceFileRowProps {
   offsetControls: TrackOffsetControls
   /** اسم ملف كان مستخدَماً لهذا المسار في هذا الفيديو تحديداً آخر مرة — يُعرَض كتذكير فقط طالما لا يوجد ملف محمَّل حالياً */
   rememberedFileName?: string
+  /** Together these enable the two-point sync for drifting subtitles */
+  getCurrentTime?: () => number
+  onSeek?: (seconds: number) => void
+  onRetime?: (scale: number, offset: number) => void
 }
 
 /**
@@ -20,7 +26,16 @@ interface SourceFileRowProps {
  * الضيقة نسبياً بعد بدء التشغيل. يسمح بتغيير الملف في أي وقت دون الحاجة
  * للعودة لشاشة الإعداد الأولية.
  */
-export function SourceFileRow({ track, accentClassName, onFileSelected, offsetControls, rememberedFileName }: SourceFileRowProps) {
+export function SourceFileRow({
+  track,
+  accentClassName,
+  onFileSelected,
+  offsetControls,
+  rememberedFileName,
+  getCurrentTime,
+  onSeek,
+  onRetime,
+}: SourceFileRowProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -93,6 +108,18 @@ export function SourceFileRow({ track, accentClassName, onFileSelected, offsetCo
           </div>
         )}
       </div>
+
+      {getCurrentTime && onSeek && onRetime && track.cues.length >= 2 && (
+        // The key restarts the form for a different file, but not for the same file after it was
+        // synced (its name changes to *.synced.srt), or the confirmation message would vanish
+        <TwoPointSync
+          key={toSyncedFileName(track.fileName ?? '')}
+          cues={track.cues}
+          getCurrentTime={getCurrentTime}
+          onSeek={onSeek}
+          onApply={onRetime}
+        />
+      )}
     </div>
   )
 }

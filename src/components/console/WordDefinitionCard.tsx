@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { X, BookmarkPlus, BookmarkCheck, Loader2, ExternalLink, RefreshCw } from 'lucide-react'
 import { lookupWord, type LookupOutcome } from '@/lib/utils/wordLookup'
+import { useCurrentVideoKey } from '@/context/VideoKeyContext'
 import { useGlossary } from '@/hooks/useGlossary'
 
 interface WordDefinitionCardProps {
@@ -9,6 +10,9 @@ interface WordDefinitionCardProps {
   languageCode: string
   /** لغة المستخدم (المسار المرجعي) لعرض الترجمة إليها */
   nativeLanguageCode?: string
+  /** The line the word was clicked in, saved with the word so a review can show it in context */
+  sentence?: string | null
+  sentenceTime?: number
   onClose: () => void
 }
 
@@ -19,7 +23,15 @@ type CardState = { kind: 'loading' } | LookupOutcome
  * (لا جزء من SliceCard) كي يُحمَّل useGlossary وقراءة localStorage فقط
  * عند نقرة فعلية، لا مع كل بطاقة في قائمة قد تضم آلاف المقاطع
  */
-export function WordDefinitionCard({ word, languageCode, nativeLanguageCode, onClose }: WordDefinitionCardProps) {
+export function WordDefinitionCard({
+  word,
+  languageCode,
+  nativeLanguageCode,
+  sentence,
+  sentenceTime,
+  onClose,
+}: WordDefinitionCardProps) {
+  const videoKey = useCurrentVideoKey()
   const [state, setState] = useState<CardState>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
   const glossary = useGlossary()
@@ -68,6 +80,12 @@ export function WordDefinitionCard({ word, languageCode, nativeLanguageCode, onC
           <Loader2 size={12} className="animate-spin" aria-hidden="true" />
           <span>جارٍ البحث…</span>
         </div>
+      )}
+
+      {state.kind === 'disabled' && (
+        <p className="text-xs text-text-muted">
+          البحث عن المعنى متوقف حالياً لأنه يرسل الكلمة إلى مواقع خارجية. يمكنك تفعيله من إعدادات الترجمة.
+        </p>
       )}
 
       {state.kind === 'error' && (
@@ -144,6 +162,10 @@ export function WordDefinitionCard({ word, languageCode, nativeLanguageCode, onC
                 translation: state.result.translation,
                 definition: firstMeaning?.text ?? '',
                 example: firstMeaning?.example ?? null,
+                context:
+                  sentence && videoKey && sentenceTime !== undefined
+                    ? { sentence, videoKey, time: sentenceTime }
+                    : undefined,
               })
             }}
             disabled={isSaved}
@@ -153,6 +175,12 @@ export function WordDefinitionCard({ word, languageCode, nativeLanguageCode, onC
             {isSaved ? 'أُضيفت إلى المفردات' : 'أضف إلى المفردات'}
           </button>
         </>
+      )}
+
+      {state.kind !== 'disabled' && (
+        <p className="text-[10px] leading-snug text-text-muted">
+          تُرسَل الكلمة إلى MyMemory وويكاموس للبحث عنها، ويمكن إيقاف ذلك من الإعدادات.
+        </p>
       )}
     </div>
   )

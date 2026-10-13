@@ -1,0 +1,13 @@
+# Used only by `vercel deploy` from a local folder (Git-connected deployments clone the repository instead).
+# Keeps the upload down to what `npm ci && npm run build` needs.
+node_modules
+dist
+.vite
+.git
+.github
+.vscode
+.claude
+docs
+e2e
+CLAUDE.md
+netlify.toml

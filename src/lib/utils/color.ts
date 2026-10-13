@@ -145,3 +145,45 @@ export function deriveAccentPair(hex: string, theme: 'light' | 'dark'): AccentPa
     hover: rgbToChannelString(hover),
   }
 }
+
+type RgbTuple = readonly [number, number, number]
+
+function relativeLuminance([r, g, b]: RgbTuple): number {
+  const channel = (value: number) => {
+    const scaled = value / 255
+    return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+}
+
+/** WCAG 2 contrast ratio between two colours, from 1 (identical) to 21 (black on white) */
+export function contrastRatio(first: RgbTuple, second: RgbTuple): number {
+  const [lighter, darker] = [relativeLuminance(first), relativeLuminance(second)].sort((a, b) => b - a)
+  return (lighter! + 0.05) / (darker! + 0.05)
+}
+
+const LIGHTNESS_STEP = 2
+
+function toHex({ r, g, b }: RGB): string {
+  return `#${[r, g, b].map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
+ * Subtitle colours are chosen to read on a dark video, but reading mode puts them on a card in
+ * either theme. This moves a colour's lightness away from the surface, keeping its hue and
+ * saturation, until it reaches `minContrast`. Colours that already read are returned untouched.
+ */
+export function ensureReadableColor(hex: string, surface: RgbTuple, minContrast: number): string {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
+  if (contrastRatio([rgb.r, rgb.g, rgb.b], surface) >= minContrast) return hex
+
+  const hsl = rgbToHsl(rgb)
+  const direction = relativeLuminance(surface) > 0.4 ? -1 : 1 // darken on light surfaces, lighten on dark ones
+  for (let lightness = hsl.l; lightness >= 0 && lightness <= 100; lightness += direction * LIGHTNESS_STEP) {
+    const candidate = hslToRgb({ ...hsl, l: lightness })
+    if (contrastRatio([candidate.r, candidate.g, candidate.b], surface) >= minContrast) return toHex(candidate)
+  }
+  // Even pure black or white can fall short against a mid-tone surface: take the strongest option
+  return toHex(hslToRgb({ ...hsl, l: direction === -1 ? 0 : 100 }))
+}

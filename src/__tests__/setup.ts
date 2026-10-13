@@ -2,6 +2,15 @@ import '@testing-library/jest-dom/vitest'
 // jsdom لا يوفّر IndexedDB إطلاقاً — محاكاة كاملة في الذاكرة لاختبار
 // subtitleContentStore.ts (تخزين محتوى ملفات الترجمة لسجل المشاهدات)
 import 'fake-indexeddb/auto'
+import { configure } from '@testing-library/react'
+
+// The default 1 s wait is shorter than some multi-step flows (remounting the app and restoring saved state)
+// take when ~90 test files share the CPU: one such test failed once in a full run at 1.3 s, while it takes
+// ~0.4 s alone. Waiting longer only delays a failure; it never makes a passing test slower.
+configure({ asyncUtilTimeout: 4000 })
+
+// jsdom prints "Not implemented: window.scrollTo" on every call; a no-op keeps real failures visible in the output
+window.scrollTo = (() => {}) as typeof window.scrollTo
 
 // محاكاة قياسية لـ window.matchMedia (متوفرة فعلياً في كل المتصفحات الحديثة،
 // لكن jsdom لا يوفرها افتراضياً) — هذا يحاكي بيئة متصفح حقيقي بدقة

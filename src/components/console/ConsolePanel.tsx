@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload, Keyboard, Search, X, BookMarked, Star } from 'lucide-react'
+import { AnimatePresence, m } from 'framer-motion'
+import { SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Languages, CheckCircle2, Loader2, XCircle, Upload, Keyboard, Search, X, BookMarked, BookOpenText, Star } from 'lucide-react'
 import { ViewModeToggle } from './ViewModeToggle'
 import { SourceFileRow } from './SourceFileRow'
 import { DownloadSubtitles } from './DownloadSubtitles'
@@ -44,6 +44,9 @@ interface ConsolePanelProps {
   onOpenSettings: () => void
   onOpenShortcutsHelp: () => void
   onOpenGlossary: () => void
+  onOpenReading: () => void
+  onRetimeSource?: (scale: number, offset: number) => void
+  onRetimeTranslation?: (scale: number, offset: number) => void
   sidebarPosition: SidebarPosition
   onToggleSidebarPosition: () => void
   rememberedSourceFileName?: string
@@ -78,6 +81,9 @@ export function ConsolePanel({
   onOpenSettings,
   onOpenShortcutsHelp,
   onOpenGlossary,
+  onOpenReading,
+  onRetimeSource,
+  onRetimeTranslation,
   sidebarPosition,
   onToggleSidebarPosition,
   rememberedSourceFileName,
@@ -169,6 +175,14 @@ export function ConsolePanel({
                 <ChevronDown size={14} aria-hidden="true" />
               )}
             </IconButton>
+            <IconButton
+              aria-label="فتح وضع القراءة"
+              title="وضع القراءة (T)"
+              onClick={onOpenReading}
+              className="h-8 w-8 text-console hover:text-console-hover"
+            >
+              <BookOpenText size={14} aria-hidden="true" />
+            </IconButton>
             <IconButton aria-label="فتح إعدادات حجم ولون الترجمة" onClick={onOpenSettings} className="h-8 w-8">
               <SlidersHorizontal size={14} aria-hidden="true" />
             </IconButton>
@@ -183,7 +197,7 @@ export function ConsolePanel({
 
         <AnimatePresence initial={false}>
           {isUploadSectionExpanded && (
-            <motion.div
+            <m.div
               key="upload-controls"
               id="upload-controls-section"
               initial={{ height: 0, opacity: 0 }}
@@ -193,7 +207,12 @@ export function ConsolePanel({
               className="overflow-hidden"
             >
               <div className="flex flex-col gap-3">
-                <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
+                <ViewModeToggle
+                  value={viewMode}
+                  onChange={onViewModeChange}
+                  sourceLanguageCode={sourceTrack.languageCode}
+                  translationLanguageCode={translationTrack.languageCode}
+                />
 
                 <BilingualFileRow state={bilingualUpload} onFileSelected={onUploadBilingual} />
 
@@ -204,6 +223,9 @@ export function ConsolePanel({
                     onFileSelected={onUploadSource}
                     offsetControls={sourceControls}
                     rememberedFileName={rememberedSourceFileName}
+                    getCurrentTime={getCurrentTime}
+                    onSeek={onSeek}
+                    onRetime={onRetimeSource}
                   />
                   <SourceFileRow
                     track={translationTrack}
@@ -211,12 +233,15 @@ export function ConsolePanel({
                     onFileSelected={onUploadTranslation}
                     offsetControls={translationControls}
                     rememberedFileName={rememberedTranslationFileName}
+                    getCurrentTime={getCurrentTime}
+                    onSeek={onSeek}
+                    onRetime={onRetimeTranslation}
                   />
                 </div>
 
                 <DownloadSubtitles sourceTrack={sourceTrack} translationTrack={translationTrack} slices={slices} />
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
 

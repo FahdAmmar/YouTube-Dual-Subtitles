@@ -1,7 +1,8 @@
 import { STORAGE_KEYS } from '@/constants/theme.constants'
 
-/** A day counts toward the streak after this much watching */
+/** A day counts toward the streak after this much watching (or MIN_STREAK_REVIEWS vocabulary reviews) */
 export const MIN_STREAK_SECONDS = 60
+export const MIN_STREAK_REVIEWS = 5
 export const MAX_TRACKED_DAYS = 400
 
 const SECONDS_PER_DAY = 86400
@@ -55,15 +56,20 @@ export function addWatchSeconds(seconds: number, now: Date = new Date()): void {
   }
 }
 
-function qualifies(byDay: SecondsByDay, date: Date): boolean {
-  return (byDay.get(toDayKey(date)) ?? 0) >= MIN_STREAK_SECONDS
+function qualifies(byDay: SecondsByDay, reviewsByDay: ReadonlyMap<string, number>, date: Date): boolean {
+  const dayKey = toDayKey(date)
+  return (byDay.get(dayKey) ?? 0) >= MIN_STREAK_SECONDS || (reviewsByDay.get(dayKey) ?? 0) >= MIN_STREAK_REVIEWS
 }
 
 /** Consecutive qualifying days. Today may still be empty: the streak stays alive until the day ends */
-export function computeStreak(byDay: SecondsByDay, today: Date): number {
-  let cursor = qualifies(byDay, today) ? today : shiftDays(today, -1)
+export function computeStreak(
+  byDay: SecondsByDay,
+  today: Date,
+  reviewsByDay: ReadonlyMap<string, number> = new Map(),
+): number {
+  let cursor = qualifies(byDay, reviewsByDay, today) ? today : shiftDays(today, -1)
   let streak = 0
-  while (qualifies(byDay, cursor)) {
+  while (qualifies(byDay, reviewsByDay, cursor)) {
     streak += 1
     cursor = shiftDays(cursor, -1)
   }

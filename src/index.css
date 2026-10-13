@@ -263,3 +263,62 @@
     );
   }
 }
+
+/* Reading mode: the docked video is as wide as this on large screens (AppShell and ReadingView must agree) */
+:root {
+  --reading-video-width: min(46vw, 780px);
+}
+
+/* Slim progress bar with a round knob, filled up to --progress in --fill-direction */
+.reading-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+.reading-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.reading-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    var(--fill-direction, to right),
+    rgb(var(--color-console)) var(--progress, 0%),
+    rgb(var(--color-text-muted) / 0.35) var(--progress, 0%)
+  );
+}
+.reading-range::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    var(--fill-direction, to right),
+    rgb(var(--color-console)) var(--progress, 0%),
+    rgb(var(--color-text-muted) / 0.35) var(--progress, 0%)
+  );
+}
+.reading-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(var(--color-console));
+  box-shadow: 0 0 0 4px rgb(var(--color-console) / 0.2);
+}
+.reading-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(var(--color-console));
+  box-shadow: 0 0 0 4px rgb(var(--color-console) / 0.2);
+}
+.reading-range:focus-visible {
+  outline: 2px solid rgb(var(--color-console));
+  outline-offset: 4px;
+  border-radius: 9999px;
+}

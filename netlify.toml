@@ -1,0 +1,7 @@
+# Netlify reads the security and caching headers from public/_headers (copied to dist/ by the build).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"

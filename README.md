@@ -1,352 +1,230 @@
-# 🎬 YouTube Dual Subtitles
+# DUAL_SUB
 
-<!-- Add a real screenshot at ./public/screenshot.png -->
-<img align="center" src="./public/screenshot.png" width="1000px" height="500px" style="margin:auto" alt="YouTube Dual Subtitles" />
-
-A fully client‑side web app for watching any YouTube video with **two synchronized subtitle tracks** in different languages, presented as a console‑style dashboard: video on one side, a live synced transcript panel on the other.
-
-No backend. No database. No API keys. Everything runs in the browser.
+> **YouTube • Vimeo • Local Video** — Two subtitle tracks, one timeline. Read along, look up words, remember what you learn.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion" />
-  <img src="https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
-  <img src="https://img.shields.io/badge/Lucide-000000?style=for-the-badge&logo=lucide&logoColor=white" alt="Lucide" />
+  <a href="https://skillicons.dev">
+    <img src="https://skillicons.dev/icons?i=react,ts,vite,tailwind,vitest,eslint,nodejs,npm,github,githubactions,netlify,vercel,cloudflare,puppeteer&perline=14" alt="Tech stack icons" />
+  </a>
 </p>
 
-## ✨ Features
-
-### 🎨 Console‑Style Dashboard
-
-- Near‑black background with electric violet accents for all system chrome
-- Distinct gold / teal colour identity for subtitle track A vs track B
-- Dark / light theme with automatic system preference detection and manual toggle
-- **Resizable sidebar** — hover the divider between video and transcript to reveal a drag handle (mouse or keyboard), width persists across sessions
-- **Sidebar side swap** — a dedicated toggle instantly moves the sidebar between the left and right of the video, correctly on any text direction; the choice persists across sessions
-- **Collapsible upload panel** — auto‑collapses once both subtitle files are ready, freeing up space for the transcript
-- Fully responsive: fixed‑height dashboard with independent scroll regions on desktop, and a mobile layout where the video stays pinned (`sticky`) at the top with a compact, non‑scrolling "now playing" caption strip underneath it
-- Mobile‑tuned controls: comfortable touch‑sized buttons throughout, an always‑visible (not hover‑only) seek handle, the volume slider gives way to a simple mute toggle on narrow screens to avoid crowding the control bar, and text inputs are sized to avoid iOS Safari's auto‑zoom‑on‑focus
-- Full RTL/LTR support with automatic per‑line text direction detection
-
-### 🎬 Three Ways to Watch
-
-- **YouTube or Vimeo URL** — paste any link from either provider; the app auto‑detects which one from the URL itself, no need to pick a provider first. Vimeo's privacy‑hash suffix (`vimeo.com/12345/abcdef`, used for unlisted/private videos) is captured and passed through automatically — without it, an unlisted video would extract an ID successfully but then fail to actually play
-- **Local video file** — upload a file straight from your device (MP4, WebM, MOV, MKV...); it never leaves the browser (played via a local Object URL, nothing is uploaded to any server)
-- All three paths lead to the *exact same* viewing experience — same custom control bar, same keyboard shortcuts, same dual‑subtitle overlay and transcript panel. A single unified player interface (`useVideoPlayer`) sits in front of all three (`useYouTubePlayer` / `useVimeoPlayer` / `useLocalVideoPlayer`), so no other part of the app needs to know or care which one is active
-- Vimeo's own player API is fully promise‑based (unlike YouTube's synchronous getters) — `useVimeoPlayer` bridges this by caching the live position from the `timeupdate` event in a ref, so the rest of the app can keep reading the current time synchronously. Quality selection and playback‑rate changes are wired to Vimeo's real API and degrade gracefully (silently, no crash) on free/non‑Pro accounts where Vimeo itself restricts those controls
-
-### 📼 Watch History
-
-- A "continue watching" list appears above the URL/file form, showing every recently‑watched video with its title (fetched from the provider's own API — `getVideoData()` on YouTube, `getVideoTitle()` on Vimeo), thumbnail (YouTube only — Vimeo has no equivalent predictable, key‑free thumbnail URL), and a relative timestamp (`Intl.RelativeTimeFormat`, no library)
-- **YouTube and Vimeo entries resume with a single click** — the exact same URL (privacy hash included, for Vimeo) is resubmitted automatically, and playback resumes from the saved position
-- **Local video entries cannot auto‑resume** — browsers fundamentally do not allow a site to reopen a file from disk without the user selecting it again, so clicking a local entry instead switches straight to the "local file" tab and shows a clear reminder of the exact file name to pick, rather than pretending to do something it structurally cannot
-- **Subtitle files are activated automatically** — their full text content (not just the file name) is saved to `IndexedDB` on upload, keyed by (video, track, file name). Revisiting the same video from history re‑parses that stored content through the exact same upload pipeline with zero manual steps — no re‑upload, no reminder. If the content isn't available (older browser, private‑browsing restrictions, or a file uploaded before this feature existed), the UI falls back to a clear reminder ("أعد رفع: ar.srt") instead of pretending nothing changed
-- Per‑entry removal and a "clear all" action — both fully clean up *everything* tied to that video (saved playback position, sync offset, and subtitle content in `IndexedDB`), not just the visible history row; capped at 40 entries (oldest pruned automatically)
-- No backend, no accounts — entry metadata lives in `localStorage` like the rest of the app's persistence; subtitle file *content* lives in `IndexedDB` (larger quota, built for this size), capped at the 30 most‑recently‑saved files
-
-### 🌐 Dual Subtitle Power
-
-- Upload **any two independent SRT / VTT / ASS / SSA files** (different sources, different segmentations)
-- **ASS / SSA support** — styled subtitle files (anime, fansubs) load like any other: the `Format:` line decides the columns, override tags such as `{\an8}` are stripped, `\N` becomes a line break, and typesetting drawings and `Comment:` lines are skipped. Styles, positioning and karaoke effects are intentionally not rendered — only the text and timing are used
-- **Upload a single bilingual SRT/VTT/ASS file** — each cue containing both languages (typically one line per language) is automatically split into the two tracks by detecting each line's writing direction (RTL → source, LTR → translation), with a positional fallback for same‑direction language pairs; both tracks appear with the exact same design as if two separate files were uploaded
-- Frame‑accurate sync using `O(log n)` binary‑search cue lookup
-- Per‑track manual sync offset (±15s) to correct mistimed files — baked directly into the transcript highlight, so it never drifts from what's burned into the video overlay. The offset is remembered per (video, subtitle file) pair and restored automatically next time you open the same combination
-- Live transcript panel with the active segment highlighted in real time, including an animated progress bar tracking position within that exact segment
-- **Search the transcript** — filters both source and translation text live as you type (press `/` to jump straight to the search field), click any result to seek the video there instantly. Segment numbers keep their original position (`SEG_047` stays `SEG_047` even filtered down to one result), and the active‑segment auto‑scroll pauses while searching so it doesn't yank a manually‑browsed result list back to the live position every few seconds
-- **Bookmarked sentences** — star any segment in the transcript, or press `B` to bookmark the one playing right now. The star button next to the search field filters the list to your favourites. Bookmarks are stored per video, keyed by segment position plus a hash of its text (so changing the sync offset never loses them, while a different subtitle file never matches wrongly), and they are included in the JSON backup
-- **Draggable burned‑in captions** — drag the subtitle bubble anywhere within the video frame (e.g. to avoid covering on‑screen text), constrained to the video's own bounds; double‑click to reset, position persists across sessions
-- Toggle view mode: source only, translation only, both side‑by‑side, or **RECALL** — the source line stays visible while the translation is hidden until you reveal it (`R`, or the on‑screen *reveal* button on the video and the mobile strip). Only the segment currently playing can be revealed, so every new sentence starts as a fresh prompt
-- Export subtitles as SRT — source only, translation only, or merged bilingual file
-
-### 💾 Your Data, Portable
-
-- **Glossary export** — one click in the vocabulary panel downloads your saved words as a headerless CSV (word, translation, definition, example, part of speech, language) ready for Anki's import mapping. Cells that could run as spreadsheet formulas (`=`, `+`, `-`, `@`) are neutralised, since word text originates from untrusted subtitle files
-- **Backup & restore** — Settings → *Backup* exports settings, watch history, sync offsets, glossary and the full subtitle file contents to a single JSON file. Restoring validates the whole file first (format, version, allow-listed keys, per-file size caps) and only then writes; a failed write rolls `localStorage` back to its previous state
-- **Learning stats** — the home screen shows your day streak, time watched over the last 7 days (with a small chart), saved words and bookmarked sentences. Time is counted only while a video is actually playing and stored per local calendar day on your device; a day counts toward the streak after one minute, and the streak stays alive through today until midnight. Long gaps (a sleeping laptop) are not counted, and the stats are included in the JSON backup. Nothing leaves your browser
-
-### ⌨️ Playback & Keyboard Shortcuts
-
-- `Space` — play / pause
-- `C` — speed up by 0.5× (up to 2×) · `X` — slow down by 0.5× (down to 0.25×) · `Z` — reset to 1×
-- `F` — toggle fullscreen
-- `←` / `→` — jump to the previous / next subtitle scene
-- `↑` / `↓` — volume up / down
-- `0` — restart the current scene from its beginning (play once, no loop)
-- `1` — repeat the current scene **twice** · `2` — **three** times · `3` — **four** times (a persistent on‑screen badge tracks loop progress, e.g. `2/3`)
-- `?` — open the in‑app **keyboard shortcuts help panel** (also reachable via a button in the console header) — lists every shortcut above, grouped into categories (Playback / Navigation & Repeat / General) instead of one long flat list
-- `/` — focus the transcript search field
-- `R` — in RECALL view mode, reveal / hide the translation of the current segment
-- `B` — bookmark / un‑bookmark the sentence currently playing
-- All shortcuts work identically whether watching a YouTube video or a local file
-- All shortcuts are automatically disabled while typing in any text field, and ignore modifier‑key combos (`Ctrl`/`Cmd`/`Alt`) so they never fight with browser shortcuts
-- **Focus retention**: clicking the YouTube video moves keyboard focus into its cross‑origin iframe, whose keydown events never reach the parent document. A `focusin` listener on `document` detects the instant focus lands on the iframe and reclaims it for the stage container immediately, so shortcuts keep responding reliably — the keydown listener is also registered in the capture phase as a defensive measure
-- Every shortcut has an on‑screen flash indicator (à la YouTube/Netflix) confirming the action, plus a clickable equivalent in the control bar (a speed menu) for mouse/touch users
-- **Not included: a YouTube resolution/quality picker.** YouTube [officially discontinued](https://developers.google.com/youtube/iframe_api_reference) programmatic quality control for embeds — `setPlaybackQuality` and the `vq` load‑time hint are both documented no‑ops today, so a quality selector for YouTube videos here would just be a fake control that does nothing. Quality is fully automatic (adaptive bitrate) on YouTube's side. This doesn't apply to local file uploads, which always play at their native, unmodified quality.
-
-**System media controls** — lock screen, headset and keyboard media keys drive the player through the Media Session API (all sources). *Previous / next track* jump between subtitle segments, and the seek buttons and scrubber work as usual. Browsers without the API simply ignore this.
-
-**Touch gestures** (phones and tablets only — with a mouse the player behaves exactly as before): tap to play/pause, double‑tap the left or right third to skip 10 s back/forward (keep tapping to keep skipping), and swipe left/right to jump to the next/previous subtitle segment. Vertical swipes still scroll the page, and the control bar, top bar and draggable subtitles stay above the gesture layer.
-
-### 🚀 Technical Highlights
-
-- **Type Safety**: Full TypeScript codebase, strict null checks, shared types across parsing, sync, and UI
-- **Player adapter pattern**: `useYouTubePlayer`, `useVimeoPlayer`, and `useLocalVideoPlayer` independently implement the same control‑surface shape; `useVideoPlayer` composes all three behind one interface, so `VideoControlBar`, `SubtitleOverlay`, and the keyboard shortcuts hook are entirely source‑agnostic
-- **Self‑hosted fonts, installable app**: IBM Plex (Sans, Sans Arabic, Mono) is served from `public/fonts` instead of Google Fonts CDN — one less external dependency on the critical rendering path. A full PWA setup (`vite-plugin-pwa`, auto‑updating service worker, manifest, home‑screen icons) means the app can be installed and opens instantly on repeat visits
-- **Isolated Re‑renders**: Video time is exposed as an imperative getter via `useSyncExternalStore`; only subscriber components update on tick, and transcript cards are memoized so only the active one re‑renders during playback
-- **`overflow-x: clip`, not `hidden`**: the global horizontal‑overflow safety net in `index.css` deliberately uses `clip` — `hidden` on `html`/`body` is a well‑known way to silently break `position: sticky` on descendants (it creates a new scroll/formatting context), which would have broken the mobile sticky video. `clip` gets the same "no horizontal scrollbar" result without that side effect.
-- **Reduced motion**: the OS `prefers-reduced-motion` setting is honoured for both CSS animations (run once, no infinite loops) and Framer Motion (`MotionConfig reducedMotion="user"` disables transform animations app-wide)
-- **Resilient by design**: every external browser/YouTube/media API call (`matchMedia`, `scrollIntoView`, the Fullscreen API, `HTMLMediaElement.play()`, and the entire YouTube postMessage bridge) is wrapped defensively — a temporary hiccup degrades gracefully instead of crashing the app
-- **Performance**: binary‑search cue matching, 2 MB subtitle file size cap, code‑split settings panel
-- **Security**: XSS‑safe by construction, no `dangerouslySetInnerHTML`, strict URL validation, `youtube-nocookie.com`; local video files are validated by MIME type/extension and never transmitted anywhere
-- **Testing**: automated regression tests (Vitest + Testing Library) that reproduce real past crash scenarios before asserting the fix
+<p align="center">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License: MIT" />
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=white" alt="React 18" />
+  <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 5.9" />
+  <img src="https://img.shields.io/badge/Vite-7-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 7" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS 3.4" />
+  <img src="https://img.shields.io/badge/Vitest-4.1-6E9F18?style=flat-square&logo=vitest&logoColor=white" alt="Vitest" />
+  <img src="https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square&logo=pwa&logoColor=white" alt="PWA" />
+  <img src="https://img.shields.io/badge/Accessibility-axe--core_checked-1F6FEB?style=flat-square" alt="Accessibility" />
+</p>
 
 ---
 
-## 🏗️ Project Structure
+## Why this exists
 
-```
-├── 📁 public
-│   ├── 📁 fonts
-│   │   ├── 📁 LICENSES
-│   │   │   ├── 📄 IBM-Plex-Mono-LICENSE.txt
-│   │   │   ├── 📄 IBM-Plex-Sans-Arabic-LICENSE.txt
-│   │   │   └── 📄 IBM-Plex-Sans-LICENSE.txt
-│   │   ├── 🔤 IBMPlexMono-Medium.woff2
-│   │   ├── 🔤 IBMPlexMono-Regular.woff2
-│   │   ├── 🔤 IBMPlexMono-SemiBold.woff2
-│   │   ├── 🔤 IBMPlexSans-Bold.woff2
-│   │   ├── 🔤 IBMPlexSans-Medium.woff2
-│   │   ├── 🔤 IBMPlexSans-Regular.woff2
-│   │   ├── 🔤 IBMPlexSans-SemiBold.woff2
-│   │   ├── 🔤 IBMPlexSansArabic-Bold.woff2
-│   │   ├── 🔤 IBMPlexSansArabic-Medium.woff2
-│   │   ├── 🔤 IBMPlexSansArabic-Regular.woff2
-│   │   └── 🔤 IBMPlexSansArabic-SemiBold.woff2
-│   ├── 🖼️ apple-touch-icon.png
-│   ├── 🖼️ favicon-16x16.png
-│   ├── 🖼️ favicon-32x32.png
-│   ├── 🖼️ favicon.svg
-│   ├── 🖼️ og-image.png
-│   ├── 🖼️ pwa-192x192.png
-│   ├── 🖼️ pwa-512x512.png
-│   └── 🖼️ screenshot.png
-├── 📁 src
-│   ├── 📁 __tests__
-│   │   ├── 📁 testHelpers
-│   │   │   ├── 📄 mockVimeoPlayer.ts
-│   │   │   ├── 📄 mockYouTubePlayer.ts
-│   │   │   └── 📄 resetIndexedDb.ts
-│   │   ├── 📄 bilingual-upload.test.tsx
-│   │   ├── 📄 collapsible-upload-section.test.tsx
-│   │   ├── 📄 draggable-subtitle-overlay.test.tsx
-│   │   ├── 📄 dynamic-accent-color.test.tsx
-│   │   ├── 📄 flaky-player-bridge.test.tsx
-│   │   ├── 📄 focus-retention-iframe.test.tsx
-│   │   ├── 📄 full-workflow.test.tsx
-│   │   ├── 📄 keyboard-shortcuts-help-panel.test.tsx
-│   │   ├── 📄 keyboard-shortcuts.test.tsx
-│   │   ├── 📄 local-video-upload.test.tsx
-│   │   ├── 📄 matchmedia-crash.test.tsx
-│   │   ├── 📄 mobile-active-caption.test.tsx
-│   │   ├── 📄 quality-indicator.test.tsx
-│   │   ├── 📄 repro.test.tsx
-│   │   ├── 📄 resizable-sidebar.test.tsx
-│   │   ├── 📄 scene-repeat-shortcuts.test.tsx
-│   │   ├── 📄 settings-panel-focus.test.tsx
-│   │   ├── 📄 sidebar-position-logic.test.ts
-│   │   ├── 📄 sidebar-position-toggle.test.tsx
-│   │   ├── 📄 subtitle-box-size.test.tsx
-│   │   ├── 📄 sync-offset-persistence.test.tsx
-│   │   ├── 📄 transcript-search.test.tsx
-│   │   ├── 📄 video-progress.test.tsx
-│   │   ├── 📄 vimeo-playback.test.tsx
-│   │   ├── 📄 watch-history.test.tsx
-│   │   └── 📄 setup.ts
-│   ├── 📁 components
-│   │   ├── 📁 console
-│   │   │   ├── 📄 ConsolePanel.tsx
-│   │   │   ├── 📄 DownloadSubtitles.tsx
-│   │   │   ├── 📄 SliceCard.tsx
-│   │   │   ├── 📄 SourceFileRow.tsx
-│   │   │   ├── 📄 TranscriptList.tsx
-│   │   │   └── 📄 ViewModeToggle.tsx
-│   │   ├── 📁 layout
-│   │   │   ├── 📄 AppShell.tsx
-│   │   │   ├── 📄 BackgroundFX.tsx
-│   │   │   ├── 📄 Footer.tsx
-│   │   │   ├── 📄 Header.tsx
-│   │   │   ├── 📄 PanelResizeHandle.tsx
-│   │   │   └── 📄 PreLoadScreen.tsx
-│   │   ├── 📁 settings
-│   │   │   ├── 📄 FontSizeControl.tsx
-│   │   │   ├── 📄 SettingsPanel.tsx
-│   │   │   └── 📄 ThemeToggle.tsx
-│   │   ├── 📁 subtitles
-│   │   │   └── 📄 SyncOffsetControl.tsx
-│   │   ├── 📁 system
-│   │   │   └── 📄 ErrorBoundary.tsx
-│   │   ├── 📁 ui
-│   │   │   ├── 📄 Button.tsx
-│   │   │   ├── 📄 Card.tsx
-│   │   │   ├── 📄 ColorPicker.tsx
-│   │   │   ├── 📄 IconButton.tsx
-│   │   │   ├── 📄 Select.tsx
-│   │   │   └── 📄 Slider.tsx
-│   │   └── 📁 video
-│   │       ├── 📄 KeyboardShortcutsPanel.tsx
-│   │       ├── 📄 LocalVideoPlayerView.tsx
-│   │       ├── 📄 MobileActiveCaption.tsx
-│   │       ├── 📄 PlaybackShortcutToast.tsx
-│   │       ├── 📄 SubtitleOverlay.tsx
-│   │       ├── 📄 VideoControlBar.tsx
-│   │       ├── 📄 VideoStage.tsx
-│   │       ├── 📄 VideoTopBar.tsx
-│   │       ├── 📄 VideoUrlForm.tsx
-│   │       ├── 📄 VimeoPlayerView.tsx
-│   │       ├── 📄 WatchHistoryList.tsx
-│   │       └── 📄 YouTubePlayerView.tsx
-│   ├── 📁 constants
-│   │   ├── 📄 keyboardShortcuts.ts
-│   │   ├── 📄 languages.ts
-│   │   └── 📄 theme.constants.ts
-│   ├── 📁 context
-│   │   ├── 📄 SubtitleSettingsContext.tsx
-│   │   └── 📄 ThemeContext.tsx
-│   ├── 📁 hooks
-│   │   ├── 📄 useActiveCue.ts
-│   │   ├── 📄 useDialogFocusTrap.ts
-│   │   ├── 📄 useDraggableOverlayPosition.ts
-│   │   ├── 📄 useDynamicAccentColor.ts
-│   │   ├── 📄 useFocusRetention.ts
-│   │   ├── 📄 useFullscreen.ts
-│   │   ├── 📄 useKeyboardShortcuts.ts
-│   │   ├── 📄 useLocalStorage.ts
-│   │   ├── 📄 useLocalVideoPlayer.ts
-│   │   ├── 📄 usePlayerTime.ts
-│   │   ├── 📄 useResizableSidebarWidth.ts
-│   │   ├── 📄 useSceneRepeat.ts
-│   │   ├── 📄 useSidebarPosition.ts
-│   │   ├── 📄 useSubtitleTrack.ts
-│   │   ├── 📄 useSubtitleUploadHandlers.ts
-│   │   ├── 📄 useSyncOffsetPersistence.ts
-│   │   ├── 📄 useTheme.ts
-│   │   ├── 📄 useVideoPlayer.ts
-│   │   ├── 📄 useVideoProgress.ts
-│   │   ├── 📄 useVimeoPlayer.ts
-│   │   ├── 📄 useWatchHistory.ts
-│   │   └── 📄 useYouTubePlayer.ts
-│   ├── 📁 lib
-│   │   ├── 📁 subtitles
-│   │   │   ├── 📄 filterSlices.test.ts
-│   │   │   ├── 📄 filterSlices.ts
-│   │   │   ├── 📄 findActiveCue.ts
-│   │   │   ├── 📄 pairCues.ts
-│   │   │   ├── 📄 parseSRT.ts
-│   │   │   ├── 📄 parseSubtitleFile.ts
-│   │   │   ├── 📄 parseASS.ts
-│   │   │   ├── 📄 parseVTT.ts
-│   │   │   ├── 📄 serializeSRT.ts
-│   │   │   ├── 📄 splitBilingualCues.test.ts
-│   │   │   └── 📄 splitBilingualCues.ts
-│   │   ├── 📁 utils
-│   │   │   ├── 📄 cn.ts
-│   │   │   ├── 📄 color.test.ts
-│   │   │   ├── 📄 color.ts
-│   │   │   ├── 📄 formatPlaybackRate.ts
-│   │   │   ├── 📄 formatRelativeTime.test.ts
-│   │   │   ├── 📄 formatRelativeTime.ts
-│   │   │   ├── 📄 safePlayerCall.ts
-│   │   │   ├── 📄 sanitize.ts
-│   │   │   ├── 📄 subtitleContentStore.test.ts
-│   │   │   ├── 📄 subtitleContentStore.ts
-│   │   │   ├── 📄 videoKey.test.ts
-│   │   │   └── 📄 videoKey.ts
-│   │   ├── 📁 vimeo
-│   │   │   ├── 📄 extractVimeoVideoId.test.ts
-│   │   │   ├── 📄 extractVimeoVideoId.ts
-│   │   │   └── 📄 loadVimeoPlayerAPI.ts
-│   │   └── 📁 youtube
-│   │       ├── 📄 extractVideoId.ts
-│   │       └── 📄 loadYouTubeIframeAPI.ts
-│   ├── 📁 styles
-│   │   └── 🎨 fonts.css
-│   ├── 📁 types
-│   │   ├── 📄 history.types.ts
-│   │   ├── 📄 subtitle.types.ts
-│   │   ├── 📄 theme.types.ts
-│   │   ├── 📄 video.types.ts
-│   │   ├── 📄 vimeo.types.ts
-│   │   └── 📄 youtube.types.ts
-│   ├── 📄 App.tsx
-│   ├── 🎨 index.css
-│   ├── 📄 main.tsx
-│   └── 📄 vite-env.d.ts
-├── 📁 .github
-│   └── 📁 workflows
-│       └── 📄 ci.yml
-├── ⚙️ .eslintrc.json
-├── ⚙️ .gitignore
-├── 📄 LICENSE
-├── 📝 README.md
-├── 🌐 index.html
-├── ⚙️ package.json
-├── 📄 postcss.config.js
-├── 📄 tailwind.config.ts
-├── ⚙️ tsconfig.app.json
-├── ⚙️ tsconfig.json
-├── ⚙️ tsconfig.node.json
-├── 📄 vite.config.ts
-└── 📄 vitest.config.ts
-```
+Language learning from video is broken. You get one subtitle track, or none. You can't see the original and the translation together. You can't click a word for its meaning without leaving the player. You can't review what you learned.
+
+**DUAL_SUB fixes all of that.**
+
+| Feature | Description |
+|---|---|
+| 🎬 **Dual subtitles** | Source + translation on the video, each draggable, each styleable |
+| 📖 **Reading mode** | Lyrics-style view, word highlighted as it's spoken |
+| 🧠 **Vocabulary** | Click any word → definition + translation → saved with context |
+| 🔁 **Spaced repetition** | Leitner boxes, fill-in-the-blank, export to Anki |
+| 💾 **Local-first** | Zero server. Your data never leaves your browser. |
+| 📱 **PWA** | Install it. Works offline. |
 
 ---
----
 
-## Getting Started
-
-**Requirements:** Node.js ≥ 20, npm ≥ 11 (older npm versions can fail to resolve the dependency tree — see `engines` in `package.json`).
+## Quick start
 
 ```bash
-npm install
-npm run dev       # http://localhost:5173
-npm run build     # production build → dist/ (fully static)
-npm run lint      # code quality check
-npm run test      # automated regression tests (Vitest + Testing Library)
+# Requirements: Node 22, npm ≥ 10
+git clone https://github.com/your-username/youtube-dual-subtitles.git
+cd youtube-dual-subtitles
+npm ci
+npm run dev          # http://localhost:5173
 ```
 
-> **Windows note:** if `npm run dev` fails with a Rollup/native‑binary error (`Cannot find module @rollup/rollup-win32-x64-msvc`), delete `node_modules` and `package-lock.json`, then run `npm install` again — this regenerates them correctly for your platform.
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Dev server with HMR |
+| `npm run build` | Type-check → production build (`dist/`) |
+| `npm run preview` | Serve production build locally |
+| `npm run typecheck` | `tsc --noEmit` (app + Vite config) |
+| `npm run lint` | ESLint, zero warnings |
+| `npm test` | Unit + integration tests |
+| `npm run e2e` | Real Chrome a11y/CSP/layout check |
 
 ---
 
-## Security
+## How to use
 
-- No API keys or secrets anywhere — the IFrame Player API requires none.
-- Subtitle files are capped at 2MB and validated by extension before parsing.
-- Local video uploads are validated by MIME type/extension, played via a local `Blob` Object URL, and never transmitted to any server — the file never leaves the browser.
-- Playback runs through `youtube-nocookie.com`.
-- All rendering goes through React's safe text-node escaping — no raw HTML injection path exists for user-supplied content.
-
----
----
-
-## 📝 License
-
-- This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details
+1. **Open a video** — Paste a YouTube/Vimeo URL or pick a local file
+2. **Add subtitles** — Drop `.srt`, `.vtt`, `.ass` files (or paste text). Two files = source + translation
+3. **Sync if needed** — Nudge offsets or use two-point sync for drifting subs
+4. **Watch** — `Space` play/pause, `←/→` previous/next line, `T` reading mode
+5. **Learn** — Click any word → see meaning → save to vocabulary → review later
 
 ---
 
----
+## Screenshots
 
-## 👏 Acknowledgments
-
-- [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference) — the playback engine this app is built around
-- [Vimeo Player SDK](https://developer.vimeo.com/player/sdk) — the second video engine, integrated behind the same player-adapter interface
-- [Lucide](https://lucide.dev/) — the icon set used throughout the interface
-- [IBM Plex](https://www.ibm.com/plex/) — the Sans, Sans Arabic, and Mono typefaces, self‑hosted under the SIL Open Font License (see `public/fonts/LICENSES`)
-- [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) — powers the installable PWA setup and its service worker
-- The React, Vite, Tailwind CSS, and Framer Motion communities, whose tools make an app like this possible with zero backend
+| Start screen | Player (dual subs) | Reading mode | Mobile |
+|--------------|-------------------|--------------|--------|
+| ![](docs/images/12-home-with-watch-history.webp) | ![](docs/images/13-player-dual-subtitles.webp) | ![](docs/images/14-reading-mode-desktop.webp) | ![](docs/images/15-player-mobile.webp) |
 
 ---
+
+## Tech stack
+
+| Category | Tools |
+|----------|-------|
+| **Framework** | <img src="https://skillicons.dev/icons?i=react" width="20" alt="React" /> React 18, <img src="https://skillicons.dev/icons?i=ts" width="20" alt="TypeScript" /> TypeScript 5.9 (strict) |
+| **Build** | <img src="https://skillicons.dev/icons?i=vite" width="20" alt="Vite" /> Vite 7, `vite-plugin-pwa` |
+| **Styling** | <img src="https://skillicons.dev/icons?i=tailwind" width="20" alt="Tailwind CSS" /> Tailwind CSS 3.4 (CSS variables, logical properties, RTL) |
+| **Animation** | 🎞️ Framer Motion via `LazyMotion` (`m.*` components) |
+| **Virtualization** | 📦 `@tanstack/react-virtual` |
+| **Icons** | <img src="https://cdn.jsdelivr.net/gh/lucide-icons/lucide@latest/icons/lucide.svg" width="20" alt="Lucide" /> Lucide React |
+| **Testing** | <img src="https://skillicons.dev/icons?i=vitest" width="20" alt="Vitest" /> Vitest + React Testing Library (jsdom) |
+| **E2E** | <img src="https://skillicons.dev/icons?i=puppeteer" width="20" alt="Puppeteer" /> Puppeteer + axe-core (real Chrome) |
+| **Lint** | <img src="https://skillicons.dev/icons?i=eslint" width="20" alt="ESLint" /> ESLint 8 (ESLint 9 migration planned) |
+| **CI/CD** | <img src="https://skillicons.dev/icons?i=githubactions" width="20" alt="GitHub Actions" /> GitHub Actions → <img src="https://skillicons.dev/icons?i=vercel" width="20" alt="Vercel" /> Vercel / <img src="https://skillicons.dev/icons?i=github" width="20" alt="GitHub Pages" /> GitHub Pages / <img src="https://skillicons.dev/icons?i=netlify" width="20" alt="Netlify" /> Netlify / <img src="https://skillicons.dev/icons?i=cloudflare" width="20" alt="Cloudflare" /> Cloudflare |
+
+**Runtime deps:** React, React DOM, Framer Motion, Lucide, TanStack Virtual, `clsx` — *that's it.*
+
+---
+
+## Project structure
+
+```
+src/
+├── components/
+│   ├── layout/       AppShell, header, resizable panels
+│   ├── video/        Stage, controls, subtitle overlay, gestures
+│   ├── subtitles/    Draggable lines, clickable words, sync controls
+│   ├── console/      Transcript, glossary, word card, upload
+│   ├── reading/      Reading mode cards, dock, tools
+│   ├── settings/     Settings, backup, storage, voice picker
+│   ├── system/       Error boundary, drop overlay
+│   └── ui/           Generic primitives only
+├── hooks/            One behaviour per hook (players, persistence, shortcuts…)
+├── lib/
+│   ├── subtitles/    Parsers (SRT/VTT/ASS), pairing, sync math, cleanup
+│   ├── utils/        Storage, backup, vocabulary, review, export, lookup
+│   ├── csp/          Build-time CSP generator
+│   └── deploy/       Base path, share URLs, font verification
+├── context/          Theme, subtitle settings, current video
+├── constants/        Shortcuts, storage keys, shared types
+└── __tests__/        Integration tests (full app in jsdom)
+
+e2e/                  Real-Chrome a11y/CSP/layout verification
+docs/                 ARCHITECTURE.md + screenshots
+public/               Fonts, icons, headers, manifest
+.github/workflows/    CI + deploy pipelines
+```
+
+---
+
+## Architecture highlights
+
+- 🔌 **Player Adapter pattern** — YouTube, Vimeo, and local file players behind one `useVideoPlayer` interface
+- 🔄 **Subtitle pipeline** — Parse → dedupe rolling captions → align word timings → pair cues → unified timeline
+- ⚡ **Reading mode** — Only active line polls clock; virtualized list (870 nodes vs 108k for 3k lines)
+- 🎯 **Word highlight** — Exact timings from YouTube VTT when available; length-based estimate otherwise
+- 📚 **Spaced repetition** — Leitner boxes (10m → 1d → 3d → 7d → 14d → 30d), fill-in-the-blank cards
+- 🗄️ **Data layer** — `localStorage` for settings/history/vocab; IndexedDB for subtitle files; one-file backup/restore
+
+---
+
+## Privacy
+
+| Aspect | Details |
+|--------|---------|
+| 🚫 **No backend** | No server, no database, no analytics |
+| 💾 **Local storage** | Videos, subtitles, vocabulary, history — all in your browser |
+| 🔍 **Optional lookup** | Click a word → sends *that word only* to Wiktionary + MyMemory |
+| 🔘 **Toggle** | Settings → Privacy → disable lookup entirely |
+| 🛡️ **CSP** | Strict policy: scripts self-only, network to dictionaries only, embeds YouTube/Vimeo only |
+| 🍪 **Embeds** | YouTube via `youtube-nocookie.com` |
+
+---
+
+## Deployment
+
+```bash
+# Any static host works. Build output: dist/
+npm run build
+```
+
+| Platform | Config |
+|----------|--------|
+| <img src="https://skillicons.dev/icons?i=vercel" width="20" alt="Vercel" /> **Vercel** | `vercel.json` — auto-detected, zero config needed |
+| <img src="https://skillicons.dev/icons?i=github" width="20" alt="GitHub Pages" /> **GitHub Pages** | `.github/workflows/deploy.yml` — push to `main` |
+| <img src="https://skillicons.dev/icons?i=netlify" width="20" alt="Netlify" /> **Netlify** | `netlify.toml` + `public/_headers` |
+| <img src="https://skillicons.dev/icons?i=cloudflare" width="20" alt="Cloudflare" /> **Cloudflare Pages** | Build: `npm run build`, Output: `dist` |
+
+**Vercel deploy (one-liner):**
+```bash
+npx vercel --prod
+```
+
+Environment variables (optional):
+- `SITE_URL` — Absolute URL for share images (auto-derived on Vercel)
+- `BASE_PATH` — Subfolder hosting (e.g. `/dual-subs/`) — GitHub Pages only
+
+---
+
+## Quality gates
+
+```bash
+npm run typecheck && npm run lint && npm test && npm run build && npm run e2e
+```
+Runs on every push/PR via GitHub Actions.
+
+---
+
+## Performance (production build, headless Chrome, cold cache)
+
+| Metric | Value |
+|--------|-------|
+| First-visit transfer | 403 KB (15 requests) |
+| JS for first paint | 107 KB gzip (+19 KB lazy motion) |
+| Fonts on first visit | 256 KB (Latin only; rest via `unicode-range`) |
+| SW install size | 878 KiB (28 files) |
+| `dist/` total | 1.4 MB |
+
+---
+
+## Roadmap
+
+- [ ] Interface translation (UI is Arabic/RTL only)
+- [ ] ESLint 9 flat config + Tailwind 4
+- [ ] Axe checks for vocabulary/settings/upload screens
+- [ ] Real Anki import test
+- [ ] Lemma-aware lookup for inflected forms
+
+---
+
+## License
+
+[MIT](LICENSE) — Fonts (IBM Plex) under SIL Open Font License (`public/fonts/LICENSES/`).
+
+---
+
+## Credits
+
+- **Playback:** YouTube IFrame API, Vimeo Player SDK
+- **Dictionaries:** Wiktionary (definitions), MyMemory (translations)
+- **Fonts:** IBM Plex Sans, Sans Arabic, Mono
+- **Icons:** <img src="https://cdn.jsdelivr.net/gh/lucide-icons/lucide@latest/icons/lucide.svg" width="18" alt="Lucide" /> Lucide
+- **Libraries:** 📦 TanStack Virtual, 🎞️ Framer Motion, <img src="https://skillicons.dev/icons?i=puppeteer" width="18" alt="" /> axe-core, Puppeteer
+- **Videos in screenshots:** Public German-learning content from YouTube (creators retain rights)
+
+---
+
+<div align="center">
+<sub>If this helps your language learning, a ⭐ on GitHub is appreciated.</sub>
+</div>

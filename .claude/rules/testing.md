@@ -12,4 +12,4 @@
 - Clean up any IndexedDB/localStorage state a test creates (see
   `resetIndexedDb.ts` test helper) so tests stay order-independent.
 - Before calling any fix or feature done, run: `npm test`, `npm run lint`,
-  `npm run build` (which runs `tsc -b`). All three must pass.
+  `npm run typecheck`, `npm run build`. All four must pass.

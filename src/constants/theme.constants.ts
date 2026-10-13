@@ -4,7 +4,7 @@ import type { SubtitleDisplaySettings } from '@/types/theme.types'
 export const STORAGE_KEYS = {
   THEME: 'ydc:theme-preference',
   SUBTITLE_SETTINGS: 'ydc:subtitle-display-settings',
-  SUBTITLE_OVERLAY_POSITION: 'ydc:subtitle-overlay-position',
+  SUBTITLE_LAYOUT: 'ydc:subtitle-layout',
   SIDEBAR_POSITION: 'ydc:sidebar-position',
   VIDEO_PROGRESS: 'ydc:video-progress',
   SYNC_OFFSETS: 'ydc:sync-offsets',
@@ -15,6 +15,9 @@ export const STORAGE_KEYS = {
   BOOKMARKS: 'ydc:bookmarks',
   LEARNING_STATS: 'ydc:learning-stats',
   SIDEBAR_WIDTH: 'dual-subtitles:sidebar-width',
+  READING_PREFS: 'ydc:reading-prefs',
+  ONLINE_LOOKUP: 'ydc:online-lookup',
+  REVIEW_STATS: 'ydc:review-stats',
 } as const
 
 /**
