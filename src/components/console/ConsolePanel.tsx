@@ -9,7 +9,7 @@ import { IconButton } from '@/components/ui/IconButton'
 import { cn } from '@/lib/utils/cn'
 import { filterBookmarkedSlices, filterSlicesByQuery } from '@/lib/subtitles/filterSlices'
 import { SUBTITLE_FILE_ACCEPT } from '@/lib/subtitles/parseSubtitleFile'
-import type { SubtitleTrackState, TrackOffsetControls } from '@/types/subtitle.types'
+import type { SubtitleTrackState, TrackLanguageControls, TrackOffsetControls } from '@/types/subtitle.types'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import type { ViewMode } from '@/types/theme.types'
 import type { SidebarPosition } from '@/hooks/useSidebarPosition'
@@ -28,6 +28,9 @@ interface ConsolePanelProps {
   translationTrack: SubtitleTrackState
   sourceControls: TrackOffsetControls
   translationControls: TrackOffsetControls
+  /** اختيار لغة كل مسار صراحةً من القائمة (المساريْن معاً) */
+  sourceLanguageControls: TrackLanguageControls
+  translationLanguageControls: TrackLanguageControls
   onUploadSource: (file: File) => void
   onUploadTranslation: (file: File) => void
   bilingualUpload: BilingualUploadState
@@ -65,6 +68,8 @@ export function ConsolePanel({
   translationTrack,
   sourceControls,
   translationControls,
+  sourceLanguageControls,
+  translationLanguageControls,
   onUploadSource,
   onUploadTranslation,
   bilingualUpload,
@@ -222,6 +227,8 @@ export function ConsolePanel({
                     accentClassName="bg-track-a"
                     onFileSelected={onUploadSource}
                     offsetControls={sourceControls}
+                    languageControls={sourceLanguageControls}
+                    languageAriaLabel="لغة المسار الأصلي"
                     rememberedFileName={rememberedSourceFileName}
                     getCurrentTime={getCurrentTime}
                     onSeek={onSeek}
@@ -232,6 +239,8 @@ export function ConsolePanel({
                     accentClassName="bg-track-b"
                     onFileSelected={onUploadTranslation}
                     offsetControls={translationControls}
+                    languageControls={translationLanguageControls}
+                    languageAriaLabel="لغة مسار الترجمة"
                     rememberedFileName={rememberedTranslationFileName}
                     getCurrentTime={getCurrentTime}
                     onSeek={onSeek}

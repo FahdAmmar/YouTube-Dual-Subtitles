@@ -12,12 +12,17 @@
 - **Three sources:** YouTube (through `youtube-nocookie.com`), Vimeo, or a local video file played from a `Blob` URL that never uploads anywhere.
 - **Formats:** SRT, VTT, ASS and SSA, plus a **bilingual single file** (two lines per cue, split into both tracks automatically). Files are validated by extension and capped at 2 MB.
 - **Independent tracks:** each language has its own colour, size, line height and width. Each burned-in line **drags on its own** anywhere inside the video, and one button moves the whole block between the bottom, middle and top of the picture (double-click a line to send it back).
+- **Choose a track's language:** each file row in the sidebar has a language selector listing all supported languages (Arabic, English, French, Spanish, German, Italian, Portuguese, Turkish, Persian, Urdu, Hebrew, Russian, Chinese, Japanese, Korean, Hindi, Indonesian, Dutch). An explicit pick always wins over language auto-detection (which only recognises Arabic/English/German) and survives reloads; *تلقائي* hands control back to detection.
 - **Pick one language:** one tap on the video cycles *both → translation only → source only*; the sidebar and reading-mode toggles name the languages (`[ AR ]`, `[ EN ]`) instead of a generic "source / translation".
 - **Words on the video:** click a word of the translation line to see its meaning in a card over the picture (a bottom sheet on phones, `Esc` closes it) — the same lookup, cache, vocabulary list and privacy switch as the sidebar. Press-and-drag still moves the line; only a click opens the card.
 - **Sync control:** nudge each track in small steps, or use **two-point sync** to fix subtitles that drift (frame-rate mismatches). Offsets are remembered per video and file.
 - **Synchronized transcript:** every line is a card with its timestamp; the current one is highlighted and kept in view, search finds text in either language, and clicking a line jumps to it.
 - **Study tools:** recall mode (hide the translation until you ask), shadowing mode (auto-pause after every line), repeat the current line 2–4 times, bookmarks, text-to-speech with a voice picker, playback speed up to 2×.
 - **Everywhere:** keyboard shortcuts for everything, touch gestures, Picture-in-Picture, Media Session (lock-screen controls), fullscreen, resumes where you stopped.
+
+### 🏠 Home navigation
+
+The header shows a **home button** in the player layout (it is hidden on the home screen itself, where there is nothing to return to). It triggers exactly the same path as the player's own `[ CHANGE_VIDEO ]` button: the local video's object URL is revoked, both subtitle tracks reset, and the screen returns to the video-selection page with its watch history.
 
 ### 📖 Reading mode — lyrics for any video
 
@@ -33,7 +38,7 @@ Press **`T`** (or the book icon). The transcript becomes a list of cards that fo
 
 ### 🎓 Vocabulary that sticks
 
-- Click any word → meaning and translation (Wiktionary + MyMemory) → **save it with the sentence, video and time** it came from.
+- Click any word → meaning and translation (Wiktionary + MyMemory), plus for German the article, plural, verb forms and lemma → **save it with the sentence, video and time** it came from.
 - **Spaced-repetition review** (Leitner boxes) with fill-in-the-blank cards, answer grading with the next interval shown, and a button that jumps to the exact moment in the video.
 - A **daily goal** (10 reviews) and a **streak** that counts a day after one minute of watching *or* five reviews.
 - **Export** to CSV, or to an **Anki Cloze** file (the sentence with `{{c1::word::translation}}` and a link to the exact YouTube moment).
@@ -161,10 +166,14 @@ sequenceDiagram
     alt online lookup switched off in Settings
       C-->>U: "lookup is off" - nothing is sent
     else on
-      C->>W: definition (the word only)
+      C->>W: definition + grammar page (the word only)
       C->>M: translation (the word only)
-      W-->>C: meanings
+      W-->>C: meanings, article, plural, verb forms, lemma
       M-->>C: translation
+      opt the word is an inflected form
+        C->>W: lemma page (e.g. gehen)
+        C->>M: translation of the lemma
+      end
       C->>K: remember the result
     end
   end
@@ -195,7 +204,7 @@ Everything is local. The keys below are the complete list of what the app stores
 | Vocabulary (with sentence context and review state) | `localStorage` |
 | Bookmarks, learning stats, review counts | `localStorage` |
 | Subtitle files for watch history | `IndexedDB` |
-| Word lookup cache (200 words, 30 days; *not* included in backups) | `localStorage` |
+| Word lookup cache (200 words, 30 days, versioned so older entries without grammar are refetched; *not* included in backups) | `localStorage` |
 
 Stored data is treated as **untrusted** (it can come from an old version, hand editing, or a restored backup): the readers that matter validate what they load and fall back to defaults.
 
@@ -247,6 +256,7 @@ Runtime dependencies are deliberately few: React, React DOM, Framer Motion, Luci
 │   ├── lib/
 │   │   ├── subtitles/     parsers, pairing, rolling-caption cleanup, word timing, sync maths
 │   │   ├── utils/         storage, backup, vocabulary, review scheduling, exports, lookup
+│   │   ├── dictionary/    Wiktionary grammar reader: headword-line parser, section parser, Action API client
 │   │   ├── csp/ deploy/   build-time helpers (security policy, base path, share URLs)
 │   │   └── youtube/ …     URL parsing and player adapters
 │   ├── context/           theme, subtitle settings, current video key
@@ -273,7 +283,7 @@ About **14,100 lines** of source in 166 files and **8,500 lines** of tests in 10
 | | |
 | --- | --- |
 | **No server** | There is no backend, database, login or analytics. Subtitle files and local videos are processed in the browser and never uploaded. |
-| **One outgoing feature** | Clicking a word sends *that word only* to **Wiktionary** and **MyMemory**. It is on by default, can be switched off in *Settings → Privacy*, and results are cached on your device so repeated words send nothing. |
+| **One outgoing feature** | Clicking a word sends *that word only* to **Wiktionary** and **MyMemory** (for an inflected form also its lemma). It is on by default, can be switched off in *Settings → Privacy*, and results are cached on your device so repeated words send nothing. |
 | **Content-Security-Policy** | Added to the production build: scripts only from the app itself (the small inline theme script is allowed by hash, not by `unsafe-inline`), network requests only to the two dictionary services, embeds only from YouTube and Vimeo. A real-Chrome test fails the build on any violation. |
 | **Untrusted input everywhere** | Subtitle text is rendered through React (no raw HTML path). Exports guard against spreadsheet formulas and stray tabs/newlines. The share-URL settings are validated against strict patterns, so a crafted setting can never reach the HTML. |
 | **Stored data is validated** | Reading preferences, review state, saved sentence context, learning stats and restored backups are checked when read, and settings are merged with defaults, so a bad value falls back instead of crashing. |

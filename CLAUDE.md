@@ -28,7 +28,7 @@ everything (including subtitle files) stays in the browser (`localStorage` + `In
 - `src/hooks/` — one hook per concern (`useYouTubePlayer`, `useVimeoPlayer`,
   `useLocalVideoPlayer`) unified behind `useVideoPlayer` (Player Adapter pattern).
   Adding a new video source means adding a new adapter hook, not touching consumers.
-- `src/lib/{youtube,vimeo,subtitles,utils}/` — pure, framework-free logic. Prefer
+- `src/lib/{youtube,vimeo,subtitles,utils,dictionary}/` — pure, framework-free logic. Prefer
   putting new parsing/format logic here so it's independently testable.
 - `src/components/` — organized by feature area (`video`, `subtitles`, `settings`,
   `console`, `reading`, `layout`, `system`, `ui`). `ui/` is generic/reusable only.
@@ -38,6 +38,9 @@ everything (including subtitle files) stays in the browser (`localStorage` + `In
 - Subtitles on the video: `SubtitleOverlay` renders one `SubtitleLine` per language (each drags on its own via
   `useDraggableOverlayPosition`); placement + offsets persist through `useSubtitleLayout` (one `localStorage` key,
   normalized on read). Words of the translation line open `VideoWordCard`, which reuses the sidebar's `WordDefinitionCard`.
+- Word lookup: `lookupWord` (`lib/utils/wordLookup.ts`) merges MyMemory (translation), Wiktionary REST (meanings) and
+  `lib/dictionary/` (German article/plural/verb forms/lemma from the Wikimedia Action API on `en.wiktionary.org`, the host the CSP already allows).
+  Bump `CACHE_VERSION` in `lookupCache.ts` whenever `WordLookupResult` gains data older cached entries lack.
 - `src/context/` — cross-cutting UI state only (theme, subtitle settings). Don't reach
   for context for state that's local to one feature.
 - `src/__tests__/` — one file per behavior/bug, named after what it verifies.

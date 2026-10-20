@@ -10,6 +10,12 @@ export interface GlossaryEntry {
   /** أفضل تعريف متاح (قد يكون فارغاً إن توفرت الترجمة فقط) */
   definition: string
   example: string | null
+  /** Dictionary form when the saved word is an inflected form ("gehen" for "gegangen"). Absent for older entries. */
+  lemma?: string
+  /** Definite article of a noun ("das", or "der/das"). Absent for older entries and for words without one. */
+  article?: string
+  /** First plural form of a noun ("Häuser"). Absent when the noun has none. */
+  plural?: string
   addedAt: number
   /** Where the word was met, so a review can show it in its real sentence. Absent for older entries. */
   context?: GlossaryContext

@@ -1,3 +1,5 @@
+import { lookupGrammar } from '@/lib/dictionary/wiktionaryGrammar'
+import type { SourcePart, WordGrammar } from '@/types/dictionary.types'
 import { getCachedLookup, makeLookupCacheKey, setCachedLookup } from './lookupCache'
 import { isOnlineLookupEnabled } from './lookupPreference'
 
@@ -16,6 +18,8 @@ export interface WordLookupResult {
   alternatives: string[]
   /** تعريفات ويكاموس (الإنجليزية غالباً)، حتى 3 */
   meanings: WordMeaning[]
+  /** Article, plural, verb forms and lemma from Wiktionary; only for languages with a grammar reader (German) */
+  grammar?: WordGrammar
 }
 
 export type LookupOutcome =
@@ -25,10 +29,12 @@ export type LookupOutcome =
   | { kind: 'error' }
 
 /** نتيجة مصدر واحد: بيانات، أو لا شيء (404/مطابق فارغ)، أو خطأ (شبكة/حصة/خادم) */
-type Part<T> = { status: 'ok'; value: T } | { status: 'empty' } | { status: 'error' }
+type Part<T> = SourcePart<T>
 
 const MAX_ALTERNATIVES = 3
 const MAX_MEANINGS = 3
+// Each lemma translated costs one MyMemory request; a word rarely has more than two lemmas
+const MAX_LEMMA_TRANSLATIONS = 2
 
 // MyMemory يقبل أغلب رموز ISO 639-1 كما هي، عدا الصينية التي تحتاج صيغة إقليمية
 const MYMEMORY_LANGUAGE_OVERRIDES: Record<string, string> = { zh: 'zh-CN' }
@@ -138,6 +144,30 @@ async function fetchTranslation(
 }
 
 /**
+ * Fills `translation` on every reading whose lemma differs from the clicked word ("gegangen" -> "gehen"):
+ * a learner asks "what does the verb mean", not only "what does this one form mean"
+ */
+async function translateLemmas(
+  grammar: WordGrammar,
+  word: string,
+  fromLanguage: string,
+  toLanguage: string,
+  signal?: AbortSignal,
+): Promise<WordGrammar> {
+  const lemmas = [
+    ...new Set(grammar.readings.map((reading) => reading.lemma).filter((lemma) => lemma.toLowerCase() !== word.toLowerCase())),
+  ].slice(0, MAX_LEMMA_TRANSLATIONS)
+  const parts = await Promise.all(lemmas.map((lemma) => fetchTranslation(lemma, fromLanguage, toLanguage, signal)))
+
+  const translations = new Map<string, string>()
+  lemmas.forEach((lemma, index) => {
+    const part = parts[index]
+    if (part?.status === 'ok') translations.set(lemma, part.value.translation)
+  })
+  return { readings: grammar.readings.map((reading) => ({ ...reading, translation: translations.get(reading.lemma) ?? null })) }
+}
+
+/**
  * يبحث عن معنى كلمة من مصدرين بالتوازي: ترجمتها إلى لغة المستخدم
  * (MyMemory، تدعم عشرات اللغات) وتعريفاتها من ويكاموس (تدعم مئات اللغات).
  * أيٌّ من المصدرين يكفي لعرض نتيجة؛ ولا يُعاد "not-found" إلا إن لم يجد
@@ -161,27 +191,36 @@ export async function lookupWord(
   if (!isOnlineLookupEnabled()) return { kind: 'disabled' }
 
   const canTranslate = Boolean(nativeLanguage) && nativeLanguage !== learningLanguage
-  const [translationPart, meaningsPart] = await Promise.all([
+  const [translationPart, meaningsPart, grammarPart] = await Promise.all([
     canTranslate
       ? fetchTranslation(cleanedWord, learningLanguage, nativeLanguage as string, signal)
       : Promise.resolve<Part<never>>({ status: 'empty' }),
     fetchWiktionaryMeanings(cleanedWord, learningLanguage, signal),
+    lookupGrammar(cleanedWord, learningLanguage, signal),
   ])
 
   const translation = translationPart.status === 'ok' ? translationPart.value : null
   const meanings = meaningsPart.status === 'ok' ? meaningsPart.value : []
+  const grammar =
+    grammarPart.status !== 'ok'
+      ? null
+      : canTranslate
+        ? await translateLemmas(grammarPart.value, cleanedWord, learningLanguage, nativeLanguage as string, signal)
+        : grammarPart.value
 
-  if (translation || meanings.length > 0) {
+  if (translation || meanings.length > 0 || grammar) {
     const result: WordLookupResult = {
       word: cleanedWord,
       translation: translation?.translation ?? null,
       alternatives: translation?.alternatives ?? [],
       meanings,
+      ...(grammar ? { grammar } : {}),
     }
-    setCachedLookup(cacheKey, result)
+    // A failed grammar request is not remembered: the cache lasts a month, and the article should not stay missing that long
+    if (grammarPart.status !== 'error') setCachedLookup(cacheKey, result)
     return { kind: 'found', result }
   }
 
-  const hadError = translationPart.status === 'error' || meaningsPart.status === 'error'
+  const hadError = [translationPart, meaningsPart, grammarPart].some((part) => part.status === 'error')
   return hadError ? { kind: 'error' } : { kind: 'not-found' }
 }

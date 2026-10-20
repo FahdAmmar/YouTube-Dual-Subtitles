@@ -2,16 +2,21 @@ import { useRef, type ChangeEvent } from 'react'
 import { Upload, CheckCircle2, Loader2, XCircle, History } from 'lucide-react'
 import { SyncOffsetControl } from '@/components/subtitles/SyncOffsetControl'
 import { TwoPointSync } from '@/components/subtitles/TwoPointSync'
+import { LanguageSelect } from './LanguageSelect'
 import { cn } from '@/lib/utils/cn'
 import { toSyncedFileName } from '@/lib/subtitles/twoPointSync'
 import { SUBTITLE_FILE_ACCEPT } from '@/lib/subtitles/parseSubtitleFile'
-import type { SubtitleTrackState, TrackOffsetControls } from '@/types/subtitle.types'
+import type { SubtitleTrackState, TrackLanguageControls, TrackOffsetControls } from '@/types/subtitle.types'
 
 interface SourceFileRowProps {
   track: SubtitleTrackState
   accentClassName: string
   onFileSelected: (file: File) => void
   offsetControls: TrackOffsetControls
+  /** اختيار اللغة صراحةً من القائمة — كشف تلقائي (null) ما لم يختر المستخدم لغةً */
+  languageControls: TrackLanguageControls
+  /** يصف للمستخدم قارئات الشاشة أيّ مسار يتغيّر به — المساران يعرضان نفس نص "تلقائي" */
+  languageAriaLabel: string
   /** اسم ملف كان مستخدَماً لهذا المسار في هذا الفيديو تحديداً آخر مرة — يُعرَض كتذكير فقط طالما لا يوجد ملف محمَّل حالياً */
   rememberedFileName?: string
   /** Together these enable the two-point sync for drifting subtitles */
@@ -31,6 +36,8 @@ export function SourceFileRow({
   accentClassName,
   onFileSelected,
   offsetControls,
+  languageControls,
+  languageAriaLabel,
   rememberedFileName,
   getCurrentTime,
   onSeek,
@@ -46,9 +53,14 @@ export function SourceFileRow({
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-border bg-surface-elevated/50 px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', accentClassName)} aria-hidden="true" />
-          <span className="truncate text-[13px] font-medium text-text-primary">{track.languageLabel}</span>
+          <LanguageSelect
+            explicitCode={languageControls.explicitCode}
+            onSelect={languageControls.onSelect}
+            ariaLabel={languageAriaLabel}
+            title={`لغة المسار (حالياً: ${track.languageLabel}${languageControls.explicitCode ? ' — اختيار صريح' : ' — كشف تلقائي'})`}
+          />
         </div>
 
         <button

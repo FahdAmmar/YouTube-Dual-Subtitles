@@ -190,6 +190,14 @@ export function GlossaryPanel({ isOpen, onClose, onSeekToTime }: GlossaryPanelPr
                                 {entry.partOfSpeech}
                               </span>
                             )}
+                            {(entry.article || (entry.lemma && entry.lemma.toLowerCase() !== entry.word.toLowerCase())) && (
+                              <p className="text-xs text-text-secondary" dir="ltr" lang={entry.languageCode}>
+                                <span className="font-medium text-text-primary">
+                                  {[entry.article, entry.lemma ?? entry.word].filter(Boolean).join(' ')}
+                                </span>
+                                {entry.plural && ` · Pl. ${entry.plural}`}
+                              </p>
+                            )}
                             {entry.translation && (
                               <p className="font-semibold text-console" dir="auto">
                                 {entry.translation}

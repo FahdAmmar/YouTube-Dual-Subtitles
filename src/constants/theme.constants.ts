@@ -18,6 +18,7 @@ export const STORAGE_KEYS = {
   READING_PREFS: 'ydc:reading-prefs',
   ONLINE_LOOKUP: 'ydc:online-lookup',
   REVIEW_STATS: 'ydc:review-stats',
+  TRACK_LANGUAGES: 'ydc:track-languages',
 } as const
 
 /**

@@ -3,6 +3,8 @@ import { X, BookmarkPlus, BookmarkCheck, Loader2, ExternalLink, RefreshCw } from
 import { lookupWord, type LookupOutcome } from '@/lib/utils/wordLookup'
 import { useCurrentVideoKey } from '@/context/VideoKeyContext'
 import { useGlossary } from '@/hooks/useGlossary'
+import { summarizeForGlossary } from '@/lib/dictionary/readingDisplay'
+import { GrammarReadings } from './GrammarReadings'
 
 interface WordDefinitionCardProps {
   word: string
@@ -132,6 +134,10 @@ export function WordDefinitionCard({
             </div>
           )}
 
+          {state.result.grammar && (
+            <GrammarReadings readings={state.result.grammar.readings} languageCode={languageCode} />
+          )}
+
           {state.result.meanings.map((meaning) => (
             <div key={`${meaning.partOfSpeech}-${meaning.text}`} className="flex flex-col gap-0.5">
               {meaning.partOfSpeech && (
@@ -162,6 +168,7 @@ export function WordDefinitionCard({
                 translation: state.result.translation,
                 definition: firstMeaning?.text ?? '',
                 example: firstMeaning?.example ?? null,
+                ...summarizeForGlossary(state.result.grammar?.readings),
                 context:
                   sentence && videoKey && sentenceTime !== undefined
                     ? { sentence, videoKey, time: sentenceTime }

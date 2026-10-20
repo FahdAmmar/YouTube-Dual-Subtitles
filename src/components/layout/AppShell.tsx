@@ -5,12 +5,10 @@ import { PanelResizeHandle } from './PanelResizeHandle'
 import { PreLoadScreen } from './PreLoadScreen'
 import { VideoStage } from '@/components/video/VideoStage'
 import { MobileActiveCaption } from '@/components/video/MobileActiveCaption'
-import { KeyboardShortcutsPanel } from '@/components/video/KeyboardShortcutsPanel'
 import { ConsolePanel } from '@/components/console/ConsolePanel'
 import { DropOverlay } from '@/components/system/DropOverlay'
 import { VideoKeyProvider } from '@/context/VideoKeyContext'
 import { useSubtitleFileDrop } from '@/hooks/useSubtitleFileDrop'
-import { GlossaryPanel } from '@/components/console/GlossaryPanel'
 import { useVideoPlayer } from '@/hooks/useVideoPlayer'
 import { useSubtitleTrack } from '@/hooks/useSubtitleTrack'
 import { useResizableSidebarWidth } from '@/hooks/useResizableSidebarWidth'
@@ -47,6 +45,19 @@ const ReadingView = lazy(() =>
 const SettingsPanel = lazy(() =>
   import('@/components/settings/SettingsPanel').then((module) => ({
     default: module.SettingsPanel,
+  })),
+)
+// Same deferral for the two rarely opened panels: they stay mounted (their open/close
+// state and exit animations keep working) but their code reaches the browser after the
+// first paint instead of blocking it
+const GlossaryPanel = lazy(() =>
+  import('@/components/console/GlossaryPanel').then((module) => ({
+    default: module.GlossaryPanel,
+  })),
+)
+const KeyboardShortcutsPanel = lazy(() =>
+  import('@/components/video/KeyboardShortcutsPanel').then((module) => ({
+    default: module.KeyboardShortcutsPanel,
   })),
 )
 
@@ -102,8 +113,10 @@ export function AppShell() {
 
   const player = useVideoPlayer(videoSource)
   useVideoProgress(videoSource, player)
-  const sourceTrack = useSubtitleTrack('ar', 'العربية')
-  const translationTrack = useSubtitleTrack('en', 'الإنجليزية')
+  // اللغة الابتدائية المسارين: عربية أصلاً وإنجليزية ترجمةً — ويمكن للمستخدم
+  // تغيير كل مسار من قائمة اللغات المدعومة (المسارين أعلى من الكشف التلقائي)
+  const sourceTrack = useSubtitleTrack('ar', 'العربية', 'source')
+  const translationTrack = useSubtitleTrack('en', 'الإنجليزية', 'translation')
   useSyncOffsetPersistence(
     'source',
     videoSource,
@@ -140,6 +153,17 @@ export function AppShell() {
   )
   const sidebarPosition = useSidebarPosition()
   const sidebar = useResizableSidebarWidth(sidebarPosition.position)
+
+  // كائنات اختيار اللغة تُبنى مجدداً فقط إذا تغيّر الاختيار الصريح أو مؤشر
+  // الدالة المستقرة — تمهيداً لتمريرها إلى لوحة التحكم بأقل إعادة رسم ممكنة
+  const sourceLanguageControls = useMemo(
+    () => ({ explicitCode: sourceTrack.explicitLanguageCode, onSelect: sourceTrack.selectLanguage }),
+    [sourceTrack.explicitLanguageCode, sourceTrack.selectLanguage],
+  )
+  const translationLanguageControls = useMemo(
+    () => ({ explicitCode: translationTrack.explicitLanguageCode, onSelect: translationTrack.selectLanguage }),
+    [translationTrack.explicitLanguageCode, translationTrack.selectLanguage],
+  )
 
   const { onUploadSource, onUploadTranslation, onUploadBilingual, bilingualUpload } = useSubtitleUploadHandlers(
     videoSource,
@@ -265,7 +289,7 @@ export function AppShell() {
     <VideoKeyProvider value={videoKey}>
     <div className="relative flex flex-col bg-bg lg:h-screen lg:overflow-hidden">
       <BackgroundFX />
-      <Header />
+      <Header onGoHome={handleChangeVideo} />
 
       <div ref={sidebar.containerRef} className="flex flex-1 flex-col lg:min-h-0 lg:flex-row">
         <main
@@ -323,6 +347,8 @@ export function AppShell() {
             translationTrack={translationTrack.track}
             sourceControls={sourceTrack}
             translationControls={translationTrack}
+            sourceLanguageControls={sourceLanguageControls}
+            translationLanguageControls={translationLanguageControls}
             onUploadSource={onUploadSource}
             onUploadTranslation={onUploadTranslation}
             bilingualUpload={bilingualUpload}
@@ -393,14 +419,17 @@ export function AppShell() {
         />
       </Suspense>
 
-      <KeyboardShortcutsPanel isOpen={isShortcutsHelpOpen} onClose={() => setIsShortcutsHelpOpen(false)} />
+      <Suspense fallback={null}>
+        <KeyboardShortcutsPanel isOpen={isShortcutsHelpOpen} onClose={() => setIsShortcutsHelpOpen(false)} />
+      </Suspense>
 
-      <GlossaryPanel
-        isOpen={isGlossaryOpen}
-        onClose={() => setIsGlossaryOpen(false)}
-        onSeekToTime={(seconds) => player.seekTo(seconds)}
-      />
-    </div>
+      <Suspense fallback={null}>
+        <GlossaryPanel
+          isOpen={isGlossaryOpen}
+          onClose={() => setIsGlossaryOpen(false)}
+          onSeekToTime={(seconds) => player.seekTo(seconds)}
+        />
+      </Suspense>    </div>
     </VideoKeyProvider>
   )
 }

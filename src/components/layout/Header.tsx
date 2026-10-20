@@ -1,5 +1,16 @@
-import { Terminal } from 'lucide-react'
+import { Home, Terminal } from 'lucide-react'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
+import { IconButton } from '@/components/ui/IconButton'
+
+interface HeaderProps {
+  /**
+   * اختياري: موجود فقط في تخطيط "لوحة التحكم" (مرحلة ما بعد اختيار الفيديو)،
+   * وينفّذ نفس مسار الرجوع لشاشة إعداد الفيديو المركزية — زر الموقع (AppShell)
+   * يحرر Object URL للأي ملف فيديو محلي نشط ويصفّر مساري الترجمة قبل العودة.
+   * في الشاشة الرئيسية نفسها لا معنى للزر فلا يُعرض إطلاقاً
+   */
+  onGoHome?: () => void
+}
 
 /**
  * رأس صفحة مضغوط بطابع زجاجي (Glass): يطفو فوق خلفية BackgroundFX بشفافية
@@ -10,8 +21,12 @@ import { ThemeToggle } from '@/components/settings/ThemeToggle'
  * زر الإعدادات انتقل إلى لوحة التحكم الجانبية (ConsolePanel) لأنه يخص
  * الترجمة تحديداً، بينما هذا الرأس عام لكامل التطبيق — فصل واضح بين إعدادات
  * النطاق العام والخاص.
+ *
+ * التنقّل إلى الشاشة الرئيسية: زر مرئي دائماً مقابل الشعار (بجانب مبدّل
+ * السمة) لأن الرجوع للرئيسية — أي تغيير الفيديو الحالي — مسار مستخدمين
+ * متكرر، وقد كان متاحاً سابقاً فقط من زر تهدّم فوق الفيديو نفسه
  */
-export function Header() {
+export function Header({ onGoHome }: HeaderProps) {
   return (
     <header className="glass-subtle relative z-30 flex h-12 shrink-0 items-center justify-between border-b border-border/60 px-3.5 sm:px-5">
       <div className="flex items-center gap-2.5">
@@ -28,7 +43,19 @@ export function Header() {
         </h1>
       </div>
 
-      <ThemeToggle />
+      <div className="flex items-center gap-1.5">
+        {onGoHome && (
+          <IconButton
+            onClick={onGoHome}
+            aria-label="العودة إلى الشاشة الرئيسية"
+            title="العودة إلى الشاشة الرئيسية"
+            className="hover:text-console"
+          >
+            <Home size={19} aria-hidden="true" />
+          </IconButton>
+        )}
+        <ThemeToggle />
+      </div>
     </header>
   )
 }

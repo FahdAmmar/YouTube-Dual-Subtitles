@@ -58,6 +58,16 @@ export interface TrackOffsetControls {
   resetSyncOffset: () => void
 }
 
+/**
+ * إجراءات اختيار لغة مسار ترجمة صراحةً من القائمة (وضع "تلقائي" = null يعني
+ * إعادة الكشف التلقائي عن لغة الملف). يفوق الاختيار الصريح نتيجة الكشف دائماً
+ */
+export interface TrackLanguageControls {
+  /** الاختيار الحالي؛ null في وضع الكشف التلقائي */
+  explicitCode: string | null
+  onSelect: (code: string | null) => void
+}
+
 /** A word picked on the video, with the line it came from so a saved word can show its context */
 export interface WordSelection {
   readonly word: string
