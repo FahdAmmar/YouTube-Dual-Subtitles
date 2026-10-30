@@ -33,7 +33,7 @@ export function NowPlayingCard({ title, isPlaying, className }: NowPlayingCardPr
       <p className="line-clamp-2 max-w-full text-sm font-medium text-text-primary" dir="auto">
         {title}
       </p>
-      <p className="flex items-center gap-1.5 font-mono text-[11px] tracking-wide text-text-secondary">
+      <p className="flex items-center gap-1.5 font-mono text-xs text-text-secondary">
         <AudioLines size={12} aria-hidden="true" />
         صوت فقط
       </p>

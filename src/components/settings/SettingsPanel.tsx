@@ -14,6 +14,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { STORAGE_KEYS } from '@/constants/theme.constants'
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
+import { useSavedWords } from '@/context/SavedWordsContext'
 import type { SubtitleTrackState } from '@/types/subtitle.types'
 
 const MIN_SUBTITLE_WIDTH_PERCENT = 40
@@ -34,8 +35,16 @@ interface SettingsPanelProps {
  * الحزمة الأولية المحمّلة عند فتح التطبيق لأول مرة (تحسين الأداء)
  */
 export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanelProps) {
-  const { settings, updateTrackStyle, toggleBackdrop, setSubtitleWidthPercent, setSubtitleLineHeight, resetToDefaults } =
-    useSubtitleSettings()
+  const {
+    settings,
+    updateTrackStyle,
+    toggleBackdrop,
+    setSubtitleWidthPercent,
+    setSubtitleLineHeight,
+    setAdaptiveAccent,
+    resetToDefaults,
+  } = useSubtitleSettings()
+  const { isHighlightEnabled, setHighlightEnabled } = useSavedWords()
   const [isOnlineLookupOn, setIsOnlineLookupOn] = useLocalStorage<boolean>(STORAGE_KEYS.ONLINE_LOOKUP, true)
   const dialogRef = useDialogFocusTrap(isOpen, onClose)
 
@@ -61,7 +70,7 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
             aria-modal="true"
             aria-label="إعدادات عرض الترجمة"
             tabIndex={-1}
-            className="fixed inset-y-0 end-0 z-50 w-full max-w-sm p-3 outline-none"
+            className="fixed inset-y-0 inset-e-0 z-50 w-full max-w-sm p-3 outline-hidden"
           >
             <Card className="flex h-full flex-col gap-6 overflow-y-auto p-5 shadow-elevated">
               <div className="flex items-center justify-between">
@@ -129,6 +138,34 @@ export function SettingsPanel({ isOpen, onClose, trackA, trackB }: SettingsPanel
                   className="h-5 w-5 accent-console"
                 />
               </label>
+
+              <div className="flex flex-col gap-1">
+                <label className="flex items-center justify-between gap-3 text-sm font-medium text-text-secondary">
+                  لون الواجهة يتبع لون الترجمة الأجنبية
+                  <input
+                    type="checkbox"
+                    checked={settings.adaptiveAccent}
+                    onChange={(event) => setAdaptiveAccent(event.target.checked)}
+                    className="h-5 w-5 shrink-0 accent-console"
+                  />
+                </label>
+                <p className="text-xs text-text-muted">مُعطَّل افتراضياً ليبقى لون الواجهة ثابتاً ومألوفاً.</p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center justify-between gap-3 text-sm font-medium text-text-secondary">
+                  تمييز الكلمات المحفوظة في الترجمة
+                  <input
+                    type="checkbox"
+                    checked={isHighlightEnabled}
+                    onChange={(event) => setHighlightEnabled(event.target.checked)}
+                    className="h-5 w-5 shrink-0 accent-console"
+                  />
+                </label>
+                <p className="text-xs leading-relaxed text-text-muted">
+                  يُرسم خط منقّط تحت أي كلمة سبق أن حفظتها في مفرداتك، على الفيديو وفي وضع القراءة.
+                </p>
+              </div>
 
               <div className="flex flex-col gap-2 border-s-4 border-border ps-4">
                 <h3 className="text-sm font-semibold text-text-primary">الخصوصية</h3>

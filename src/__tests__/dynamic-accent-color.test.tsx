@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from '../App'
+import { DEFAULT_SUBTITLE_SETTINGS, STORAGE_KEYS } from '@/constants/theme.constants'
 import { installMockYouTubeApi, type MockYouTubePlayer } from './testHelpers/mockYouTubePlayer'
 
 let activePlayer: MockYouTubePlayer | null = null
@@ -10,7 +11,7 @@ beforeEach(() => {
   installMockYouTubeApi((player) => {
     activePlayer = player
   })
-  document.documentElement.style.removeProperty('--color-console')
+  document.documentElement.style.removeProperty('--rgb-console')
 })
 
 function makeFile(name: string, content: string) {
@@ -21,16 +22,38 @@ const SOURCE_SRT = `1\n00:00:01,000 --> 00:00:08,000\nمرحباً\n`
 const TRANSLATION_SRT = `1\n00:00:01,000 --> 00:00:08,000\nHello\n`
 
 describe('dynamic site accent color', () => {
-  it('updates --color-console live when the English (trackB) subtitle color changes', async () => {
+  it('leaves the accent alone by default, and follows the setting once it is switched on', async () => {
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
-    const initialConsoleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-console').trim()
+    expect(document.documentElement.style.getPropertyValue('--rgb-console')).toBe('')
+
+    fireEvent.click(screen.getByLabelText('فتح إعدادات حجم ولون الترجمة'))
+    await screen.findByRole('dialog', { name: 'إعدادات عرض الترجمة' })
+    fireEvent.click(screen.getByLabelText('لون الواجهة يتبع لون الترجمة الأجنبية'))
+
+    await waitFor(() => expect(document.documentElement.style.getPropertyValue('--rgb-console')).not.toBe(''))
+  })
+
+  it('updates --rgb-console live when the English (trackB) subtitle color changes', async () => {
+    window.localStorage.setItem(
+      STORAGE_KEYS.SUBTITLE_SETTINGS,
+      JSON.stringify({ ...DEFAULT_SUBTITLE_SETTINGS, adaptiveAccent: true }),
+    )
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
+      target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
+
+    const initialConsoleColor = getComputedStyle(document.documentElement).getPropertyValue('--rgb-console').trim()
     expect(initialConsoleColor.length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByLabelText('فتح إعدادات حجم ولون الترجمة'))
@@ -42,16 +65,16 @@ describe('dynamic site accent color', () => {
 
     await waitFor(() => {
       const updatedConsoleColor = getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-console')
+        .getPropertyValue('--rgb-console')
         .trim()
       expect(updatedConsoleColor).not.toBe(initialConsoleColor)
     })
 
     // تغيير آخر يُثبت أن الربط حيّ ومستمر، وليس مجرد قراءة أولى لمرة واحدة
-    const afterFirstChange = getComputedStyle(document.documentElement).getPropertyValue('--color-console').trim()
+    const afterFirstChange = getComputedStyle(document.documentElement).getPropertyValue('--rgb-console').trim()
     fireEvent.change(trackBColorInput, { target: { value: '#22ccff' } })
     await waitFor(() => {
-      const secondChange = getComputedStyle(document.documentElement).getPropertyValue('--color-console').trim()
+      const secondChange = getComputedStyle(document.documentElement).getPropertyValue('--rgb-console').trim()
       expect(secondChange).not.toBe(afterFirstChange)
     })
   })
@@ -60,11 +83,11 @@ describe('dynamic site accent color', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), {
       target: { files: [makeFile('ar.srt', SOURCE_SRT)] },

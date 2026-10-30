@@ -31,12 +31,12 @@ describe('bilingual subtitle upload', () => {
 
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
 
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     // رفع ملف واحد ثنائي اللغة — يُفترض أن يملأ المسارين معاً
     await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة ثنائي اللغة'), {
@@ -77,12 +77,12 @@ describe('bilingual subtitle upload', () => {
 
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
 
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     // رفع ملف ثنائي اللغة يُجهّز كلا المسارين في نفس اللحظة تماماً — هذا
     // بالضبط السيناريو الذي كان يُسبّب طياً فورياً يُخفي التأكيد قبل ظهوره
@@ -114,12 +114,12 @@ describe('bilingual subtitle upload', () => {
 
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
 
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة ثنائي اللغة'), {
       target: { files: [makeFile('empty.srt', '   \n\n  ')] },

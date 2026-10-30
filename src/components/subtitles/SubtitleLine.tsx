@@ -6,10 +6,14 @@ import type { LineOffset, SubtitleLine as SubtitleLineId } from '@/lib/subtitles
 import { ClickableWords } from './ClickableWords'
 
 /** The reference line is smaller and lighter so the language being learned stays the focus */
-const LINE_STYLES: Record<SubtitleLineId, { fontScale: number; className: string }> = {
-  source: { fontScale: 0.85, className: 'bg-black/55 px-3 py-0.5 italic' },
-  translation: { fontScale: 1, className: 'bg-black/70 px-3.5 py-1.5 font-bold shadow-elevated' },
+const LINE_STYLES: Record<SubtitleLineId, { fontScale: number; className: string; backdropClassName: string }> = {
+  source: { fontScale: 0.85, className: 'px-3 py-0.5', backdropClassName: 'bg-black/45' },
+  translation: { fontScale: 1, className: 'px-3.5 py-1.5 font-bold', backdropClassName: 'bg-black/65 shadow-elevated' },
 }
+
+/** Light outline that keeps text readable on a busy picture; the stronger one replaces the backdrop when it is off */
+const TEXT_SHADOW_WITH_BACKDROP = '0 1px 3px rgb(0 0 0 / 0.85)'
+const TEXT_SHADOW_NO_BACKDROP = '0 0 2px #000, 0 1px 4px #000, 0 0 10px rgb(0 0 0 / 0.85)'
 
 interface SubtitleLineProps {
   line: SubtitleLineId
@@ -17,6 +21,8 @@ interface SubtitleLineProps {
   fontSize: number
   color: string
   lineHeight: number
+  /** The "dark backdrop behind the text" setting; off falls back to a stronger text outline */
+  showBackdrop: boolean
   maxWidthPercent: number
   offset: LineOffset
   onOffsetChange: (line: SubtitleLineId, offset: LineOffset) => void
@@ -33,6 +39,7 @@ export function SubtitleLine({
   fontSize,
   color,
   lineHeight,
+  showBackdrop,
   maxWidthPercent,
   offset,
   onOffsetChange,
@@ -70,8 +77,14 @@ export function SubtitleLine({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className={cn('whitespace-pre-line rounded-md text-center', style.className)}
-          style={{ fontSize: `${fontSize * style.fontScale}px`, color, maxWidth: '100%', lineHeight }}
+          className={cn('whitespace-pre-line rounded-md text-center', style.className, showBackdrop && style.backdropClassName)}
+          style={{
+            fontSize: `${fontSize * style.fontScale}px`,
+            color,
+            maxWidth: '100%',
+            lineHeight,
+            textShadow: showBackdrop ? TEXT_SHADOW_WITH_BACKDROP : TEXT_SHADOW_NO_BACKDROP,
+          }}
         >
           {onWordClick ? (
             <ClickableWords text={text} onWordClick={(word) => !wasDragged() && onWordClick(word)} />

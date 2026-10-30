@@ -71,7 +71,7 @@ export function WordDefinitionCard({
           type="button"
           onClick={onClose}
           aria-label="إغلاق بطاقة التعريف"
-          className="shrink-0 rounded-sm text-text-muted transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="shrink-0 rounded-sm text-text-muted transition-colors hover:text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
           <X size={14} aria-hidden="true" />
         </button>
@@ -141,7 +141,7 @@ export function WordDefinitionCard({
           {state.result.meanings.map((meaning) => (
             <div key={`${meaning.partOfSpeech}-${meaning.text}`} className="flex flex-col gap-0.5">
               {meaning.partOfSpeech && (
-                <span className="w-fit rounded-sm bg-console/10 px-1.5 py-0.5 font-mono text-[10px] text-console">
+                <span className="w-fit rounded-sm bg-console/10 px-1.5 py-0.5 font-mono text-xs leading-5 text-text-secondary">
                   {meaning.partOfSpeech}
                 </span>
               )}
@@ -149,7 +149,7 @@ export function WordDefinitionCard({
                 {meaning.text}
               </p>
               {meaning.example && (
-                <p className="italic text-text-muted" dir="auto">
+                <p className="text-text-muted" dir="auto">
                   «{meaning.example}»
                 </p>
               )}
@@ -185,7 +185,7 @@ export function WordDefinitionCard({
       )}
 
       {state.kind !== 'disabled' && (
-        <p className="text-[10px] leading-snug text-text-muted">
+        <p className="text-xs leading-snug text-text-muted">
           تُرسَل الكلمة إلى MyMemory وويكاموس للبحث عنها، ويمكن إيقاف ذلك من الإعدادات.
         </p>
       )}

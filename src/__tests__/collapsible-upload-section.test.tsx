@@ -26,12 +26,12 @@ describe('collapsible upload section', () => {
 
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
 
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     // قبل رفع أي ملف: القسم موسّع، أزرار وضع العرض ظاهرة
     expect(screen.getByRole('radiogroup', { name: 'وضع عرض الترجمة' })).toBeInTheDocument()
@@ -57,7 +57,7 @@ describe('collapsible upload section', () => {
     )
 
     // الصف الموجز يظهر بدلاً منه ويحوي زر التوسيع
-    const expandButton = screen.getByRole('button', { name: /UPLOAD_SETTINGS/ })
+    const expandButton = screen.getByRole('button', { name: /الترجمات والإعدادات/ })
     expect(expandButton).toBeInTheDocument()
 
     // إعادة التوسيع يدوياً تُعيد إظهار أزرار وضع العرض

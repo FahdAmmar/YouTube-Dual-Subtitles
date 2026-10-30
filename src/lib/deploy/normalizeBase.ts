@@ -2,7 +2,7 @@ const SAFE_SEGMENT = /^[A-Za-z0-9._~-]+$/
 
 /**
  * Turns the BASE_PATH build setting into the form Vite needs: a path that starts and ends with "/".
- * Hosting at the domain root is "/", a project page on GitHub Pages is "/repo-name/".
+ * Hosting at the domain root is "/", an app served below the domain root is "/sub-path/".
  * Anything that is not a plain path is rejected: a typo here would silently rewrite every asset URL.
  */
 export function normalizeBase(raw: string | undefined): string {

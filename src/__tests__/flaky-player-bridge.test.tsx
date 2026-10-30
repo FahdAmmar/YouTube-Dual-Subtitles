@@ -45,23 +45,24 @@ describe('resilience against a flaky YouTube postMessage bridge', () => {
 
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
 
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     // بدء التشغيل الفعلي؛ يُفعّل مؤقت الاستطلاع (usePlayerTime) الذي
     // يستدعي getCurrentTime بشكل متكرر — وهو ما سيبدأ بالفشل بعد قليل
-    fireEvent.click(screen.getByRole('button', { name: 'تشغيل' }))
+    // The controls only exist once the player is ready, which now happens a moment after the screen mounts
+    fireEvent.click(await screen.findByRole('button', { name: 'تشغيل' }))
 
     // انتظار عدة نبضات حقيقية (120ms لكل نبضة)، متجاوزين نقطة الفشل المحاكاة
     await new Promise((resolve) => setTimeout(resolve, 900))
 
     // التطبيق يجب أن يبقى شغّالاً بشكل طبيعي تماماً، دون أي شاشة خطأ
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
-    expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument()
+    expect(screen.getByText(/وضع العرض/)).toBeInTheDocument()
 
     errorSpy.mockRestore()
   })

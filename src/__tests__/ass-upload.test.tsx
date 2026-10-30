@@ -27,11 +27,11 @@ Comment: 0,0:00:09.00,0:00:10.00,Default,,0,0,0,,Translator note
 
 async function openVideo() {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 }
 
 describe('ASS / SSA subtitle upload', () => {
@@ -50,7 +50,7 @@ describe('ASS / SSA subtitle upload', () => {
       target: { files: [makeFile('episode.ass', ASS_SOURCE)] },
     })
 
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 2 SEG')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('المقاطع · 2')).toBeInTheDocument())
     const transcript = within(screen.getByRole('complementary'))
     expect(transcript.getByText('episode.ass')).toBeInTheDocument()
     expect(transcript.getByText(/هذا مثال، على القهوة/)).toBeInTheDocument()

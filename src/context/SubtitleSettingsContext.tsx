@@ -13,6 +13,7 @@ interface SubtitleSettingsContextValue {
   toggleBackdrop: () => void
   setSubtitleWidthPercent: (value: number) => void
   setSubtitleLineHeight: (value: number) => void
+  setAdaptiveAccent: (value: boolean) => void
   resetToDefaults: () => void
 }
 
@@ -76,6 +77,13 @@ export function SubtitleSettingsProvider({ children }: { children: ReactNode }) 
     [setSettings],
   )
 
+  const setAdaptiveAccent = useCallback(
+    (value: boolean) => {
+      setSettings((previous) => ({ ...withDefaults(previous), adaptiveAccent: value }))
+    },
+    [setSettings],
+  )
+
   const resetToDefaults = useCallback(() => {
     setSettings(DEFAULT_SUBTITLE_SETTINGS)
   }, [setSettings])
@@ -88,6 +96,7 @@ export function SubtitleSettingsProvider({ children }: { children: ReactNode }) 
         toggleBackdrop,
         setSubtitleWidthPercent,
         setSubtitleLineHeight,
+        setAdaptiveAccent,
         resetToDefaults,
       }}
     >

@@ -27,7 +27,7 @@ function SkipIcon({ direction }: { direction: 'back' | 'forward' }) {
   return (
     <span className="relative inline-flex h-7 w-7 items-center justify-center">
       <Arrow size={28} strokeWidth={1.6} aria-hidden="true" />
-      <span aria-hidden="true" className="absolute text-[9px] font-bold leading-none">
+      <span aria-hidden="true" className="absolute text-xs font-bold leading-none">
         {DOUBLE_TAP_SEEK_SECONDS}
       </span>
     </span>
@@ -37,7 +37,7 @@ function SkipIcon({ direction }: { direction: 'back' | 'forward' }) {
 /** Slim progress bar and transport controls, laid out like the rest of the RTL interface */
 export function ReadingDock({ player, slices, currentIndex, onSeekToSlice, isToolsOpen, onToggleTools }: ReadingDockProps) {
   const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
-  const time = usePlayerTime(player.getCurrentTime, isPlaying)
+  const time = usePlayerTime(player.getCurrentTime)
   const [draggedTime, setDraggedTime] = useState<number | null>(null)
 
   const duration = Math.max(player.duration, 0)
@@ -76,7 +76,7 @@ export function ReadingDock({ player, slices, currentIndex, onSeekToSlice, isToo
     <div className="border-t border-border/60 bg-bg/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md">
       <div className="mx-auto flex max-w-4xl flex-col gap-1.5">
         <div className="flex items-center gap-3">
-          <span className="w-12 text-center font-mono text-[11px] tabular-nums text-text-secondary" dir="ltr">
+          <span className="w-12 text-center font-mono text-xs tabular-nums text-text-secondary" dir="ltr">
             {formatClock(shownTime)}
           </span>
           <input
@@ -94,7 +94,7 @@ export function ReadingDock({ player, slices, currentIndex, onSeekToSlice, isToo
             style={rangeStyle}
             className="reading-range flex-1"
           />
-          <span className="w-12 text-center font-mono text-[11px] tabular-nums text-text-secondary" dir="ltr">
+          <span className="w-12 text-center font-mono text-xs tabular-nums text-text-secondary" dir="ltr">
             {formatClock(duration)}
           </span>
         </div>
@@ -131,7 +131,7 @@ export function ReadingDock({ player, slices, currentIndex, onSeekToSlice, isToo
               aria-label={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}
               onClick={isPlaying ? player.pause : player.play}
               disabled={!player.isReady}
-              className="flex h-12 w-12 items-center justify-center rounded-full text-text-primary transition-[background-color,transform] hover:bg-surface-elevated active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console disabled:opacity-45"
+              className="flex h-12 w-12 items-center justify-center rounded-full text-text-primary transition-[background-color,transform] hover:bg-surface-elevated active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console disabled:opacity-45"
             >
               {isPlaying ? (
                 <Pause size={28} className="fill-current" aria-hidden="true" />
@@ -165,7 +165,7 @@ export function ReadingDock({ player, slices, currentIndex, onSeekToSlice, isToo
               type="button"
               aria-label="إعادة السرعة إلى 1×"
               onClick={() => player.setPlaybackRate(1)}
-              className="min-w-[2.75rem] rounded-md px-1 py-1.5 font-mono text-sm tabular-nums text-text-primary transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+              className="min-w-11 rounded-md px-1 py-1.5 font-mono text-sm tabular-nums text-text-primary transition-colors hover:bg-surface-elevated focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
               dir="ltr"
             >
               {formatPlaybackRate(player.playbackRate)}

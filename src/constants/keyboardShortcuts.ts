@@ -162,7 +162,7 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutDefinition[] = [
   {
     matchKeys: ['r', 'R'],
     displayKey: 'R',
-    description: 'كشف/إخفاء الترجمة في وضع الاستدعاء (RECALL)',
+    description: 'كشف/إخفاء الترجمة في وضع الاستدعاء',
     category: 'عام',
     action: (h) => h.onToggleTranslationReveal(),
   },

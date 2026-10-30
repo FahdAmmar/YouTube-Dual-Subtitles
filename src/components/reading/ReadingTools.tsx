@@ -60,7 +60,7 @@ export function ReadingTools(props: ReadingToolsProps) {
   return (
     <div className={cn('flex flex-col gap-3', props.className)}>
       <div className="relative">
-        <Search size={14} aria-hidden="true" className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+        <Search size={14} aria-hidden="true" className="pointer-events-none absolute inset-s-3 top-1/2 -translate-y-1/2 text-text-secondary" />
         <input
           type="search"
           value={props.query}
@@ -70,20 +70,20 @@ export function ReadingTools(props: ReadingToolsProps) {
           }}
           placeholder="ابحث في النص..."
           aria-label="بحث في النص"
-          className="w-full rounded-md border border-border bg-surface-elevated py-2 ps-9 pe-9 text-sm text-text-primary placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console [&::-webkit-search-cancel-button]:hidden"
+          className="w-full rounded-md border border-border bg-surface-elevated py-2 ps-9 pe-9 text-sm text-text-primary placeholder:text-text-secondary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console [&::-webkit-search-cancel-button]:hidden"
         />
         {props.query && (
           <button
             type="button"
             aria-label="مسح البحث"
             onClick={() => props.onQueryChange('')}
-            className="absolute end-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+            className="absolute inset-e-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-text-secondary hover:text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
           >
             <X size={14} aria-hidden="true" />
           </button>
         )}
         {props.query.trim() && (
-          <p role="status" className="mt-1.5 text-[11px] text-text-secondary">
+          <p role="status" className="mt-1.5 text-xs text-text-secondary">
             {props.resultCount === 0 ? 'لا توجد نتائج' : `${props.resultCount} ${props.resultCount === 1 ? 'نتيجة' : 'نتائج'}`}
           </p>
         )}

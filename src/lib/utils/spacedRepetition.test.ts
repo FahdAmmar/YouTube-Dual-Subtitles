@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { applyGrade, getDueEntries, getIntervalLabel, isDue, MINUTE_MS, DAY_MS } from './spacedRepetition'
+import {
+  applyGrade,
+  getDueEntries,
+  getIntervalLabel,
+  getReviewBox,
+  getReviewQueue,
+  isDue,
+  MINUTE_MS,
+  DAY_MS,
+} from './spacedRepetition'
 import type { GlossaryEntry } from '@/types/glossary.types'
 
 const NOW = new Date('2026-10-05T10:00:00Z').getTime()
@@ -85,5 +94,39 @@ describe('getIntervalLabel', () => {
     expect(getIntervalLabel(entry('a'), 'again')).toBe('10 دقائق')
     expect(getIntervalLabel(entry('a'), 'good')).toBe('يوم')
     expect(getIntervalLabel(entry('a'), 'easy')).toBe('3 أيام')
+  })
+})
+
+describe('getReviewBox', () => {
+  it('is null for a never-reviewed or corrupted word, and the box otherwise', () => {
+    expect(getReviewBox(entry('a'))).toBeNull()
+    expect(getReviewBox(entry('a', { review: { box: 'x' } as never }))).toBeNull()
+    expect(getReviewBox(entry('a', { review: { box: 3, dueAt: NOW, lastReviewedAt: NOW } }))).toBe(3)
+  })
+})
+
+describe('getReviewQueue', () => {
+  const reviewed = (id: string, dueAt: number) => entry(id, { review: { box: 2, dueAt, lastReviewedAt: NOW - DAY_MS } })
+  const fresh = (id: string, addedAt: number) => entry(id, { addedAt })
+
+  it('puts overdue words first, then new words in the order they were added', () => {
+    const queue = getReviewQueue([fresh('n2', 20), reviewed('late', NOW - 2), fresh('n1', 10), reviewed('later', NOW - 1)], NOW, null)
+    expect(queue.map((item) => item.id)).toEqual(['late', 'later', 'n1', 'n2'])
+  })
+
+  it('caps only the new words, never the overdue ones', () => {
+    const entries = [reviewed('a', NOW - 1), reviewed('b', NOW - 2), fresh('n1', 1), fresh('n2', 2), fresh('n3', 3)]
+    expect(getReviewQueue(entries, NOW, 2).map((item) => item.id)).toEqual(['b', 'a', 'n1', 'n2'])
+    expect(getReviewQueue(entries, NOW, 0).map((item) => item.id)).toEqual(['b', 'a'])
+  })
+
+  it('leaves out words that are not due yet', () => {
+    expect(getReviewQueue([reviewed('later', NOW + DAY_MS)], NOW, null)).toEqual([])
+  })
+
+  it('treats a missing or non-finite limit as no limit', () => {
+    const entries = [fresh('n1', 1), fresh('n2', 2)]
+    expect(getReviewQueue(entries, NOW, null)).toHaveLength(2)
+    expect(getReviewQueue(entries, NOW, Number.NaN)).toHaveLength(2)
   })
 })

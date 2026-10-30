@@ -30,7 +30,7 @@ export function PlaybackShortcutToast({ feedback }: PlaybackShortcutToastProps) 
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.92 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="flex items-center gap-2 rounded-lg bg-black/75 px-4 py-3 text-white shadow-elevated backdrop-blur-sm"
+            className="flex items-center gap-2 rounded-lg bg-black/75 px-4 py-3 text-white shadow-elevated backdrop-blur-xs"
           >
             {feedback.icon}
             <span className="font-mono text-sm font-semibold tabular-nums">{feedback.label}</span>

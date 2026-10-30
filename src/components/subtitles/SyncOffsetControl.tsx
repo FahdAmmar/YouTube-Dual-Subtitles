@@ -41,7 +41,7 @@ export function SyncOffsetControl({
         type="button"
         onClick={() => onNudge(-1)}
         aria-label={`تقديم ترجمة ${accessibleLabel} ربع ثانية`}
-        className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+        className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
       >
         <Minus size={12} aria-hidden="true" />
       </button>
@@ -54,7 +54,7 @@ export function SyncOffsetControl({
         type="button"
         onClick={() => onNudge(1)}
         aria-label={`تأخير ترجمة ${accessibleLabel} ربع ثانية`}
-        className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+        className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
       >
         <Plus size={12} aria-hidden="true" />
       </button>
@@ -64,7 +64,7 @@ export function SyncOffsetControl({
           type="button"
           onClick={onReset}
           aria-label={`إعادة ضبط إزاحة ترجمة ${accessibleLabel}`}
-          className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
           <RotateCcw size={11} aria-hidden="true" />
         </button>

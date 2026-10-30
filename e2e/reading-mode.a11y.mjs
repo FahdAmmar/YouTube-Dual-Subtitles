@@ -13,7 +13,7 @@ import { preview } from 'vite'
 const require = createRequire(import.meta.url)
 const PORT = Number(process.env.E2E_PORT ?? 4173)
 const AXE_SOURCE = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8')
-// BASE_PATH (e.g. /dual/) checks a sub-folder deployment, exactly as GitHub Pages serves it
+// BASE_PATH (e.g. /dual/) checks a deployment below the domain root
 const BASE_PATH = `/${(process.env.BASE_PATH ?? '').replace(/^\/+|\/+$/g, '')}/`.replace('//', '/')
 const BASE_URL = `http://127.0.0.1:${PORT}${BASE_PATH}`
 const CHROME_PATH = process.env.CHROME_PATH ?? '/usr/bin/google-chrome'
@@ -133,7 +133,7 @@ async function runScenario(browser, scenario) {
   })
   await page.waitForSelector('input[aria-label="اختيار ملف فيديو محلي"]')
   await chooseGeneratedVideo(page, 'اختيار ملف فيديو محلي')
-  await page.waitForFunction(() => document.body.innerText.includes('DISPLAY_MODE'), { timeout: 15000 })
+  await page.waitForFunction(() => document.body.innerText.includes('وضع العرض'), { timeout: 15000 })
   await chooseFile(page, 'رفع ملف ترجمة العربية', 'ar.srt', 'text/plain', SOURCE_SRT)
   await chooseFile(page, 'رفع ملف ترجمة الإنجليزية', 'en.srt', 'text/plain', TRANSLATION_SRT)
   await page.waitForFunction(() => document.body.innerText.includes('en.srt'), { timeout: 15000 })

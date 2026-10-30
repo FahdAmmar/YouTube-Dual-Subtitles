@@ -55,6 +55,9 @@ export function useSubtitleTrack(
   // في نفس اللحظة ليجده السياق المقبلي كما تركه المستخدم
   const initialExplicit = trackId ? readTrackLanguages()[trackId] : null
   const [explicitLanguageCode, setExplicitLanguageCode] = useState<string | null>(initialExplicit)
+  // Counts completed file loads. A load resets the offset to 0, so anything that restores a saved offset has to run
+  // after every load, including a reload of a file with the same name (which leaves the file name unchanged)
+  const [loadCount, setLoadCount] = useState(0)
   const [track, setTrack] = useState<SubtitleTrackState>(() => {
     // الاختيار الصريح المحفوظ يظهر فوراً في المسار الجديد (وليس فقط بعد
     // أول ملف) — فكي يعرض كل ما يتبع اللغة (العلامات، الأصوات، البحث)
@@ -102,6 +105,7 @@ export function useSubtitleTrack(
           // غير ذات صلة بملف مختلف تماماً، والاحتفاظ بها سيربك المستخدم
           syncOffsetSeconds: 0,
         }))
+        setLoadCount((count) => count + 1)
         return true
       } catch (error) {
         const message =
@@ -163,6 +167,7 @@ export function useSubtitleTrack(
         errorMessage: null,
         syncOffsetSeconds: 0,
       }))
+      setLoadCount((count) => count + 1)
     },
     [nextLanguageFields],
   )
@@ -188,5 +193,16 @@ export function useSubtitleTrack(
     setTrack((previous) => createEmptyState(previous.languageCode, previous.languageLabel))
   }, [])
 
-  return { track, uploadFile, loadCues, selectLanguage, explicitLanguageCode, setSyncOffset, nudgeSyncOffset, resetSyncOffset, reset }
+  return {
+    track,
+    loadCount,
+    uploadFile,
+    loadCues,
+    selectLanguage,
+    explicitLanguageCode,
+    setSyncOffset,
+    nudgeSyncOffset,
+    resetSyncOffset,
+    reset,
+  }
 }

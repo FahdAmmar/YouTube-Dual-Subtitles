@@ -1,5 +1,4 @@
-import { useMemo } from 'react'
-import { usePlayerTime } from '@/hooks/usePlayerTime'
+import { useClockSelector } from '@/hooks/usePlayerTime'
 import { findActiveCue } from '@/lib/subtitles/findActiveCue'
 import { getVisibleTracks } from '@/lib/subtitles/visibleTracks'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
@@ -8,7 +7,6 @@ import type { ViewMode } from '@/types/theme.types'
 interface MobileActiveCaptionProps {
   slices: PairedSlice[]
   getCurrentTime: () => number
-  isPlaying: boolean
   viewMode: ViewMode
   /** originalIndex of the segment revealed in recall mode, or null */
   revealedIndex: number | null
@@ -36,14 +34,11 @@ interface MobileActiveCaptionProps {
 export function MobileActiveCaption({
   slices,
   getCurrentTime,
-  isPlaying,
   viewMode,
   revealedIndex,
   onToggleReveal,
 }: MobileActiveCaptionProps) {
-  const currentTime = usePlayerTime(getCurrentTime, isPlaying)
-
-  const activeSlice = useMemo(() => findActiveCue(slices, currentTime), [slices, currentTime])
+  const activeSlice = useClockSelector(getCurrentTime, (time) => findActiveCue(slices, time))
 
   // لا نعرض الشريط إطلاقاً قبل رفع أي ملف ترجمة — لا فائدة من صندوق فارغ
   if (slices.length === 0) return null
@@ -62,7 +57,7 @@ export function MobileActiveCaption({
       {activeSlice ? (
         <>
           {showSource && (
-            <p dir="auto" className="text-[13px] italic leading-snug text-text-secondary">
+            <p dir="auto" className="text-[13px] leading-snug text-text-secondary">
               {activeSlice.sourceText}
             </p>
           )}
@@ -75,14 +70,14 @@ export function MobileActiveCaption({
             <button
               type="button"
               onClick={onToggleReveal}
-              className="min-h-11 w-fit rounded-md border border-border px-4 text-sm font-medium text-text-secondary transition-colors hover:border-console hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+              className="min-h-11 w-fit rounded-md border border-border px-4 text-sm font-medium text-text-secondary transition-colors hover:border-console hover:text-console focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
             >
               اكشف الترجمة
             </button>
           )}
         </>
       ) : (
-        <p className="font-mono text-[11px] tracking-wide text-text-muted">···</p>
+        <p className="font-mono text-xs text-text-muted">···</p>
       )}
     </div>
   )

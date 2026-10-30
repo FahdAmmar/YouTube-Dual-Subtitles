@@ -16,16 +16,16 @@ function makeVideoFile(name: string, type: string) {
 // شارة معلوماتية غير تفاعلية فقط لفيديوهات يوتيوب، ولا تظهر إطلاقاً للفيديو
 // المحلي (حيث لا معنى لمفهوم "جودة" بديلة أصلاً)
 describe('video quality indicator', () => {
-  it('shows a non-interactive AUTO badge for a YouTube video, with no selectable menu', async () => {
+  it('shows a non-interactive automatic-quality badge for a YouTube video, with no selectable menu', async () => {
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
-    const badge = await screen.findByText('AUTO')
+    const badge = await screen.findByText('جودة تلقائية')
     expect(badge.tagName).toBe('SPAN')
 
     // لا يوجد أي زر قابل للنقر لفتح قائمة جودة، ولا قائمة نفسها
@@ -38,17 +38,17 @@ describe('video quality indicator', () => {
 
   it('does not show any quality indicator for a local video file', async () => {
     render(<App />)
-    fireEvent.click(screen.getByRole('radio', { name: '[ ملف من جهازي ]' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'ملف من جهازي' }))
     fireEvent.change(screen.getByLabelText('اختيار ملف فيديو محلي'), {
       target: { files: [makeVideoFile('clip.mp4', 'video/mp4')] },
     })
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     const video = document.querySelector('video') as HTMLVideoElement
     Object.defineProperty(video, 'duration', { value: 120, configurable: true })
     fireEvent(video, new Event('loadedmetadata'))
 
     await screen.findByRole('button', { name: 'تشغيل' })
-    expect(screen.queryByText('AUTO')).not.toBeInTheDocument()
+    expect(screen.queryByText('جودة تلقائية')).not.toBeInTheDocument()
   })
 })

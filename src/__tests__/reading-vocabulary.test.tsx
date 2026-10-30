@@ -32,11 +32,11 @@ const file = (name: string, content: string) => new File([content], name, { type
 describe('saving a word from reading mode', () => {
   it('keeps the word exactly as it appears in the sentence, so its fill-in-the-blank card works for inflected forms', async () => {
     render(<App />)
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
     fireEvent.change(screen.getByLabelText('رفع ملف ترجمة الإنجليزية'), {
       target: { files: [file('de.srt', '1\n00:00:01,000 --> 00:00:04,000\nEr läuft schnell nach Hause\n')] },
     })
@@ -57,5 +57,29 @@ describe('saving a word from reading mode', () => {
       text: 'Er _____ schnell nach Hause',
       hasBlank: true,
     })
+  })
+
+  it('marks the word as saved right after it is saved, so the learner can see what they already know', async () => {
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
+      target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('رفع ملف ترجمة الإنجليزية'), {
+      target: { files: [file('de.srt', '1\n00:00:01,000 --> 00:00:04,000\nEr läuft schnell nach Hause\n')] },
+    })
+    await waitFor(() => expect(screen.getByText('de.srt')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'فتح وضع القراءة' }))
+    const view = await screen.findByRole('region', { name: 'وضع القراءة' })
+
+    const savedWords = () => [...view.querySelectorAll('[data-saved="true"]')].map((node) => node.textContent)
+    expect(savedWords()).not.toContain('läuft')
+
+    fireEvent.click(within(view).getByText('läuft'))
+    fireEvent.click(await within(view).findByRole('button', { name: /أضف إلى المفردات/ }))
+
+    await waitFor(() => expect(savedWords()).toContain('läuft'))
+    expect(savedWords()).not.toContain('schnell')
   })
 })

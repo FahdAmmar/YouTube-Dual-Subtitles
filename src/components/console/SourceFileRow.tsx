@@ -66,7 +66,7 @@ export function SourceFileRow({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-1 font-mono text-[10px] text-text-muted transition-colors hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-1 font-mono text-xs text-text-muted transition-colors hover:text-console focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
           <Upload size={11} aria-hidden="true" />
           {track.fileName ? 'CHANGE' : 'UPLOAD'}
@@ -83,31 +83,31 @@ export function SourceFileRow({
 
       <div className="flex items-center gap-2">
         {track.status === 'ready' && track.fileName && (
-          <p className="flex min-w-0 flex-1 items-center gap-1 truncate text-[11px] text-success">
+          <p className="flex min-w-0 flex-1 items-center gap-1 truncate text-xs text-success">
             <CheckCircle2 size={11} className="shrink-0" aria-hidden="true" />
             <span className="truncate">{track.fileName}</span>
           </p>
         )}
         {track.status === 'parsing' && (
-          <p className="flex flex-1 items-center gap-1 text-[11px] text-text-muted">
+          <p className="flex flex-1 items-center gap-1 text-xs text-text-muted">
             <Loader2 size={11} className="animate-spin" aria-hidden="true" />
             جارٍ التحليل...
           </p>
         )}
         {track.status === 'error' && track.errorMessage && (
-          <p role="alert" className="flex min-w-0 flex-1 items-center gap-1 truncate text-[11px] text-error">
+          <p role="alert" className="flex min-w-0 flex-1 items-center gap-1 truncate text-xs text-error">
             <XCircle size={11} className="shrink-0" aria-hidden="true" />
             <span className="truncate">{track.errorMessage}</span>
           </p>
         )}
         {track.status === 'empty' && rememberedFileName && (
-          <p className="flex min-w-0 flex-1 items-center gap-1 truncate text-[11px] text-console">
+          <p className="flex min-w-0 flex-1 items-center gap-1 truncate text-xs text-console">
             <History size={11} className="shrink-0" aria-hidden="true" />
             <span className="truncate">أعد رفع: {rememberedFileName}</span>
           </p>
         )}
         {track.status === 'empty' && !rememberedFileName && (
-          <p className="flex-1 text-[11px] text-text-muted">لم يُرفع ملف بعد</p>
+          <p className="flex-1 text-xs text-text-muted">لم يُرفع ملف بعد</p>
         )}
 
         {track.cues.length > 0 && (

@@ -35,15 +35,15 @@ This is an example about coffee
 
 async function loadRecallMode() {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
   fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), { target: { files: [makeFile('ar.srt', SOURCE_SRT)] } })
   fireEvent.change(screen.getByLabelText('رفع ملف ترجمة الإنجليزية'), { target: { files: [makeFile('en.srt', TRANSLATION_SRT)] } })
-  await waitFor(() => expect(screen.getByText('TRANSCRIPT — 2 SEG')).toBeInTheDocument())
-  fireEvent.click(screen.getByRole('radio', { name: /RECALL/ }))
+  await waitFor(() => expect(screen.getByText('المقاطع · 2')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('radio', { name: /استدعاء/ }))
 }
 
 async function goToTime(seconds: number, expectedSource: string) {
@@ -94,7 +94,7 @@ describe('recall mode (translation hidden until revealed)', () => {
 
   it('goes back to showing every translation when switching to BOTH', async () => {
     await loadRecallMode()
-    fireEvent.click(screen.getByRole('radio', { name: /BOTH/ }))
+    fireEvent.click(screen.getByRole('radio', { name: /الكل/ }))
 
     expect(screen.getByText(fullText('Welcome to this video'))).toBeInTheDocument()
     expect(hiddenPlaceholders()).toHaveLength(0)

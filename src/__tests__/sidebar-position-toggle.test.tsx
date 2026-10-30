@@ -10,11 +10,16 @@ beforeEach(() => {
 
 async function renderWithVideoLoaded() {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
+}
+
+/** The toggle is an entry of the console's "more options" menu, which closes after each choice */
+function openMoreMenu() {
+  fireEvent.click(screen.getByRole('button', { name: 'المزيد من الخيارات' }))
 }
 
 describe('sidebar position toggle', () => {
@@ -23,21 +28,18 @@ describe('sidebar position toggle', () => {
     await renderWithVideoLoaded()
 
     // الوضع الافتراضي: اللوحة الجانبية على اليسار — الزر يعرض إمكانية نقلها لليمين
-    const toggleButton = screen.getByRole('button', { name: 'نقل اللوحة الجانبية إلى يمين الشاشة' })
+    openMoreMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'نقل اللوحة الجانبية إلى يمين الشاشة' }))
 
-    fireEvent.click(toggleButton)
-
-    // بعد التبديل: يظهر زر بعنوان معاكس، ويُحفظ التفضيل فوراً
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'نقل اللوحة الجانبية إلى يسار الشاشة' })).toBeInTheDocument()
-    })
+    // بعد التبديل: يظهر عنصر بعنوان معاكس، ويُحفظ التفضيل فوراً
+    openMoreMenu()
+    expect(await screen.findByRole('menuitem', { name: 'نقل اللوحة الجانبية إلى يسار الشاشة' })).toBeInTheDocument()
     expect(window.localStorage.getItem('ydc:sidebar-position')).toBe('"right"')
 
     // إعادة التبديل تعيد الحالة الأصلية
-    fireEvent.click(screen.getByRole('button', { name: 'نقل اللوحة الجانبية إلى يسار الشاشة' }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'نقل اللوحة الجانبية إلى يمين الشاشة' })).toBeInTheDocument()
-    })
+    fireEvent.click(screen.getByRole('menuitem', { name: 'نقل اللوحة الجانبية إلى يسار الشاشة' }))
+    openMoreMenu()
+    expect(await screen.findByRole('menuitem', { name: 'نقل اللوحة الجانبية إلى يمين الشاشة' })).toBeInTheDocument()
     expect(window.localStorage.getItem('ydc:sidebar-position')).toBe('"left"')
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
@@ -51,7 +53,8 @@ describe('sidebar position toggle', () => {
     await renderWithVideoLoaded()
 
     // عند التحميل بتفضيل محفوظ مسبقاً "right"، الزر يجب أن يعرض خيار النقل لليسار مباشرة
-    expect(screen.getByRole('button', { name: 'نقل اللوحة الجانبية إلى يسار الشاشة' })).toBeInTheDocument()
+    openMoreMenu()
+    expect(screen.getByRole('menuitem', { name: 'نقل اللوحة الجانبية إلى يسار الشاشة' })).toBeInTheDocument()
 
     errorSpy.mockRestore()
   })

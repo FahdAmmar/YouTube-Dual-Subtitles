@@ -61,11 +61,14 @@ function makeFile(name: string, content: string) {
 
 async function renderWithActiveCaption() {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
+  // The player becomes ready a moment after the screen mounts (the watch screen is loaded on demand), and the
+  // controls and shortcuts only exist once it is
+  await screen.findByRole('button', { name: 'تشغيل' })
 
   fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), {
     target: { files: [makeFile('ar.srt', SOURCE_SRT)] },
@@ -131,7 +134,7 @@ describe('subtitle lines on the video', () => {
     const block = () => screen.getByTestId('subtitle-line-translation').parentElement!
     drag(translation, { x: 640, y: 730 }, { x: 740, y: 700 })
     await waitFor(() => expect(translation.style.transform).toBe('translate(100px, -30px)'))
-    expect(block().className).toContain('bottom-[4.5rem]')
+    expect(block().className).toContain('bottom-18')
 
     fireEvent.click(screen.getByRole('button', { name: /موضع الترجمة: أسفل الفيديو/ }))
     await waitFor(() => expect(block().className).toContain('top-1/2'))
@@ -142,14 +145,14 @@ describe('subtitle lines on the video', () => {
     expect(storedLayout().placement).toBe('top')
 
     fireEvent.click(screen.getByRole('button', { name: /موضع الترجمة: أعلى الفيديو/ }))
-    await waitFor(() => expect(block().className).toContain('bottom-[4.5rem]'))
+    await waitFor(() => expect(block().className).toContain('bottom-18'))
   })
 
   it('recovers from a corrupted saved layout', async () => {
     window.localStorage.setItem(LAYOUT_KEY, JSON.stringify({ placement: 'sideways', source: 7, translation: null }))
     await renderWithActiveCaption()
     expect(screen.getByTestId('subtitle-line-translation').style.transform).toBe('translate(0px, 0px)')
-    expect(screen.getByTestId('subtitle-line-translation').parentElement!.className).toContain('bottom-[4.5rem]')
+    expect(screen.getByTestId('subtitle-line-translation').parentElement!.className).toContain('bottom-18')
   })
 })
 

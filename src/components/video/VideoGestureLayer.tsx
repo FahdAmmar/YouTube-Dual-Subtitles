@@ -111,7 +111,7 @@ export function VideoGestureLayer(props: VideoGestureLayerProps) {
       onPointerCancel={() => {
         startRef.current = null
       }}
-      className="pointer-events-none absolute inset-0 touch-pan-y [@media(pointer:coarse)]:pointer-events-auto"
+      className="pointer-events-none absolute inset-0 touch-pan-y pointer-coarse:pointer-events-auto"
     />
   )
 }

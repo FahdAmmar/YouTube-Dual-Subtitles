@@ -6,7 +6,7 @@ export function DropOverlay({ isVisible }: { isVisible: boolean }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-bg/80 p-6 backdrop-blur-sm"
+      className="pointer-events-none fixed inset-0 z-60 flex items-center justify-center bg-bg/80 p-6 backdrop-blur-xs"
     >
       <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border-2 border-dashed border-console px-10 py-12 text-center">
         <FileUp size={32} className="text-console" />

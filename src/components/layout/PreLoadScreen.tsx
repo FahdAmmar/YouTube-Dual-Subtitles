@@ -4,6 +4,7 @@ import { BackgroundFX } from './BackgroundFX'
 import { VideoUrlForm } from '@/components/video/VideoUrlForm'
 import { WatchHistoryList } from '@/components/video/WatchHistoryList'
 import { LearningStatsCard } from '@/components/video/LearningStatsCard'
+import { OnboardingGuide } from './OnboardingGuide'
 import type { VideoSource } from '@/types/video.types'
 
 interface PreLoadScreenProps {
@@ -33,14 +34,14 @@ export function PreLoadScreen({ onVideoSourceSelected, pendingLocalFileName, onS
           <div className="mb-8 text-center sm:mb-9">
             {/* شارة "الجلسة جاهزة" — نقطة نابضة + نص بفونت مونو، تمنح
                 إحساس لوحة تحكم حيّة فور فتح الصفحة دون ضوضاء بصرية */}
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-console/30 bg-console/5 px-3 py-1.5 font-mono text-[10px] tracking-widest text-console">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-console/30 bg-console/5 px-3 py-1.5 text-xs font-medium text-console">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-console opacity-75" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-console" />
               </span>
-              INITIALIZE_SESSION
+              ابدأ جلسة جديدة
             </div>
-            <h1 className="text-gradient-hero text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+            <h1 className="text-gradient-hero text-3xl font-bold leading-tight tracking-tight sm:text-4xl sm:leading-10">
               مترجم يوتيوب المزدوج
             </h1>
             <p className="mt-2 text-sm text-text-secondary sm:mt-2.5 sm:text-base">
@@ -53,6 +54,7 @@ export function PreLoadScreen({ onVideoSourceSelected, pendingLocalFileName, onS
             onSelectLocal={onSelectLocalFromHistory}
           />
           <VideoUrlForm onVideoSourceSelected={onVideoSourceSelected} pendingLocalFileName={pendingLocalFileName} />
+          <OnboardingGuide />
           <LearningStatsCard />
         </div>
       </main>

@@ -1,12 +1,142 @@
 @import './styles/fonts.css';
+@import 'tailwindcss' source(none);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Where Tailwind looks for class names (what `content` was in tailwind.config.ts) */
+@source '../index.html';
+@source './**/*.{ts,tsx}';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/**
+ * Tailwind colour names -> the RGB channel variables of the active theme (defined below as --rgb-*).
+ * `inline` makes every utility use the value itself, `rgb(var(--rgb-bg))`, so a theme switch (or the live
+ * accent colour set on :root) takes effect without rebuilding anything. The channel variables are named
+ * --rgb-* on purpose: --color-* is Tailwind's own namespace, and the same name for both would loop.
+ */
+@theme inline {
+  --color-bg: rgb(var(--rgb-bg));
+  --color-surface: rgb(var(--rgb-surface));
+  --color-surface-elevated: rgb(var(--rgb-surface-elevated));
+  --color-border: rgb(var(--rgb-border));
+  --color-text-primary: rgb(var(--rgb-text-primary));
+  --color-text-secondary: rgb(var(--rgb-text-secondary));
+  --color-text-muted: rgb(var(--rgb-text-muted));
+  /* Track A (language A): the classic subtitle yellow, toned down */
+  --color-track-a: rgb(var(--rgb-track-a));
+  --color-track-a-hover: rgb(var(--rgb-track-a-hover));
+  /* Track B (language B): a blue-green that balances the first track */
+  --color-track-b: rgb(var(--rgb-track-b));
+  --color-track-b-hover: rgb(var(--rgb-track-b-hover));
+  /* Console accent: buttons, active borders, glow of the selected line */
+  --color-console: rgb(var(--rgb-console));
+  --color-console-hover: rgb(var(--rgb-console-hover));
+  --color-success: rgb(var(--rgb-success));
+  --color-warning: rgb(var(--rgb-warning));
+  --color-error: rgb(var(--rgb-error));
+  --color-info: rgb(var(--rgb-info));
+}
+
+@theme {
+  /* The one place the app still uses a stock palette colour: keep the Tailwind 3 value (v4 made it brighter) */
+  --color-red-500: #ef4444;
+
+  --font-sans: 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -8px rgb(0 0 0 / 0.12);
+  --shadow-elevated:
+    0 2px 8px rgb(0 0 0 / 0.06), 0 16px 40px -12px rgb(0 0 0 / 0.18);
+  --shadow-glow-console:
+    0 0 0 1px rgb(var(--rgb-console) / 0.4),
+    0 4px 20px -4px rgb(var(--rgb-console) / 0.35);
+
+  --animate-fade-in: fade-in 180ms ease-out;
+  --animate-pulse-dot: pulse-dot 1.6s ease-in-out infinite;
+  --animate-aurora: aurora 18s ease-in-out infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-border-flow: border-flow 6s ease infinite;
+  --animate-glow-pulse: glow-pulse 2.4s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.2s ease-in-out infinite;
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes aurora {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+      opacity: 0.7;
+    }
+    33% {
+      transform: translate3d(4%, -3%, 0) scale(1.08);
+      opacity: 0.9;
+    }
+    66% {
+      transform: translate3d(-3%, 4%, 0) scale(0.96);
+      opacity: 0.6;
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  @keyframes border-flow {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+  @keyframes glow-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(var(--rgb-console) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgb(var(--rgb-console) / 0);
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-120%);
+    }
+    100% {
+      transform: translateX(220%);
+    }
+  }
+}
 
 /**
  * نظام التصميم (Design Tokens) — القيم بصيغة "R G B" (بدون rgb())
- * لتمكين Tailwind من التحكم بالشفافية عبر <alpha-value> (انظر tailwind.config.ts)
+ * ويحوّلها كتلة @theme أعلاه إلى ألوان Tailwind (يعمل معها معدّل الشفافية مثل bg-console/10)
  *
  * الفلسفة اللونية (النسخة الثانية — طراز "كونسول تقني"):
  * خلفية شبه سوداء تحاكي واجهات لوحات التحكم التقنية، مع لون تمييز
@@ -18,27 +148,27 @@
 
 :root,
 [data-theme='dark'] {
-  --color-bg: 8 9 12;
-  --color-surface: 14 16 21;
-  --color-surface-elevated: 20 23 29;
-  --color-border: 30 34 42;
+  --rgb-bg: 8 9 12;
+  --rgb-surface: 14 16 21;
+  --rgb-surface-elevated: 20 23 29;
+  --rgb-border: 30 34 42;
 
-  --color-text-primary: 237 238 241;
-  --color-text-secondary: 152 160 175;
-  --color-text-muted: 100 108 122;
+  --rgb-text-primary: 237 238 241;
+  --rgb-text-secondary: 152 160 175;
+  --rgb-text-muted: 128 137 152;
 
-  --color-track-a: 232 180 76;
-  --color-track-a-hover: 240 196 104;
-  --color-track-b: 79 199 190;
-  --color-track-b-hover: 95 202 194;
+  --rgb-track-a: 232 180 76;
+  --rgb-track-a-hover: 240 196 104;
+  --rgb-track-b: 79 199 190;
+  --rgb-track-b-hover: 95 202 194;
 
-  --color-console: 138 122 246;
-  --color-console-hover: 158 144 249;
+  --rgb-console: 138 122 246;
+  --rgb-console-hover: 158 144 249;
 
-  --color-success: 76 175 125;
-  --color-warning: 217 121 31;
-  --color-error: 226 104 91;
-  --color-info: 91 155 213;
+  --rgb-success: 76 175 125;
+  --rgb-warning: 217 121 31;
+  --rgb-error: 226 104 91;
+  --rgb-info: 91 155 213;
 
   /* رموز الزجاج (Glass) — أسطح شبه شفافة مدعومة بتشويش خلفي (backdrop-blur).
      معرّفة بصيغة RGB لتمكين Tailwind من تطبيق الشفافية عبر <alpha-value>،
@@ -62,27 +192,27 @@
 }
 
 [data-theme='light'] {
-  --color-bg: 244 245 248;
-  --color-surface: 255 255 255;
-  --color-surface-elevated: 255 255 255;
-  --color-border: 226 229 235;
+  --rgb-bg: 244 245 248;
+  --rgb-surface: 255 255 255;
+  --rgb-surface-elevated: 255 255 255;
+  --rgb-border: 226 229 235;
 
-  --color-text-primary: 24 27 33;
-  --color-text-secondary: 90 97 110;
-  --color-text-muted: 140 148 161;
+  --rgb-text-primary: 24 27 33;
+  --rgb-text-secondary: 90 97 110;
+  --rgb-text-muted: 100 108 122;
 
-  --color-track-a: 169 114 12;
-  --color-track-a-hover: 143 96 8;
-  --color-track-b: 18 132 124;
-  --color-track-b-hover: 14 108 102;
+  --rgb-track-a: 169 114 12;
+  --rgb-track-a-hover: 143 96 8;
+  --rgb-track-b: 18 132 124;
+  --rgb-track-b-hover: 14 108 102;
 
-  --color-console: 102 84 226;
-  --color-console-hover: 84 68 199;
+  --rgb-console: 102 84 226;
+  --rgb-console-hover: 84 68 199;
 
-  --color-success: 31 143 95;
-  --color-warning: 180 110 10;
-  --color-error: 198 62 51;
-  --color-info: 43 108 176;
+  --rgb-success: 31 143 95;
+  --rgb-warning: 180 110 10;
+  --rgb-error: 198 62 51;
+  --rgb-info: 43 108 176;
 
   --glass-bg: 255 255 255;
   --glass-border: 255 255 255;
@@ -104,6 +234,23 @@
     @apply border-border;
   }
 
+  /* Tailwind 4 resets buttons to the default arrow cursor; the whole interface was built with the pointer */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* Tailwind 4 resets every element's padding, which also flattens the browser's own spacing of list options */
+  option {
+    padding: 0 2px 1px;
+  }
+
+  /* Tailwind 3 placeholder colour (4 uses the text colour at half strength) */
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(156 163 175);
+  }
+
   html {
     scroll-behavior: smooth;
     /* شبكة أمان: تمنع ظهور تمرير أفقي غير مقصود على الشاشات الضيقة جداً.
@@ -115,13 +262,13 @@
 
   body {
     @apply bg-bg text-text-primary antialiased;
-    font-family: theme('fontFamily.sans');
+    font-family: var(--font-sans);
     overflow-x: clip;
   }
 
   /* حالة تركيز واضحة موحّدة عبر لوحة المفاتيح فقط، دون إزعاج مستخدمي الفأرة */
   :focus-visible {
-    outline: 2px solid rgb(var(--color-console));
+    outline: 2px solid rgb(var(--rgb-console));
     outline-offset: 2px;
   }
 
@@ -134,11 +281,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--color-border));
+    background: rgb(var(--rgb-border));
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--color-console) / 0.5);
+    background: rgb(var(--rgb-console) / 0.5);
   }
 
   /* احترام تفضيل تقليل الحركة على مستوى نظام التشغيل (إتاحة الوصول) */
@@ -162,8 +309,9 @@
    ────────────────────────────────────────────────────────────────────── */
   .glass-panel {
     background: rgb(var(--glass-bg) / 0.6);
-    backdrop-filter: blur(20px) saturate(180%);
+    /* the prefixed line stays first: Tailwind 4's CSS compiler merges it into the standard one otherwise (see css-vendor-prefixes.test.ts) */
     -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid rgb(var(--glass-border) / var(--glass-border-alpha));
     box-shadow:
       inset 0 1px 0 0 rgb(var(--glass-highlight) / var(--glass-highlight-alpha)),
@@ -173,8 +321,9 @@
 
   .glass-subtle {
     background: rgb(var(--glass-bg) / 0.4);
-    backdrop-filter: blur(12px) saturate(160%);
+    /* the prefixed line stays first: Tailwind 4's CSS compiler merges it into the standard one otherwise (see css-vendor-prefixes.test.ts) */
     -webkit-backdrop-filter: blur(12px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(160%);
     border: 1px solid rgb(var(--glass-border) / calc(var(--glass-border-alpha) * 0.6));
   }
 
@@ -211,10 +360,10 @@
   .text-gradient-hero {
     background-image: linear-gradient(
       110deg,
-      rgb(var(--color-text-primary)) 0%,
-      rgb(var(--color-text-primary)) 35%,
-      rgb(var(--color-console)) 62%,
-      rgb(var(--color-track-b)) 100%
+      rgb(var(--rgb-text-primary)) 0%,
+      rgb(var(--rgb-text-primary)) 35%,
+      rgb(var(--rgb-console)) 62%,
+      rgb(var(--rgb-track-b)) 100%
     );
     -webkit-background-clip: text;
     background-clip: text;
@@ -238,8 +387,8 @@
     padding: 1px;
     background: linear-gradient(
       130deg,
-      rgb(var(--color-console) / 0.6),
-      rgb(var(--color-track-b) / 0.35),
+      rgb(var(--rgb-console) / 0.6),
+      rgb(var(--rgb-track-b) / 0.35),
       transparent 55%
     );
     -webkit-mask:
@@ -253,12 +402,25 @@
 }
 
 @layer utilities {
+  /* Visual size stays small; on touch screens the tappable area grows to ~44px without moving neighbours.
+     Absolute/fixed/sticky elements are already positioned, so only static ones get position: relative. */
+  @media (pointer: coarse) {
+    .touch-hit:not(.absolute):not(.fixed):not(.sticky) {
+      position: relative;
+    }
+    .touch-hit::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+    }
+  }
+
   /* موازنة مرنة لمسار ضوئي (Spotlight) يتبع مؤشر الفأرة — يُضبط عبر
      متغير CSS مخصّص (--x, --y) من المستمع في React */
   .spotlight-mouse {
     background: radial-gradient(
       600px circle at var(--mx, 50%) var(--my, 0%),
-      rgb(var(--color-console) / 0.08),
+      rgb(var(--rgb-console) / 0.08),
       transparent 45%
     );
   }
@@ -286,8 +448,8 @@
   border-radius: 9999px;
   background: linear-gradient(
     var(--fill-direction, to right),
-    rgb(var(--color-console)) var(--progress, 0%),
-    rgb(var(--color-text-muted) / 0.35) var(--progress, 0%)
+    rgb(var(--rgb-console)) var(--progress, 0%),
+    rgb(var(--rgb-text-muted) / 0.35) var(--progress, 0%)
   );
 }
 .reading-range::-moz-range-track {
@@ -295,8 +457,8 @@
   border-radius: 9999px;
   background: linear-gradient(
     var(--fill-direction, to right),
-    rgb(var(--color-console)) var(--progress, 0%),
-    rgb(var(--color-text-muted) / 0.35) var(--progress, 0%)
+    rgb(var(--rgb-console)) var(--progress, 0%),
+    rgb(var(--rgb-text-muted) / 0.35) var(--progress, 0%)
   );
 }
 .reading-range::-webkit-slider-thumb {
@@ -306,19 +468,19 @@
   margin-top: -5px;
   border: 0;
   border-radius: 50%;
-  background: rgb(var(--color-console));
-  box-shadow: 0 0 0 4px rgb(var(--color-console) / 0.2);
+  background: rgb(var(--rgb-console));
+  box-shadow: 0 0 0 4px rgb(var(--rgb-console) / 0.2);
 }
 .reading-range::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border: 0;
   border-radius: 50%;
-  background: rgb(var(--color-console));
-  box-shadow: 0 0 0 4px rgb(var(--color-console) / 0.2);
+  background: rgb(var(--rgb-console));
+  box-shadow: 0 0 0 4px rgb(var(--rgb-console) / 0.2);
 }
 .reading-range:focus-visible {
-  outline: 2px solid rgb(var(--color-console));
+  outline: 2px solid rgb(var(--rgb-console));
   outline-offset: 4px;
   border-radius: 9999px;
 }

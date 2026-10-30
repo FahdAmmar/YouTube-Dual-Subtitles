@@ -27,10 +27,10 @@ const ACCEPTED_VIDEO_EXTENSIONS = ['mp4', 'webm', 'ogg', 'ogv', 'mov', 'm4v', 'm
 
 const METHOD_TAB_CLASSNAME = (isActive: boolean) =>
   cn(
-    'relative overflow-hidden rounded-sm border px-2.5 py-1.5 font-mono text-[11px] font-medium tracking-wide transition-colors',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+    'relative overflow-hidden rounded-sm border px-2.5 py-1.5 font-mono text-xs font-medium transition-colors',
+    'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console',
     isActive
-      ? 'border-console/60 bg-console/10 text-console shadow-[0_0_16px_-6px_rgb(var(--color-console)/0.8)]'
+      ? 'border-console/60 bg-console/10 text-console shadow-[0_0_16px_-6px_rgb(var(--rgb-console)/0.8)]'
       : 'border-border text-text-muted hover:border-text-muted hover:text-text-secondary',
   )
 
@@ -131,7 +131,7 @@ export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: Vi
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl"
       >
-        <div className="absolute -inset-y-2 -left-1/3 w-1/3 rotate-12 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent opacity-0 transition-opacity duration-500 group-hover:animate-shimmer group-hover:opacity-100" />
+        <div className="absolute -inset-y-2 -left-1/3 w-1/3 rotate-12 bg-linear-to-r from-transparent via-white/6 to-transparent opacity-0 transition-opacity duration-500 group-hover:animate-shimmer group-hover:opacity-100" />
       </div>
 
       <div className="relative flex w-full flex-col gap-3">
@@ -143,7 +143,7 @@ export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: Vi
           onClick={() => setActiveTab('url')}
           className={METHOD_TAB_CLASSNAME(activeTab === 'url')}
         >
-          [ رابط URL ]
+          رابط
         </button>
         <button
           type="button"
@@ -152,14 +152,14 @@ export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: Vi
           onClick={() => setActiveTab('file')}
           className={METHOD_TAB_CLASSNAME(activeTab === 'file')}
         >
-          [ ملف من جهازي ]
+          ملف من جهازي
         </button>
       </div>
 
       {activeTab === 'url' ? (
         <form onSubmit={handleUrlSubmit} className="flex w-full flex-col gap-2.5">
-          <label htmlFor="video-url" className="font-mono text-[11px] tracking-wide text-text-muted">
-            VIDEO_URL
+          <label htmlFor="video-url" className="text-xs font-medium text-text-muted">
+            رابط الفيديو
           </label>
           <div className="flex flex-col gap-2.5 sm:flex-row">
             <input
@@ -170,7 +170,7 @@ export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: Vi
               placeholder="https://www.youtube.com/watch?v=..."
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
-              className="h-12 flex-1 rounded-md border border-border bg-surface-elevated/60 px-4 font-mono text-base text-text-primary backdrop-blur-sm transition-colors placeholder:text-text-muted hover:border-text-muted/50 focus-visible:border-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console/60 focus-visible:ring-offset-0 sm:text-sm"
+              className="h-12 flex-1 rounded-md border border-border bg-surface-elevated/60 px-4 font-mono text-base text-text-primary backdrop-blur-xs transition-colors placeholder:text-text-muted hover:border-text-muted/50 focus-visible:border-console focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console/60 focus-visible:ring-offset-0 sm:text-sm"
               aria-invalid={Boolean(urlError)}
               aria-describedby={urlError ? 'video-url-error' : undefined}
             />
@@ -189,7 +189,7 @@ export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: Vi
         </form>
       ) : (
         <div className="flex w-full flex-col gap-2.5">
-          <span className="font-mono text-[11px] tracking-wide text-text-muted">LOCAL_FILE</span>
+          <span className="text-xs font-medium text-text-muted">ملف الفيديو</span>
           {pendingLocalFileName && (
             <p className="flex items-center gap-1.5 rounded-md border border-console/40 bg-console/10 px-3 py-2 text-xs text-console">
               <Info size={13} className="shrink-0" aria-hidden="true" />
@@ -202,7 +202,7 @@ export function VideoUrlForm({ onVideoSourceSelected, pendingLocalFileName }: Vi
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border bg-surface-elevated/60 px-4 text-sm font-medium text-text-secondary backdrop-blur-sm transition-all hover:border-console hover:bg-console/5 hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console/60"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border bg-surface-elevated/60 px-4 text-sm font-medium text-text-secondary backdrop-blur-xs transition-all hover:border-console hover:bg-console/5 hover:text-console focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console/60"
           >
             <Upload size={17} aria-hidden="true" />
             اختر ملف فيديو من جهازك

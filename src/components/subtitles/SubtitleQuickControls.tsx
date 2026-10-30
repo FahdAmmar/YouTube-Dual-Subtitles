@@ -17,7 +17,7 @@ const PLACEMENT_ICONS: Record<SubtitlePlacement, typeof AlignVerticalJustifyEnd>
 }
 
 const BUTTON_CLASSES =
-  'flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-sm px-2 text-white transition-[color,transform] duration-150 hover:text-console active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console'
+  'flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-sm px-2 text-white transition-[color,transform] duration-150 hover:text-console active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console'
 
 /** Short badge text and a spoken description of what the language button currently shows */
 function describeViewMode(viewMode: ViewMode, source: SubtitleTrackState, translation: SubtitleTrackState) {
@@ -29,7 +29,7 @@ function describeViewMode(viewMode: ViewMode, source: SubtitleTrackState, transl
     case 'translation':
       return { badge: translationCode, spoken: `${translation.languageLabel} فقط` }
     case 'recall':
-      return { badge: 'RECALL', spoken: 'وضع الاستدعاء' }
+      return { badge: 'استدعاء', spoken: 'وضع الاستدعاء' }
     case 'both':
       return { badge: `${sourceCode}+${translationCode}`, spoken: `${source.languageLabel} و${translation.languageLabel}` }
   }
@@ -70,7 +70,7 @@ export function SubtitleQuickControls({
         className={cn(BUTTON_CLASSES, viewMode !== 'both' && 'text-console')}
       >
         <Languages size={15} aria-hidden="true" />
-        <span className="font-mono text-[11px] font-medium tracking-wide" aria-hidden="true">
+        <span className="font-mono text-xs font-medium" aria-hidden="true">
           {badge}
         </span>
       </button>

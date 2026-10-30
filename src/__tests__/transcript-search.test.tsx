@@ -46,11 +46,11 @@ Thanks for watching
 
 async function loadVideoWithSubtitles() {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
   await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), {
     target: { files: [makeFile('ar.srt', SOURCE_SRT)] },
@@ -58,7 +58,7 @@ async function loadVideoWithSubtitles() {
   await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة الإنجليزية'), {
     target: { files: [makeFile('en.srt', TRANSLATION_SRT)] },
   })
-  await waitFor(() => expect(screen.getByText('TRANSCRIPT — 3 SEG')).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText('المقاطع · 3')).toBeInTheDocument())
 }
 
 describe('transcript search', () => {
@@ -73,7 +73,7 @@ describe('transcript search', () => {
 
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'coffee' } })
 
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('المقاطع · 1/3')).toBeInTheDocument())
     expect(screen.getByText('هذا مثال على القهوة العربية')).toBeInTheDocument()
     expect(screen.queryByText('شكراً لمشاهدتكم')).not.toBeInTheDocument()
     expect(screen.queryByText(fullText('Welcome to this video'))).not.toBeInTheDocument()
@@ -87,11 +87,11 @@ describe('transcript search', () => {
     await loadVideoWithSubtitles()
 
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'مشاهدتكم' } })
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('المقاطع · 1/3')).toBeInTheDocument())
     expect(screen.getByText('شكراً لمشاهدتكم')).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'WELCOME' } })
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('المقاطع · 1/3')).toBeInTheDocument())
     expect(screen.getByText(fullText('Welcome to this video'))).toBeInTheDocument()
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
@@ -104,9 +104,9 @@ describe('transcript search', () => {
 
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'nonexistent-xyz' } })
 
-    await waitFor(() => expect(screen.getByText(/NO_MATCHES/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/لا يوجد مقطع يطابق/)).toBeInTheDocument())
     expect(screen.getByText(/لا يوجد مقطع يطابق عبارة البحث/)).toBeInTheDocument()
-    expect(screen.queryByText(/NO_TRANSCRIPT_DATA/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/ارفع ملف ترجمة واحداً/)).not.toBeInTheDocument()
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
     errorSpy.mockRestore()
@@ -117,11 +117,11 @@ describe('transcript search', () => {
     await loadVideoWithSubtitles()
 
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'coffee' } })
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('المقاطع · 1/3')).toBeInTheDocument())
 
     fireEvent.click(screen.getByLabelText('مسح البحث'))
 
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 3 SEG')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('المقاطع · 3')).toBeInTheDocument())
     expect(screen.getByText('شكراً لمشاهدتكم')).toBeInTheDocument()
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
@@ -135,10 +135,10 @@ describe('transcript search', () => {
     const searchInput = screen.getByLabelText('البحث داخل النص المفرَّغ')
     searchInput.focus()
     fireEvent.change(searchInput, { target: { value: 'coffee' } })
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('المقاطع · 1/3')).toBeInTheDocument())
 
     fireEvent.keyDown(searchInput, { key: 'Escape' })
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 3 SEG')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('المقاطع · 3')).toBeInTheDocument())
     expect(searchInput).toHaveFocus()
 
     fireEvent.keyDown(searchInput, { key: 'Escape' })
@@ -153,7 +153,7 @@ describe('transcript search', () => {
     await loadVideoWithSubtitles()
 
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'coffee' } })
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('المقاطع · 1/3')).toBeInTheDocument())
 
     fireEvent.click(screen.getByText(fullText('This is an example about coffee')))
 
@@ -167,11 +167,11 @@ describe('transcript search', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     await loadVideoWithSubtitles()
 
-    // "شكراً لمشاهدتكم" هو المقطع الثالث أصلاً (SEG_003) — يجب أن يبقى كذلك حتى مُصفّى وحيداً
+    // "شكراً لمشاهدتكم" هو المقطع الثالث أصلاً (#3) — يجب أن يبقى كذلك حتى مُصفّى وحيداً
     fireEvent.change(screen.getByLabelText('البحث داخل النص المفرَّغ'), { target: { value: 'مشاهدتكم' } })
-    await waitFor(() => expect(screen.getByText('TRANSCRIPT — 1/3 SEG')).toBeInTheDocument())
-    expect(screen.getByText('SEG_003')).toBeInTheDocument()
-    expect(screen.queryByText('SEG_001')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('المقاطع · 1/3')).toBeInTheDocument())
+    expect(screen.getByText('#3')).toBeInTheDocument()
+    expect(screen.queryByText('#1')).not.toBeInTheDocument()
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
     errorSpy.mockRestore()

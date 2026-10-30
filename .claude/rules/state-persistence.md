@@ -18,3 +18,20 @@ this one — the equivalent surface here is `localStorage` + `IndexedDB` access.
   let a storage read crash the app.
 - Treat parsed subtitle file content as untrusted input (see
   `.claude/agents/security-auditor.md`).
+
+## Registering a new `localStorage` key
+
+- Add the key to `STORAGE_KEYS` in `src/constants/theme.constants.ts` (prefix `ydc:`).
+  Never write a bare string key in a hook or component.
+- Backup and restore (`src/lib/utils/backup.ts`) copies **only** keys listed in
+  `STORAGE_KEYS`; anything else is dropped on purpose (including `__proto__`). A key that is not
+  registered is therefore silently missing from the user's backup — register it, and extend
+  `backup.test.ts` so the new key survives a round trip.
+- If the stored shape changes, normalise on read so older data still loads. Change
+  `BACKUP_VERSION` only for a break in the backup file format itself, and keep `parseBackup`
+  reading the older version.
+- The word-lookup cache is versioned separately: bump `CACHE_VERSION` in
+  `src/lib/utils/lookupCache.ts` whenever `WordLookupResult` gains data that older cached
+  entries lack.
+- Tests that touch storage reset it (`src/__tests__/testHelpers/resetIndexedDb.ts` for IndexedDB)
+  so they stay order-independent.

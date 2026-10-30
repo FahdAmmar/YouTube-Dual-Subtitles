@@ -29,7 +29,7 @@ export function VideoWordCard({ selection, languageCode, nativeLanguageCode, onC
       role="region"
       aria-label="معنى الكلمة المحددة"
       // Phones: the stage is too short to hold the card, so it becomes a bottom sheet. md+: anchored inside the video.
-      className="fixed inset-x-3 bottom-3 z-40 max-h-[55vh] overflow-y-auto rounded-md shadow-elevated md:absolute md:inset-x-auto md:bottom-auto md:end-3 md:top-16 md:z-20 md:max-h-[calc(100%-9.5rem)] md:w-80"
+      className="fixed inset-x-3 bottom-3 z-40 max-h-[55vh] overflow-y-auto rounded-md shadow-elevated md:absolute md:inset-x-auto md:bottom-auto md:inset-e-3 md:top-16 md:z-20 md:max-h-[calc(100%-9.5rem)] md:w-80"
     >
       <WordDefinitionCard
         word={selection.word}

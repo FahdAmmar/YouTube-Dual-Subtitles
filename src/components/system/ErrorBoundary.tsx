@@ -56,7 +56,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <button
           type="button"
           onClick={this.handleReload}
-          className="h-11 rounded-md bg-console px-5 text-[15px] font-medium text-white transition-colors hover:bg-console-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+          className="h-11 rounded-md bg-console px-5 text-[15px] font-medium text-white transition-colors hover:bg-console-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
         >
           إعادة تحميل الصفحة
         </button>

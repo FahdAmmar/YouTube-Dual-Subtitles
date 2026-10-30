@@ -3,6 +3,7 @@ import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Gauge, Mic, PictureI
 import { usePlayerTime } from '@/hooks/usePlayerTime'
 import { cn } from '@/lib/utils/cn'
 import { formatPlaybackRate } from '@/lib/utils/formatPlaybackRate'
+import { KEYBOARD_SHORTCUTS } from '@/constants/keyboardShortcuts'
 import { YT_PLAYER_STATE } from '@/types/youtube.types'
 import type { YouTubePlayerState } from '@/types/youtube.types'
 
@@ -51,6 +52,12 @@ function formatQuality(quality: string): string {
   return map[quality] ?? quality
 }
 
+/** Tooltip text: the action plus its key, taken from the same list the keyboard handler uses */
+function withShortcut(label: string, shortcutDescription: string): string {
+  const shortcut = KEYBOARD_SHORTCUTS.find((candidate) => candidate.description === shortcutDescription)
+  return shortcut ? `${label} (${shortcut.displayKey})` : label
+}
+
 /** تنسيق الثواني إلى "دقائق:ثواني" بالأرقام اللاتينية دوماً (معيار عالمي لعدادات الوقت) */
 function formatTime(totalSeconds: number): string {
   if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return '0:00'
@@ -94,7 +101,7 @@ export function VideoControlBar({
   isPictureInPictureActive = false,
 }: VideoControlBarProps) {
   const isPlaying = playerState === YT_PLAYER_STATE.PLAYING
-  const currentTime = usePlayerTime(getCurrentTime, isPlaying)
+  const currentTime = usePlayerTime(getCurrentTime)
 
   // حالة محلية للصوت: تُهيَّأ مرة واحدة من حالة المشغّل الفعلية عند
   // الجاهزية، ثم تُدار محلياً لأن يوتيوب لا يرسل أحداثاً عند تغيّر الصوت
@@ -139,7 +146,7 @@ export function VideoControlBar({
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0
 
   return (
-    <div className="flex flex-col gap-1.5 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-2.5 pt-6">
+    <div className="flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/70 to-transparent px-3 pb-2.5 pt-6">
       {/* شريط التقدّم — يعرض النسبة الحالية ويسمح بالقفز المباشر عبر السحب */}
       <div className="relative flex h-3 items-center">
         <div className="h-1 w-full overflow-hidden rounded-full bg-white/20">
@@ -183,7 +190,8 @@ export function VideoControlBar({
           type="button"
           onClick={isPlaying ? onPause : onPlay}
           aria-label={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}
-          className="flex h-9 w-9 items-center justify-center rounded-sm text-white transition-[color,transform] duration-150 hover:text-console active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          title={withShortcut(isPlaying ? 'إيقاف مؤقت' : 'تشغيل', 'تشغيل/إيقاف مؤقت')}
+          className="touch-hit flex h-9 w-9 items-center justify-center rounded-sm text-white transition-[color,transform] duration-150 hover:text-console active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
           {isPlaying ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
         </button>
@@ -198,7 +206,7 @@ export function VideoControlBar({
               type="button"
               onClick={handleToggleMute}
               aria-label={isMuted ? 'تفعيل الصوت' : 'كتم الصوت'}
-              className="flex h-9 w-9 items-center justify-center rounded-sm text-white transition-[color,transform] duration-150 hover:text-console active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+              className="touch-hit flex h-9 w-9 items-center justify-center rounded-sm text-white transition-[color,transform] duration-150 hover:text-console active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
             >
               {isMuted || volume === 0 ? (
                 <VolumeX size={17} aria-hidden="true" />
@@ -227,9 +235,9 @@ export function VideoControlBar({
             onClick={onToggleShadowing}
             aria-label={isShadowingEnabled ? 'إيقاف وضع التظليل' : 'تفعيل وضع التظليل (توقّف تلقائي بعد كل مقطع)'}
             aria-pressed={isShadowingEnabled}
-            title="وضع التظليل: توقّف تلقائي بعد كل مقطع للتدرّب على النطق"
+            title="وضع التظليل (S): توقّف تلقائي بعد كل مقطع للتدرّب على النطق"
             className={cn(
-              'flex h-8 min-w-8 items-center justify-center rounded-sm px-1.5 transition-[color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+              'touch-hit flex h-8 min-w-8 items-center justify-center rounded-sm px-1.5 transition-[color,transform] duration-150 active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console',
               isShadowingEnabled ? 'text-console' : 'text-white hover:text-console',
             )}
           >
@@ -244,7 +252,7 @@ export function VideoControlBar({
               aria-expanded={isRateMenuOpen}
               aria-haspopup="menu"
               className={cn(
-                'flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm px-1.5 font-mono text-[11px] tabular-nums text-white transition-[color,transform] duration-150 hover:text-console active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+                'touch-hit flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm px-1.5 font-mono text-xs tabular-nums text-white transition-[color,transform] duration-150 hover:text-console active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console',
                 playbackRate !== 1 && 'text-console',
               )}
             >
@@ -256,7 +264,7 @@ export function VideoControlBar({
               <div
                 role="menu"
                 aria-label="اختيار سرعة التشغيل"
-                className="absolute bottom-full end-0 z-10 mb-2 flex flex-col gap-0.5 rounded-md border border-white/10 bg-black/90 p-1 shadow-elevated backdrop-blur-sm"
+                className="absolute bottom-full inset-e-0 z-10 mb-2 flex flex-col gap-0.5 rounded-md border border-white/10 bg-black/90 p-1 shadow-elevated backdrop-blur-xs"
               >
                 {PLAYBACK_RATE_OPTIONS.map((rate) => (
                   <button
@@ -287,9 +295,9 @@ export function VideoControlBar({
             // تُخبر المستخدم بالواقع الحالي بدل عرض تحكّم لا يعمل فعلياً
             <span
               title={`الجودة تُدار تلقائياً بواسطة يوتيوب (${formatQuality(currentQuality)}) — لم تعد واجهة يوتيوب البرمجية تدعم اختيار الجودة يدوياً`}
-              className="flex h-8 min-w-8 cursor-default items-center justify-center gap-1 rounded-sm px-1.5 font-mono text-[11px] tabular-nums text-white/70"
+              className="hidden h-8 cursor-default items-center justify-center rounded-sm px-1.5 text-xs text-white/70 sm:flex"
             >
-              AUTO
+              جودة تلقائية
             </span>
           )}
 
@@ -301,7 +309,7 @@ export function VideoControlBar({
               aria-pressed={isPictureInPictureActive}
               title="صورة داخل صورة (الفيديو فقط، بدون الترجمة)"
               className={cn(
-                'flex h-8 min-w-8 items-center justify-center rounded-sm px-1.5 transition-[color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+                'touch-hit flex h-8 min-w-8 items-center justify-center rounded-sm px-1.5 transition-[color,transform] duration-150 active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console',
                 isPictureInPictureActive ? 'text-console' : 'text-white hover:text-console',
               )}
             >
@@ -313,7 +321,8 @@ export function VideoControlBar({
             type="button"
             onClick={onToggleFullscreen}
             aria-label={isFullscreen ? 'الخروج من ملء الشاشة' : 'ملء الشاشة'}
-            className="flex h-9 w-9 items-center justify-center rounded-sm text-white transition-[color,transform] duration-150 hover:text-console active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+            title={withShortcut(isFullscreen ? 'الخروج من ملء الشاشة' : 'ملء الشاشة', 'تبديل وضع ملء الشاشة')}
+            className="touch-hit flex h-9 w-9 items-center justify-center rounded-sm text-white transition-[color,transform] duration-150 hover:text-console active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
           >
             {isFullscreen ? (
               <Minimize size={16} aria-hidden="true" />

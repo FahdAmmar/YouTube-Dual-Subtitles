@@ -123,7 +123,7 @@ export interface AccentPair {
  * - الإضاءة (Lightness) تُحصر ضمن نطاق مختلف لكل سمة: أفتح قليلاً في
  *   الوضع الداكن (ليبرز فوق خلفية شبه سوداء)، أغمق قليلاً في الوضع الفاتح
  *   (ليتباين مع خلفية شبه بيضاء) — يطابق تماماً الفرق الملحوظ فعلياً بين
- *   قيمتَي --color-console الافتراضيتين في index.css لكلا الوضعين
+ *   قيمتَي --rgb-console الافتراضيتين في index.css لكلا الوضعين
  * درجة اللون (Hue) نفسها تبقى بلا أي تعديل — فيظل التمييز البصري الرابط
  * بين "لون الفيديو الأجنبي" و"لون واجهة التطبيق" واضحاً وصادقاً
  */
@@ -146,7 +146,7 @@ export function deriveAccentPair(hex: string, theme: 'light' | 'dark'): AccentPa
   }
 }
 
-type RgbTuple = readonly [number, number, number]
+export type RgbTuple = readonly [number, number, number]
 
 function relativeLuminance([r, g, b]: RgbTuple): number {
   const channel = (value: number) => {

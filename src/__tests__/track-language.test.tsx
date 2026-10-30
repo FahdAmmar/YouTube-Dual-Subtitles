@@ -109,11 +109,11 @@ describe('language selection in the console rows', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     render(<App />)
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     const sourceSelect = screen.getByRole('combobox', { name: 'لغة المسار الأصلي' }) as HTMLSelectElement
     const translationSelect = screen.getByRole('combobox', { name: 'لغة مسار الترجمة' }) as HTMLSelectElement

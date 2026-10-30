@@ -49,7 +49,7 @@ export function CopyMenu({ onCopy }: CopyMenuProps) {
       {isOpen && (
         <div
           role="menu"
-          className="absolute end-0 top-full z-10 mt-1 w-56 rounded-md border border-border bg-surface-elevated p-1 shadow-elevated"
+          className="absolute inset-e-0 top-full z-10 mt-1 w-56 rounded-md border border-border bg-surface-elevated p-1 shadow-elevated"
         >
           {OPTIONS.map(({ scope, label }) => (
             <button
@@ -60,7 +60,7 @@ export function CopyMenu({ onCopy }: CopyMenuProps) {
                 setIsOpen(false)
                 onCopy(scope)
               }}
-              className="block w-full rounded-sm px-3 py-2 text-start text-sm text-text-primary transition-colors hover:bg-border/40 focus-visible:bg-border/40 focus-visible:outline-none"
+              className="block w-full rounded-sm px-3 py-2 text-start text-sm text-text-primary transition-colors hover:bg-border/40 focus-visible:bg-border/40 focus-visible:outline-hidden"
             >
               {label}
             </button>

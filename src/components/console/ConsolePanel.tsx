@@ -6,6 +6,7 @@ import { SourceFileRow } from './SourceFileRow'
 import { DownloadSubtitles } from './DownloadSubtitles'
 import { TranscriptList } from './TranscriptList'
 import { IconButton } from '@/components/ui/IconButton'
+import { OverflowMenu } from '@/components/ui/OverflowMenu'
 import { cn } from '@/lib/utils/cn'
 import { filterBookmarkedSlices, filterSlicesByQuery } from '@/lib/subtitles/filterSlices'
 import { SUBTITLE_FILE_ACCEPT } from '@/lib/subtitles/parseSubtitleFile'
@@ -42,7 +43,6 @@ interface ConsolePanelProps {
   onToggleBookmark: (slice: PairedSlice) => void
   onViewModeChange: (mode: ViewMode) => void
   getCurrentTime: () => number
-  isPlaying: boolean
   onSeek: (seconds: number) => void
   onOpenSettings: () => void
   onOpenShortcutsHelp: () => void
@@ -81,7 +81,6 @@ export function ConsolePanel({
   onToggleBookmark,
   onViewModeChange,
   getCurrentTime,
-  isPlaying,
   onSeek,
   onOpenSettings,
   onOpenShortcutsHelp,
@@ -151,21 +150,32 @@ export function ConsolePanel({
     <aside className="flex h-full min-h-0 flex-col bg-surface">
       <div className="flex flex-col gap-3 border-b border-border p-3.5">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="flex items-center gap-1.5 font-mono text-[11px] font-medium tracking-wide text-text-muted">
+          <h2 className="flex items-center gap-1.5 text-xs font-medium text-text-muted">
             <SlidersHorizontal size={12} aria-hidden="true" />
-            DISPLAY_MODE
+            وضع العرض
           </h2>
-          <div className="flex items-center gap-1.5">
-            <IconButton
-              aria-label={
-                sidebarPosition === 'left'
-                  ? 'نقل اللوحة الجانبية إلى يمين الشاشة'
-                  : 'نقل اللوحة الجانبية إلى يسار الشاشة'
-              }
-              onClick={onToggleSidebarPosition}
-              className="hidden h-8 w-8 lg:inline-flex"
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            <button
+              type="button"
+              aria-label="فتح وضع القراءة"
+              title="وضع القراءة (T)"
+              onClick={onOpenReading}
+              className="touch-hit flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-console transition-colors hover:bg-surface-elevated hover:text-console-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
             >
-              <ArrowLeftRight size={13} aria-hidden="true" />
+              <BookOpenText size={14} aria-hidden="true" />
+              قراءة
+            </button>
+            <button
+              type="button"
+              aria-label="فتح المفردات الشخصية"
+              onClick={onOpenGlossary}
+              className="touch-hit flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
+            >
+              <BookMarked size={14} aria-hidden="true" />
+              المفردات
+            </button>
+            <IconButton aria-label="فتح إعدادات حجم ولون الترجمة" title="إعدادات الترجمة" onClick={onOpenSettings} className="h-8 w-8">
+              <SlidersHorizontal size={14} aria-hidden="true" />
             </IconButton>
             <IconButton
               aria-label={isUploadSectionExpanded ? 'إخفاء قسم الرفع وإعدادات العرض' : 'إظهار قسم الرفع وإعدادات العرض'}
@@ -180,23 +190,27 @@ export function ConsolePanel({
                 <ChevronDown size={14} aria-hidden="true" />
               )}
             </IconButton>
-            <IconButton
-              aria-label="فتح وضع القراءة"
-              title="وضع القراءة (T)"
-              onClick={onOpenReading}
-              className="h-8 w-8 text-console hover:text-console-hover"
-            >
-              <BookOpenText size={14} aria-hidden="true" />
-            </IconButton>
-            <IconButton aria-label="فتح إعدادات حجم ولون الترجمة" onClick={onOpenSettings} className="h-8 w-8">
-              <SlidersHorizontal size={14} aria-hidden="true" />
-            </IconButton>
-            <IconButton aria-label="فتح المفردات الشخصية" onClick={onOpenGlossary} className="h-8 w-8">
-              <BookMarked size={14} aria-hidden="true" />
-            </IconButton>
-            <IconButton aria-label="عرض اختصارات لوحة المفاتيح" onClick={onOpenShortcutsHelp} className="h-8 w-8">
-              <Keyboard size={14} aria-hidden="true" />
-            </IconButton>
+            <OverflowMenu
+              label="المزيد من الخيارات"
+              items={[
+                {
+                  key: 'shortcuts',
+                  label: 'عرض اختصارات لوحة المفاتيح',
+                  icon: <Keyboard size={14} aria-hidden="true" />,
+                  onSelect: onOpenShortcutsHelp,
+                },
+                {
+                  key: 'sidebar-position',
+                  label:
+                    sidebarPosition === 'left'
+                      ? 'نقل اللوحة الجانبية إلى يمين الشاشة'
+                      : 'نقل اللوحة الجانبية إلى يسار الشاشة',
+                  icon: <ArrowLeftRight size={14} aria-hidden="true" />,
+                  onSelect: onToggleSidebarPosition,
+                  className: 'max-lg:hidden',
+                },
+              ]}
+            />
           </div>
         </div>
 
@@ -260,15 +274,15 @@ export function ConsolePanel({
           <button
             type="button"
             onClick={() => setIsUploadSectionExpanded(true)}
-            className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-elevated/40 px-3 py-2 text-start transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+            className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-elevated/40 px-3 py-2 text-start transition-colors hover:bg-surface-elevated focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
           >
             <span className="flex min-w-0 items-center gap-3">
               <TrackStatusDot track={sourceTrack} accentClassName="bg-track-a" />
               <TrackStatusDot track={translationTrack} accentClassName="bg-track-b" />
             </span>
-            <span className="flex shrink-0 items-center gap-1 font-mono text-[10px] tracking-wide text-text-muted">
+            <span className="flex shrink-0 items-center gap-1 text-xs text-text-muted">
               <ChevronDown size={11} aria-hidden="true" />
-              UPLOAD_SETTINGS
+              الترجمات والإعدادات
             </span>
           </button>
         )}
@@ -277,8 +291,8 @@ export function ConsolePanel({
       <div className="flex flex-col gap-2 px-3.5 pt-3">
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-console" aria-hidden="true" />
-          <h2 className="font-mono text-[11px] font-medium tracking-wide text-text-muted">
-            TRANSCRIPT — {isFilterActive ? `${filteredSlices.length}/${slices.length}` : slices.length} SEG
+          <h2 className="text-xs font-medium text-text-muted">
+            {`المقاطع · ${isFilterActive ? `${filteredSlices.length}/${slices.length}` : slices.length}`}
           </h2>
         </div>
 
@@ -287,7 +301,7 @@ export function ConsolePanel({
             <div className="relative min-w-0 flex-1">
               <Search
                 size={12}
-                className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-text-muted"
+                className="pointer-events-none absolute inset-s-2.5 top-1/2 -translate-y-1/2 text-text-muted"
                 aria-hidden="true"
               />
               <input
@@ -298,13 +312,13 @@ export function ConsolePanel({
                 onKeyDown={handleSearchKeyDown}
                 placeholder="ابحث في النص… (/)"
                 aria-label="البحث داخل النص المفرَّغ"
-                className="w-full rounded-md border border-border bg-surface-elevated py-1.5 ps-8 pe-8 text-xs text-text-primary placeholder:text-text-muted focus:border-console focus:outline-none focus:ring-1 focus:ring-console"
+                className="w-full rounded-md border border-border bg-surface-elevated py-1.5 ps-8 pe-8 text-xs text-text-primary placeholder:text-text-muted focus:border-console focus:outline-hidden focus:ring-1 focus:ring-console"
               />
               {searchQuery && (
                 <IconButton
                   aria-label="مسح البحث"
                   onClick={() => setSearchQuery('')}
-                  className="absolute end-1 top-1/2 h-6 w-6 -translate-y-1/2"
+                  className="absolute inset-e-1 top-1/2 h-6 w-6 -translate-y-1/2"
                 >
                   <X size={12} aria-hidden="true" />
                 </IconButton>
@@ -325,7 +339,6 @@ export function ConsolePanel({
       <TranscriptList
         slices={filteredSlices}
         getCurrentTime={getCurrentTime}
-        isPlaying={isPlaying}
         viewMode={viewMode}
         revealedIndex={revealedIndex}
         bookmarkedIds={bookmarkedIds}
@@ -349,7 +362,7 @@ function TrackStatusDot({
   accentClassName: string
 }) {
   return (
-    <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-text-secondary">
+    <span className="flex min-w-0 items-center gap-1.5 text-xs text-text-secondary">
       <span
         className={cn(
           'h-1.5 w-1.5 shrink-0 rounded-full',
@@ -399,7 +412,7 @@ function BilingualFileRow({ state, onFileSelected }: BilingualFileRowProps) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-1 font-mono text-[10px] text-console transition-colors hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-1 font-mono text-xs text-console transition-colors hover:text-console focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
           <Upload size={11} aria-hidden="true" />
           {fileName ? 'CHANGE' : 'UPLOAD'}
@@ -415,25 +428,25 @@ function BilingualFileRow({ state, onFileSelected }: BilingualFileRowProps) {
       </div>
 
       {status === 'ready' && fileName && (
-        <p className="flex min-w-0 items-center gap-1 truncate text-[11px] text-success">
+        <p className="flex min-w-0 items-center gap-1 truncate text-xs text-success">
           <CheckCircle2 size={11} className="shrink-0" aria-hidden="true" />
           <span className="truncate">{fileName}</span>
         </p>
       )}
       {status === 'parsing' && (
-        <p className="flex items-center gap-1 text-[11px] text-text-muted">
+        <p className="flex items-center gap-1 text-xs text-text-muted">
           <Loader2 size={11} className="animate-spin" aria-hidden="true" />
           جارٍ التحليل...
         </p>
       )}
       {status === 'error' && errorMessage && (
-        <p role="alert" className="flex min-w-0 items-center gap-1 truncate text-[11px] text-error">
+        <p role="alert" className="flex min-w-0 items-center gap-1 truncate text-xs text-error">
           <XCircle size={11} className="shrink-0" aria-hidden="true" />
           <span className="truncate">{errorMessage}</span>
         </p>
       )}
       {status === 'idle' && (
-        <p className="text-[11px] text-text-muted">
+        <p className="text-xs text-text-muted">
           ملف واحد بسطرين لكل مقطع — يُملأ المساران معاً تلقائياً
         </p>
       )}

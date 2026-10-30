@@ -27,9 +27,9 @@ export function DownloadSubtitles({ sourceTrack, translationTrack, slices }: Dow
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="flex items-center gap-1.5 font-mono text-[11px] font-medium tracking-wide text-text-muted">
+      <h2 className="flex items-center gap-1.5 text-xs font-medium text-text-muted">
         <Download size={12} aria-hidden="true" />
-        DOWNLOAD_SUBTITLES
+        تنزيل الترجمات
       </h2>
 
       <div className="flex flex-wrap gap-1.5">
@@ -39,9 +39,9 @@ export function DownloadSubtitles({ sourceTrack, translationTrack, slices }: Dow
           onClick={() =>
             downloadTextFile(cuesToSrt(sourceTrack.cues), safeFileName(sourceTrack.languageLabel, 'source'))
           }
-          className="rounded-sm border border-border px-2.5 py-1.5 font-mono text-[11px] text-text-secondary transition-colors hover:border-console hover:text-console disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="rounded-sm border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:border-console hover:text-console disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-secondary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
-          [ SOURCE_ONLY ]
+          الأصل فقط
         </button>
         <button
           type="button"
@@ -52,17 +52,17 @@ export function DownloadSubtitles({ sourceTrack, translationTrack, slices }: Dow
               safeFileName(translationTrack.languageLabel, 'translation'),
             )
           }
-          className="rounded-sm border border-border px-2.5 py-1.5 font-mono text-[11px] text-text-secondary transition-colors hover:border-console hover:text-console disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="rounded-sm border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:border-console hover:text-console disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-secondary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
-          [ TRANSLATED ]
+          الترجمة فقط
         </button>
         <button
           type="button"
           disabled={!canDownloadBoth}
           onClick={() => downloadTextFile(pairedSlicesToSrt(slices), 'dual_subtitles.srt')}
-          className="rounded-sm border border-console/50 bg-console/5 px-2.5 py-1.5 font-mono text-[11px] text-console transition-colors hover:bg-console/15 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-console/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="rounded-sm border border-console/50 bg-console/5 px-2.5 py-1.5 text-xs text-console transition-colors hover:bg-console/15 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-console/5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
-          [ BOTH_LANGUAGES ]
+          اللغتان معاً
         </button>
       </div>
     </div>

@@ -56,7 +56,7 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
             aria-modal="true"
             aria-label="اختصارات لوحة المفاتيح"
             tabIndex={-1}
-            className="fixed inset-0 z-50 m-auto h-fit max-h-[85vh] w-[calc(100%-1.5rem)] max-w-sm overflow-y-auto p-0 outline-none sm:max-w-md"
+            className="fixed inset-0 z-50 m-auto h-fit max-h-[85vh] w-[calc(100%-1.5rem)] max-w-sm overflow-y-auto p-0 outline-hidden sm:max-w-md"
           >
             <Card className="flex flex-col gap-4 p-5 shadow-elevated">
               <div className="flex items-center justify-between">
@@ -72,7 +72,7 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
               <div className="flex flex-col gap-3">
                 {GROUPED_SHORTCUTS.map(({ category, shortcuts }) => (
                   <div key={category} className="flex flex-col gap-0.5">
-                    <h3 className="px-1.5 pb-0.5 font-mono text-[10px] font-medium tracking-wide text-text-muted">
+                    <h3 className="px-1.5 pb-0.5 font-mono text-xs font-medium text-text-muted">
                       {category}
                     </h3>
                     <ul className="flex flex-col gap-0.5">

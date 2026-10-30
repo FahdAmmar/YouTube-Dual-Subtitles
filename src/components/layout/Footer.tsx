@@ -8,7 +8,7 @@ export function Footer() {
     <footer className="relative z-20 px-4 py-6 text-center sm:px-6">
       <div
         aria-hidden="true"
-        className="mx-auto mb-5 h-px w-full max-w-xs bg-gradient-to-r from-transparent via-border to-transparent"
+        className="mx-auto mb-5 h-px w-full max-w-xs bg-linear-to-r from-transparent via-border to-transparent"
       />
       <p className="mx-auto max-w-2xl text-xs leading-relaxed text-text-muted">
         يعمل هذا التطبيق بالكامل من متصفحك — لا تُرفع ملفات الترجمة إلى أي خادم.

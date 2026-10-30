@@ -52,7 +52,7 @@ export function VoiceSelector({ languageCode, languageLabel }: VoiceSelectorProp
             type="button"
             aria-label={`تغيير صوت نطق ${languageLabel} — الحالي: ${selectedVoice?.name ?? 'تلقائي'}`}
             onClick={() => setIsPickerOpen(true)}
-            className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-start transition-colors hover:border-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+            className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-start transition-colors hover:border-console focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
           >
             <span className="flex min-w-0 flex-col">
               <span className="truncate text-sm font-medium text-text-primary">

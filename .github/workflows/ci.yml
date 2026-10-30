@@ -25,8 +25,12 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      # The stricter react-hooks rules may not grow beyond the recorded baseline (scripts/strict-lint-baseline.json)
+      - run: npm run lint:strict
       - run: npm test
       # `build` type-checks again before bundling, so it can never ship a type error
       - run: npm run build
+      # First-page JavaScript/CSS and the lazy chunks must stay inside their gzip budgets (scripts/check-bundle-budget.mjs)
+      - run: npm run budget
       # Real-browser accessibility + CSP check of reading mode, against the build above (ubuntu runners ship Chrome)
       - run: npm run e2e

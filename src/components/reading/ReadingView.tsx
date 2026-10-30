@@ -239,16 +239,16 @@ export function ReadingView(props: ReadingViewProps) {
         {/* Start column: reserves the video's space (the player is fixed on top of it), then the tools */}
         <div className="flex shrink-0 flex-col lg:w-[calc(var(--reading-video-width)+3rem)] lg:ps-6">
           {isVideoVisible ? (
-            <div aria-hidden="true" className="aspect-video w-full lg:order-2 lg:w-[var(--reading-video-width)]" />
+            <div aria-hidden="true" className="aspect-video w-full lg:order-2 lg:w-(--reading-video-width)" />
           ) : (
             <NowPlayingCard
               title={props.title}
               isPlaying={isPlaying}
-              className="mx-3 mt-3 lg:order-2 lg:mx-0 lg:mt-0 lg:w-[var(--reading-video-width)]"
+              className="mx-3 mt-3 lg:order-2 lg:mx-0 lg:mt-0 lg:w-(--reading-video-width)"
             />
           )}
 
-          <header className="flex items-center gap-2 px-3 py-2 lg:order-1 lg:h-[4.5rem] lg:px-0">
+          <header className="flex items-center gap-2 px-3 py-2 lg:order-1 lg:h-18 lg:px-0">
             <IconButton
               aria-label="إغلاق وضع القراءة"
               onClick={props.onClose}
@@ -290,7 +290,7 @@ export function ReadingView(props: ReadingViewProps) {
               // Only user-driven input stops the auto-follow; programmatic scrolling never fires these
               onWheel={() => setIsFollowing(false)}
               onTouchMove={() => setIsFollowing(false)}
-              className="relative h-full overflow-y-auto overscroll-contain px-2 [mask-image:linear-gradient(to_bottom,transparent,black_8%,black_92%,transparent)] sm:px-4"
+              className="relative h-full overflow-y-auto overscroll-contain px-2 mask-[linear-gradient(to_bottom,transparent,black_8%,black_92%,transparent)] sm:px-4"
             >
               <div className="mx-auto max-w-2xl py-[35vh]">
                 <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>

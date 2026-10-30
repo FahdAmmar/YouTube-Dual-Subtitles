@@ -13,9 +13,9 @@ beforeEach(() => {
 })
 
 async function loadVimeoVideo(url = 'https://vimeo.com/76979871') {
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), { target: { value: url } })
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), { target: { value: url } })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 }
 
 describe('Vimeo playback', () => {
@@ -47,13 +47,13 @@ describe('Vimeo playback', () => {
 
   it('rejects a URL that is neither YouTube nor Vimeo', async () => {
     render(<App />)
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://example.com/not-a-video' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('الرجاء إدخال رابط يوتيوب أو Vimeo صالح')
-    expect(screen.queryByText(/DISPLAY_MODE/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/وضع العرض/)).not.toBeInTheDocument()
   })
 
   it('toggles play/pause via the Space shortcut, same as any other source', async () => {
@@ -76,7 +76,7 @@ describe('Vimeo playback', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     render(<App />)
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), { target: { value: 'https://vimeo.com/76979871' } })
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), { target: { value: 'https://vimeo.com/76979871' } })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
 
     await waitFor(() => expect(latestVimeoPlayer).not.toBeNull())
@@ -92,7 +92,7 @@ describe('Vimeo playback', () => {
 
     render(<App />)
     await loadVimeoVideo()
-    fireEvent.click(screen.getByRole('button', { name: /CHANGE_VIDEO/ }))
+    fireEvent.click(screen.getByRole('button', { name: /تغيير الفيديو/ }))
 
     expect(await screen.findByText('فيديو Vimeo تجريبي للاختبار')).toBeInTheDocument()
 
@@ -137,12 +137,12 @@ describe('Vimeo playback', () => {
 
     render(<App />)
     await loadVimeoVideo('https://vimeo.com/76979871/8272103f6e')
-    fireEvent.click(screen.getByRole('button', { name: /CHANGE_VIDEO/ }))
+    fireEvent.click(screen.getByRole('button', { name: /تغيير الفيديو/ }))
 
     latestVimeoPlayer = null
     const historyButtons = await screen.findAllByRole('button', { name: /فيديو Vimeo تجريبي للاختبار/ })
     fireEvent.click(historyButtons[0]!)
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     // لو ضاعت التجزئة عبر مسار السجل، سيفشل تشغيل هذا الفيديو غير
     // المُدرَج فعلياً رغم نجاح استعادة المعرّف الرقمي وحده

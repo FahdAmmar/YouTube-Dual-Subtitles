@@ -1,18 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { KEYBOARD_SHORTCUTS, type KeyboardShortcutHandlers } from '@/constants/keyboardShortcuts'
+import { isTypingTarget } from '@/lib/utils/isTypingTarget'
 
 export type { KeyboardShortcutHandlers }
 
 /**
- * هل الحدث صادر من عنصر إدخال نصي (حقل نص، منطقة نص، قائمة منسدلة، أو
- * عنصر قابل للتحرير)؟ نتجاهل الاختصارات تماماً في هذه الحالة، وإلا لكانت
- * كتابة حرف "c" أو "x" أو الضغط على مسافة أثناء تعديل عنوان الفيديو مثلاً
- * تُسرّع الفيديو أو تُشغّله/توقفه بدل إدخال الحرف المقصود فعلياً
+ * A modal panel (settings, vocabulary, shortcuts help, voice picker) owns the keyboard while it is open:
+ * without this, the vocabulary review's own number keys would also repeat the scene, and Space would
+ * pause the video behind the panel.
  */
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  const tag = target.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
+function isModalDialogOpen(): boolean {
+  return document.querySelector('[aria-modal="true"]') !== null
 }
 
 /**
@@ -51,6 +49,7 @@ export function useKeyboardShortcuts(enabled: boolean, handlers: KeyboardShortcu
     function handleKeyDown(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey || event.altKey) return
       if (isTypingTarget(event.target)) return
+      if (isModalDialogOpen()) return
 
       const shortcut = KEYBOARD_SHORTCUTS.find((entry) => entry.matchKeys.includes(event.key))
       if (!shortcut) return

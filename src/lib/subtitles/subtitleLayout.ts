@@ -51,3 +51,20 @@ export function normalizeLayout(raw: unknown): SubtitleLayout {
     translation: normalizeOffset(raw.translation),
   }
 }
+
+/**
+ * The font sizes in Settings are pixels, which suit a normal desktop player but fill most of a phone-sized video.
+ * Between these two stage widths the chosen size is used as is, so desktop layouts look exactly as before.
+ */
+const COMFORT_MIN_STAGE_WIDTH = 640
+const COMFORT_MAX_STAGE_WIDTH = 1000
+const MIN_FONT_SCALE = 0.65
+const MAX_FONT_SCALE = 1.5
+
+/** Multiplier for the chosen subtitle font size, from the width of the video stage in CSS pixels */
+export function getSubtitleFontScale(stageWidth: number): number {
+  if (!Number.isFinite(stageWidth) || stageWidth <= 0) return 1
+  if (stageWidth < COMFORT_MIN_STAGE_WIDTH) return Math.max(MIN_FONT_SCALE, stageWidth / COMFORT_MIN_STAGE_WIDTH)
+  if (stageWidth > COMFORT_MAX_STAGE_WIDTH) return Math.min(MAX_FONT_SCALE, stageWidth / COMFORT_MAX_STAGE_WIDTH)
+  return 1
+}

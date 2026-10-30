@@ -34,12 +34,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled}
         className={cn(
-          'inline-flex items-center justify-center rounded-md font-medium',
+          'touch-hit inline-flex items-center justify-center rounded-md font-medium',
           'transition-[color,background-color,border-color,transform] duration-150',
           // تغذية راجعة لمسية عند الضغط — انكماش خفيف جداً يمنح إحساساً
           // ملموساً بالنقر دون أن يكون مبالغاً فيه أو مشتتاً بصرياً
           'active:scale-[0.97]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
           'disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none',
           VARIANT_STYLES[variant],
           SIZE_STYLES[size],

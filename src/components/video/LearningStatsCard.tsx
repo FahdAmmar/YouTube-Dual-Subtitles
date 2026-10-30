@@ -18,7 +18,7 @@ function StatTile({ testId, icon, value, label }: StatTileProps) {
     <div data-testid={testId} className="flex flex-col items-center gap-1 rounded-md bg-surface-elevated px-2 py-3 text-center">
       <span className="text-console" aria-hidden="true">{icon}</span>
       <span className="font-mono text-lg font-semibold tabular-nums text-text-primary">{value}</span>
-      <span className="text-[11px] text-text-muted">{label}</span>
+      <span className="text-xs text-text-muted">{label}</span>
     </div>
   )
 }
@@ -39,7 +39,7 @@ export function LearningStatsCard() {
 
   return (
     <Card className="mt-6 p-4">
-      <h2 className="mb-3 font-mono text-[11px] tracking-widest text-text-muted">LEARNING_STATS</h2>
+      <h2 className="mb-3 text-xs font-medium text-text-muted">إحصاءات التعلّم</h2>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <StatTile testId="stat-streak" icon={<Flame size={16} />} value={String(summary.streak)} label="أيام متتالية" />
@@ -61,7 +61,7 @@ export function LearningStatsCard() {
               className={day.seconds > 0 ? 'w-full rounded-sm bg-console' : 'w-full rounded-sm bg-border'}
               style={{ height: day.seconds > 0 ? `${Math.max((day.seconds / longestDay) * 100, 8)}%` : '4px' }}
             />
-            <span className="text-[10px] text-text-muted">{WEEKDAY_FORMATTER.format(day.date)}</span>
+            <span className="text-xs text-text-muted">{WEEKDAY_FORMATTER.format(day.date)}</span>
           </div>
         ))}
       </div>

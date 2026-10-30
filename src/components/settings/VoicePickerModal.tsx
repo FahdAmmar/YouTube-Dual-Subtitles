@@ -93,7 +93,7 @@ export function VoicePickerModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[60] bg-black/50"
+            className="fixed inset-0 z-60 bg-black/50"
             aria-hidden="true"
           />
           <m.div
@@ -106,7 +106,7 @@ export function VoicePickerModal({
             aria-modal="true"
             aria-label={`اختيار صوت ${languageLabel}`}
             tabIndex={-1}
-            className="fixed inset-x-3 top-1/2 z-[70] mx-auto max-w-md -translate-y-1/2 outline-none sm:inset-x-auto"
+            className="fixed inset-x-3 top-1/2 z-70 mx-auto max-w-md -translate-y-1/2 outline-hidden sm:inset-x-auto"
           >
             <Card className="flex max-h-[80vh] flex-col gap-3 p-4 shadow-elevated">
               <div className="flex items-center justify-between gap-2">
@@ -132,7 +132,7 @@ export function VoicePickerModal({
                         type="button"
                         onClick={() => togglePreview(row.voice, row.uri)}
                         aria-label={isPlaying ? `إيقاف معاينة ${row.name}` : `تجربة صوت ${row.name}`}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-elevated hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-elevated hover:text-console focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
                       >
                         {isPlaying ? <Square size={13} aria-hidden="true" /> : <Play size={13} aria-hidden="true" />}
                       </button>
@@ -171,7 +171,7 @@ export function VoicePickerModal({
                       onClick={() => handleRateChange(option)}
                       aria-pressed={rate === option}
                       className={cn(
-                        'rounded-sm px-1.5 py-1 font-mono text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+                        'rounded-sm px-1.5 py-1 font-mono text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console',
                         rate === option
                           ? 'bg-console text-white'
                           : 'text-text-muted hover:bg-surface-elevated hover:text-text-primary',

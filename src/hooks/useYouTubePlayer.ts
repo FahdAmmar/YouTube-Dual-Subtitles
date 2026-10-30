@@ -66,7 +66,8 @@ export interface UseYouTubePlayerResult {
  * كل وظيفة تحكم كانت يوتيوب توفرها افتراضياً (انظر VideoControlBar)
  */
 export function useYouTubePlayer(videoId: string | null): UseYouTubePlayerResult {
-  const containerId = useRef(`yt-player-${Math.random().toString(36).slice(2)}`).current
+  // A lazy initial state runs once; `useRef(expression)` would build a random id on every render and drop it
+  const [containerId] = useState(() => `yt-player-${Math.random().toString(36).slice(2)}`)
   const playerRef = useRef<YouTubePlayerInstance | null>(null)
 
   const [duration, setDuration] = useState(0)

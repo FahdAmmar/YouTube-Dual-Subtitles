@@ -19,6 +19,9 @@ export const STORAGE_KEYS = {
   ONLINE_LOOKUP: 'ydc:online-lookup',
   REVIEW_STATS: 'ydc:review-stats',
   TRACK_LANGUAGES: 'ydc:track-languages',
+  HIGHLIGHT_SAVED_WORDS: 'ydc:highlight-saved-words',
+  REVIEW_NEW_LIMIT: 'ydc:review-new-limit',
+  ONBOARDING_DISMISSED: 'ydc:onboarding-dismissed',
 } as const
 
 /**
@@ -44,4 +47,6 @@ export const DEFAULT_SUBTITLE_SETTINGS: SubtitleDisplaySettings = {
   subtitleWidthPercent: 94,
   // يطابق قيمة leading-snug (1.375) المستخدمة سابقاً كصنف CSS ثابت
   subtitleLineHeight: 1.375,
+  // Off by default: a fixed accent keeps the interface recognisable; the subtitle colors still change freely
+  adaptiveAccent: false,
 }

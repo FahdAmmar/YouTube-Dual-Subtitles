@@ -58,3 +58,29 @@ export function getIntervalLabel(entry: GlossaryEntry, grade: ReviewGrade): stri
   if (days === 1) return 'يوم'
   return days <= 10 ? `${days} أيام` : `${days} يوماً`
 }
+
+/** Leitner box of a reviewed word; null for a word never reviewed (or whose review data is unreadable) */
+export function getReviewBox(entry: GlossaryEntry): number | null {
+  return getValidReview(entry)?.box ?? null
+}
+
+/** When the word is next due; 0 for a never-reviewed word, which is due from the moment it was saved */
+export function getDueAt(entry: GlossaryEntry): number {
+  return getValidReview(entry)?.dueAt ?? 0
+}
+
+/**
+ * The words for one review session: everything overdue, then new words in the order they were added.
+ * `newLimit` caps only the new words, so a long vocabulary list never hides a word that is overdue.
+ */
+export function getReviewQueue(entries: GlossaryEntry[], now: number, newLimit: number | null): GlossaryEntry[] {
+  const due = getDueEntries(entries, now)
+  if (newLimit === null || !Number.isFinite(newLimit)) return due
+  const allowedNew = Math.max(0, Math.floor(newLimit))
+  let newSeen = 0
+  return due.filter((entry) => {
+    if (getValidReview(entry) !== null) return true
+    newSeen += 1
+    return newSeen <= allowedNew
+  })
+}

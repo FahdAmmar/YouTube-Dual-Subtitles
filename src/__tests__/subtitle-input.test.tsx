@@ -17,11 +17,11 @@ const SRT = (text: string) => `1\n00:00:01,000 --> 00:00:03,000\n${text}\n`
 
 async function startVideo() {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 }
 
 function dispatchDrop(files: File[]) {
@@ -70,7 +70,7 @@ describe('dropping and pasting subtitles', () => {
 
   it('does not hijack pasting into the URL field', async () => {
     render(<App />)
-    const input = screen.getByLabelText('VIDEO_URL')
+    const input = screen.getByLabelText('رابط الفيديو')
     const event = new Event('paste', { bubbles: true, cancelable: true })
     Object.defineProperty(event, 'clipboardData', { value: { files: [], getData: () => SRT('x') } })
     act(() => {

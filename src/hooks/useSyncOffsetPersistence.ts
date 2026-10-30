@@ -61,31 +61,32 @@ export function useSyncOffsetPersistence(
   fileName: string | null,
   syncOffsetSeconds: number,
   setSyncOffset: (seconds: number) => void,
+  loadCount: number,
 ): void {
   const offsetKey = source && fileName ? `${getVideoKey(source)}::${trackId}::${fileName}` : null
-  const restoredKeyRef = useRef<string | null>(null)
-  // يمنع تأثير الحفظ من حذف/الكتابة فوق القيمة المحفوظة في نفس اللحظة
-  // التي يستعيدها فيها تأثير الاستعادة أعلاه (كلا التأثيرين يُنفَّذان
-  // بعد نفس الـ commit عند تغيّر offsetKey)
-  const skipNextSaveRef = useRef(false)
+  // A load is identified by the key plus the load counter, not by the key alone: loading the same file again (the
+  // automatic restore from IndexedDB, or the person uploading it once more) keeps the key but still resets the
+  // offset to 0, and the saved offset has to be applied again
+  const loadId = offsetKey ? `${offsetKey}#${loadCount}` : null
+  const restoredLoadRef = useRef<string | null>(null)
+  const settledLoadRef = useRef<string | null>(null)
 
-  // الاستعادة: مرة واحدة فقط لكل مفتاح (فيديو + مسار + ملف) جديد
+  // الاستعادة: مرة واحدة لكل عملية تحميل (فيديو + مسار + ملف)
   useEffect(() => {
-    if (!offsetKey || restoredKeyRef.current === offsetKey) return
-    restoredKeyRef.current = offsetKey
+    if (!offsetKey || restoredLoadRef.current === loadId) return
+    restoredLoadRef.current = loadId
 
     const saved = readOffsetMap()[offsetKey]
-    if (saved) {
-      skipNextSaveRef.current = true
-      setSyncOffset(saved)
-    }
-  }, [offsetKey, setSyncOffset])
+    if (saved) setSyncOffset(saved)
+  }, [offsetKey, loadId, setSyncOffset])
 
   // الحفظ: عند كل تغيير فعلي للإزاحة (بفعل المستخدم عبر أزرار +/-)
   useEffect(() => {
     if (!offsetKey) return
-    if (skipNextSaveRef.current) {
-      skipNextSaveRef.current = false
+    // The commit that first shows a new load still holds the 0 the load reset the offset to; saving that would
+    // erase the stored value before the restore above has applied it. Skip exactly that one run per load
+    if (settledLoadRef.current !== loadId) {
+      settledLoadRef.current = loadId
       return
     }
 
@@ -98,5 +99,5 @@ export function useSyncOffsetPersistence(
       map[offsetKey] = syncOffsetSeconds
     }
     writeOffsetMap(map)
-  }, [offsetKey, syncOffsetSeconds])
+  }, [offsetKey, loadId, syncOffsetSeconds])
 }

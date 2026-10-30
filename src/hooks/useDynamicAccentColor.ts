@@ -3,8 +3,8 @@ import { deriveAccentPair } from '@/lib/utils/color'
 import type { ResolvedTheme } from '@/types/theme.types'
 
 /** متغيرات CSS التي يُعاد اشتقاقها ديناميكياً — لون النظام نفسه، وهالة الخلفية الأساسية (BackgroundFX) لتماسك بصري كامل */
-const CONSOLE_VAR = '--color-console'
-const CONSOLE_HOVER_VAR = '--color-console-hover'
+const CONSOLE_VAR = '--rgb-console'
+const CONSOLE_HOVER_VAR = '--rgb-console-hover'
 const AURORA_PRIMARY_VAR = '--aurora-a'
 
 /**
@@ -19,8 +19,11 @@ const AURORA_PRIMARY_VAR = '--aurora-a'
  * قيمة "مُعلَّقة" بعد تفكيك المكوّن — مهم خصوصاً أثناء الاختبارات حيث قد
  * تتشارك عدة اختبارات نفس document بين بعضها
  */
-export function useDynamicAccentColor(trackBColorHex: string, theme: ResolvedTheme): void {
+export function useDynamicAccentColor(trackBColorHex: string, theme: ResolvedTheme, isEnabled = true): void {
   useEffect(() => {
+    // Opt-in (SubtitleDisplaySettings.adaptiveAccent): when off, the accent stays the one defined in index.css
+    if (!isEnabled) return
+
     const root = document.documentElement
     const pair = deriveAccentPair(trackBColorHex, theme)
 
@@ -35,5 +38,5 @@ export function useDynamicAccentColor(trackBColorHex: string, theme: ResolvedThe
       root.style.removeProperty(CONSOLE_HOVER_VAR)
       root.style.removeProperty(AURORA_PRIMARY_VAR)
     }
-  }, [trackBColorHex, theme])
+  }, [trackBColorHex, theme, isEnabled])
 }

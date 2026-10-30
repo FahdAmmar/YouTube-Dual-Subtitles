@@ -1,0 +1,6 @@
+{
+  "react-hooks/incompatible-library": 2,
+  "react-hooks/purity": 2,
+  "react-hooks/refs": 36,
+  "react-hooks/set-state-in-effect": 9
+}

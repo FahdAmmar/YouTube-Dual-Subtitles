@@ -29,10 +29,10 @@ function languageOption(mode: ViewMode, code: string | undefined, fallbackLabel:
  */
 export function ViewModeToggle({ value, onChange, sourceLanguageCode, translationLanguageCode }: ViewModeToggleProps) {
   const options: ModeOption[] = [
-    languageOption('source', sourceLanguageCode, 'SOURCE'),
-    languageOption('translation', translationLanguageCode, 'TRANSLATION'),
-    { mode: 'both', label: 'BOTH' },
-    { mode: 'recall', label: 'RECALL' },
+    languageOption('source', sourceLanguageCode, 'الأصل'),
+    languageOption('translation', translationLanguageCode, 'الترجمة'),
+    { mode: 'both', label: 'الكل' },
+    { mode: 'recall', label: 'استدعاء' },
   ]
 
   return (
@@ -48,14 +48,14 @@ export function ViewModeToggle({ value, onChange, sourceLanguageCode, translatio
             aria-label={ariaLabel}
             onClick={() => onChange(mode)}
             className={cn(
-              'rounded-sm border px-2.5 py-1.5 font-mono text-[11px] font-medium tracking-wide transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+              'rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console',
               isActive
                 ? 'border-console bg-console/10 text-text-primary'
                 : 'border-border text-text-secondary hover:border-text-secondary hover:text-text-primary',
             )}
           >
-            [ {label} ]
+            {label}
           </button>
         )
       })}

@@ -309,7 +309,7 @@ export function VideoStage({
       ref={stageRef}
       tabIndex={-1}
       data-testid="video-stage"
-      className="relative aspect-video w-full overflow-hidden rounded-lg bg-black shadow-elevated outline-none"
+      className="relative aspect-video w-full overflow-hidden rounded-lg bg-black shadow-elevated outline-hidden"
     >
       {player.renderTarget.type === 'youtube' ? (
         <YouTubePlayerView
@@ -365,7 +365,7 @@ export function VideoStage({
               (بخلاف تغذية شريط الاختصارات الراجعة اللحظية أعلاه) لأن أثره
               يمتد لكل مقطع لاحق في الفيديو، لا لحظة واحدة عابرة */}
           {isShadowingEnabled && (
-            <div className="pointer-events-none absolute start-3 top-14 z-10 flex items-center gap-1.5 rounded-md bg-black/75 px-2.5 py-1 font-mono text-[11px] text-white shadow-elevated backdrop-blur-sm">
+            <div className="pointer-events-none absolute inset-s-3 top-14 z-10 flex items-center gap-1.5 rounded-md bg-black/75 px-2.5 py-1 font-mono text-xs text-white shadow-elevated backdrop-blur-xs">
               <Mic size={12} className="text-console" aria-hidden="true" />
               <span>وضع التظليل</span>
             </div>
@@ -375,7 +375,7 @@ export function VideoStage({
               ليُذكِّر المستخدم بأن المقطع الحالي يُعاد تشغيله N مرات،
               ويُوضّح التقدّم (المرّة الحالية من إجمالي المرّات) */}
           {sceneRepeatState && (
-            <div className="pointer-events-none absolute end-3 top-14 z-10 flex items-center gap-1.5 rounded-md bg-black/75 px-2.5 py-1 font-mono text-[11px] tabular-nums text-white shadow-elevated backdrop-blur-sm">
+            <div className="pointer-events-none absolute inset-e-3 top-14 z-10 flex items-center gap-1.5 rounded-md bg-black/75 px-2.5 py-1 font-mono text-xs tabular-nums text-white shadow-elevated backdrop-blur-xs">
               <Repeat size={12} className="text-console" aria-hidden="true" />
               <span aria-live="polite">
                 {`${sceneRepeatState.totalLoops - sceneRepeatState.remainingLoops + 1}/${sceneRepeatState.totalLoops}`}
@@ -388,7 +388,6 @@ export function VideoStage({
             sourceTrack={sourceTrack}
             translationTrack={translationTrack}
             getCurrentTime={player.getCurrentTime}
-            isPlaying={isPlaying}
             viewMode={viewMode}
             slices={slices}
             revealedIndex={revealedIndex}

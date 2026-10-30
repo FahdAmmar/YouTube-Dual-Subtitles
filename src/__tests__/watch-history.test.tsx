@@ -32,13 +32,16 @@ afterEach(() => {
 })
 
 async function loadYoutubeVideo() {
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), { target: { value: VIDEO_URL } })
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), { target: { value: VIDEO_URL } })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
+  // The player becomes ready a moment after the screen mounts (the watch screen is loaded on demand), and the
+  // controls and shortcuts only exist once it is
+  await screen.findByRole('button', { name: 'تشغيل' })
 }
 
 function goBackToPickerScreen() {
-  fireEvent.click(screen.getByRole('button', { name: /CHANGE_VIDEO/ }))
+  fireEvent.click(screen.getByRole('button', { name: /تغيير الفيديو/ }))
 }
 
 /**
@@ -67,7 +70,7 @@ describe('watch history', () => {
 
     fireEvent.click(historyButton)
     // نقرة واحدة كافية — لا شاشة وسيطة ولا حاجة لإدخال الرابط يدوياً
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
     errorSpy.mockRestore()
@@ -77,11 +80,11 @@ describe('watch history', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     render(<App />)
-    fireEvent.click(screen.getByRole('radio', { name: '[ ملف من جهازي ]' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'ملف من جهازي' }))
     fireEvent.change(screen.getByLabelText('اختيار ملف فيديو محلي'), {
       target: { files: [makeVideoFile('lecture.mp4', 'video/mp4')] },
     })
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
     simulateVideoReady(document.querySelector('video') as HTMLVideoElement)
     goBackToPickerScreen()
 
@@ -90,8 +93,8 @@ describe('watch history', () => {
 
     // يبقى على شاشة الاختيار (لا تحميل تلقائي)، مع تبديل تلقائي لتبويب
     // الملف وتذكير واضح باسم الملف المطلوب
-    expect(screen.queryByText(/DISPLAY_MODE/)).not.toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: '[ ملف من جهازي ]' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryByText(/وضع العرض/)).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'ملف من جهازي' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByText('lecture.mp4', { selector: 'span.font-mono' })).toBeInTheDocument()
 
     expect(screen.queryByText('حدث خطأ غير متوقع')).not.toBeInTheDocument()
@@ -115,7 +118,7 @@ describe('watch history', () => {
 
     const historyButton = await findHistorySelectButton(/فيديو تجريبي للاختبار/)
     fireEvent.click(historyButton)
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
     // الترجمة لم تُرفع بعد في هذه الجلسة الجديدة، ولا محتوى محفوظاً
     // لاستعادتها تلقائياً — يجب أن يظهر تذكير باسمها بدل الرسالة العامة
     await waitFor(() => expect(screen.getByText('أعد رفع: ar.srt')).toBeInTheDocument())
@@ -144,7 +147,7 @@ describe('watch history', () => {
     goBackToPickerScreen()
     const historyButton = await findHistorySelectButton(/فيديو تجريبي للاختبار/)
     fireEvent.click(historyButton)
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     // الترجمة تُفعَّل تلقائياً بالكامل — بلا أي نقرة رفع إضافية، وبلا
     // ظهور رسالة التذكير إطلاقاً (لأن المحتوى استُعيد فعلياً، لا مجرد اسمه)
@@ -177,7 +180,7 @@ describe('watch history', () => {
 
     goBackToPickerScreen()
     fireEvent.click(await findHistorySelectButton(/فيديو تجريبي للاختبار/))
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     await waitFor(() => expect(screen.getByText('ar.ass')).toBeInTheDocument())
     await waitFor(() => expect(screen.getByText('مرحباً')).toBeInTheDocument())

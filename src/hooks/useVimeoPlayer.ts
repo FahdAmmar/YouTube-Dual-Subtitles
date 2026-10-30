@@ -40,7 +40,8 @@ export interface UseVimeoPlayerResult {
  * ولا يمكنها انتظار Promise في كل استدعاء
  */
 export function useVimeoPlayer(videoId: string | null, hash: string | null): UseVimeoPlayerResult {
-  const containerId = useRef(`vimeo-player-${Math.random().toString(36).slice(2)}`).current
+  // A lazy initial state runs once; `useRef(expression)` would build a random id on every render and drop it
+  const [containerId] = useState(() => `vimeo-player-${Math.random().toString(36).slice(2)}`)
   const playerRef = useRef<VimeoPlayerInstance | null>(null)
   const currentTimeRef = useRef(0)
   const isMutedRef = useRef(false)

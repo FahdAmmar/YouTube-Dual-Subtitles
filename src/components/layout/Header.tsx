@@ -1,6 +1,7 @@
-import { Home, Terminal } from 'lucide-react'
+import { Captions, Home } from 'lucide-react'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { IconButton } from '@/components/ui/IconButton'
+import { ConnectionBadge } from '@/components/system/ConnectionBadge'
 
 interface HeaderProps {
   /**
@@ -30,20 +31,21 @@ export function Header({ onGoHome }: HeaderProps) {
   return (
     <header className="glass-subtle relative z-30 flex h-12 shrink-0 items-center justify-between border-b border-border/60 px-3.5 sm:px-5">
       <div className="flex items-center gap-2.5">
-        <span className="relative flex h-7 w-7 items-center justify-center rounded-md bg-console text-white shadow-[0_0_18px_-2px_rgb(var(--color-console)/0.65)]">
-          <Terminal size={15} aria-hidden="true" />
+        <span className="relative flex h-7 w-7 items-center justify-center rounded-md bg-console text-white shadow-[0_0_18px_-2px_rgb(var(--rgb-console)/0.65)]">
+          <Captions size={15} aria-hidden="true" />
           {/* توهج ناعم خلف الشعار يربطه لونياً بالهالات في الخلفية */}
           <span
             aria-hidden="true"
             className="absolute inset-0 rounded-md ring-1 ring-inset ring-white/20"
           />
         </span>
-        <h1 className="font-mono text-[13px] font-medium tracking-wide text-text-primary">
+        <h1 className="font-mono text-xs font-medium text-text-primary">
           DUAL_SUB<span className="text-console">.</span>
         </h1>
       </div>
 
       <div className="flex items-center gap-1.5">
+        <ConnectionBadge />
         {onGoHome && (
           <IconButton
             onClick={onGoHome}

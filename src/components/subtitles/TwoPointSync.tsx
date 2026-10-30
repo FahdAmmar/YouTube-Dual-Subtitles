@@ -76,7 +76,7 @@ export function TwoPointSync({ cues, getCurrentTime, onSeek, onApply }: TwoPoint
         type="button"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((previous) => !previous)}
-        className="flex w-fit items-center gap-1.5 rounded-sm px-1 py-1 text-[11px] text-text-muted transition-colors hover:text-console focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+        className="flex w-fit items-center gap-1.5 rounded-sm px-1 py-1 text-xs text-text-muted transition-colors hover:text-console focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
       >
         <Ruler size={12} aria-hidden="true" />
         مزامنة بنقطتين (للترجمة التي تتأخر تدريجياً)
@@ -84,14 +84,14 @@ export function TwoPointSync({ cues, getCurrentTime, onSeek, onApply }: TwoPoint
       </button>
 
       {message?.kind === 'success' && (
-        <p role="status" className="text-[11px] text-success">
+        <p role="status" className="text-xs text-success">
           {message.text}
         </p>
       )}
 
       {isOpen && (
         <div className="flex flex-col gap-3 rounded-md border border-border bg-bg p-3">
-          <p className="text-[11px] leading-relaxed text-text-secondary">
+          <p className="text-xs leading-relaxed text-text-secondary">
             لكل نقطة: اختر رقم جملة، واذهب إليها في الفيديو، ثم أوقف الفيديو تماماً عند نطقها وثبّت الوقت.
           </p>
 
@@ -109,15 +109,15 @@ export function TwoPointSync({ cues, getCurrentTime, onSeek, onApply }: TwoPoint
                     value={anchor.cueNumber}
                     aria-label={`رقم الجملة للنقطة ${index + 1}`}
                     onChange={(event) => updateAnchor(index, { cueNumber: event.target.value, videoTime: null })}
-                    className="w-20 rounded-sm border border-border bg-surface-elevated px-2 py-1 font-mono text-xs text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+                    className="w-20 rounded-sm border border-border bg-surface-elevated px-2 py-1 font-mono text-xs text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
                     dir="ltr"
                   />
-                  <span className="font-mono text-[10px] text-text-muted" dir="ltr">
+                  <span className="font-mono text-xs text-text-muted" dir="ltr">
                     / {cues.length}
                   </span>
                 </div>
 
-                <p className="line-clamp-2 min-h-[2rem] text-xs text-text-secondary" dir="auto">
+                <p className="line-clamp-2 min-h-8 text-xs text-text-secondary" dir="auto">
                   {cue ? cue.text : 'رقم غير صالح'}
                 </p>
 
@@ -126,7 +126,7 @@ export function TwoPointSync({ cues, getCurrentTime, onSeek, onApply }: TwoPoint
                     type="button"
                     disabled={!cue}
                     onClick={() => cue && onSeek(cue.start)}
-                    className="rounded-sm border border-border px-2 py-1 text-[11px] text-text-secondary transition-colors hover:text-text-primary disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+                    className="rounded-sm border border-border px-2 py-1 text-xs text-text-secondary transition-colors hover:text-text-primary disabled:opacity-45 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
                   >
                     اذهب إلى الجملة
                   </button>
@@ -134,13 +134,13 @@ export function TwoPointSync({ cues, getCurrentTime, onSeek, onApply }: TwoPoint
                     type="button"
                     disabled={!cue}
                     onClick={() => updateAnchor(index, { videoTime: getCurrentTime() })}
-                    className="flex items-center gap-1 rounded-sm border border-console/60 px-2 py-1 text-[11px] text-console transition-colors hover:bg-console/10 disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+                    className="flex items-center gap-1 rounded-sm border border-console/60 px-2 py-1 text-xs text-console transition-colors hover:bg-console/10 disabled:opacity-45 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
                   >
                     <Crosshair size={11} aria-hidden="true" />
                     ثبّت وقت الفيديو الحالي
                   </button>
                   {anchor.videoTime !== null && (
-                    <span className="font-mono text-[11px] text-success" dir="ltr">
+                    <span className="font-mono text-xs text-success" dir="ltr">
                       {formatTime(anchor.videoTime)}
                     </span>
                   )}
@@ -150,7 +150,7 @@ export function TwoPointSync({ cues, getCurrentTime, onSeek, onApply }: TwoPoint
           })}
 
           {message?.kind === 'error' && (
-            <p role="alert" className="text-[11px] text-error">
+            <p role="alert" className="text-xs text-error">
               {message.text}
             </p>
           )}
@@ -159,7 +159,7 @@ export function TwoPointSync({ cues, getCurrentTime, onSeek, onApply }: TwoPoint
             type="button"
             disabled={!canApply}
             onClick={apply}
-            className="rounded-md bg-console px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-console-hover disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+            className="rounded-md bg-console px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-console-hover disabled:opacity-45 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
           >
             طبّق المزامنة
           </button>

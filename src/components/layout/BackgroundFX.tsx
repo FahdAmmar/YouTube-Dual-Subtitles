@@ -40,21 +40,21 @@ export const BackgroundFX = memo(function BackgroundFX({
       {/* طبقة الهالات المتحرّكة */}
       <div className="absolute inset-0">
         <span
-          className="absolute -top-1/4 left-[-10%] h-[60vh] w-[60vh] rounded-full opacity-60 blur-[100px] will-change-transform [animation:aurora_18s_ease-in-out_infinite] [transform:translateZ(0)]"
+          className="absolute -top-1/4 left-[-10%] h-[60vh] w-[60vh] rounded-full opacity-60 blur-[100px] will-change-transform animate-aurora transform-[translateZ(0)]"
           style={{
             background:
               'radial-gradient(circle at center, rgb(var(--aurora-a) / 0.55), transparent 65%)',
           }}
         />
         <span
-          className="absolute top-1/3 right-[-15%] h-[55vh] w-[55vh] rounded-full opacity-50 blur-[100px] will-change-transform [animation:aurora_22s_ease-in-out_infinite_-7s] [transform:translateZ(0)]"
+          className="absolute top-1/3 right-[-15%] h-[55vh] w-[55vh] rounded-full opacity-50 blur-[100px] will-change-transform animate-[aurora_22s_ease-in-out_infinite_-7s] transform-[translateZ(0)]"
           style={{
             background:
               'radial-gradient(circle at center, rgb(var(--aurora-b) / 0.5), transparent 65%)',
           }}
         />
         <span
-          className="absolute bottom-[-20%] left-1/4 h-[50vh] w-[50vh] rounded-full opacity-40 blur-[100px] will-change-transform [animation:aurora_26s_ease-in-out_infinite_-12s] [transform:translateZ(0)]"
+          className="absolute bottom-[-20%] left-1/4 h-[50vh] w-[50vh] rounded-full opacity-40 blur-[100px] will-change-transform animate-[aurora_26s_ease-in-out_infinite_-12s] transform-[translateZ(0)]"
           style={{
             background:
               'radial-gradient(circle at center, rgb(var(--aurora-c) / 0.45), transparent 65%)',
@@ -73,7 +73,7 @@ export const BackgroundFX = memo(function BackgroundFX({
         className="absolute inset-x-0 bottom-0 h-1/3"
         style={{
           background:
-            'linear-gradient(to top, rgb(var(--color-bg) / 0.9), transparent)',
+            'linear-gradient(to top, rgb(var(--rgb-bg) / 0.9), transparent)',
         }}
       />
     </div>

@@ -25,12 +25,12 @@ afterEach(() => {
 async function loadVideo() {
   render(<App />)
 
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: VIDEO_URL },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
 
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 }
 
 /**

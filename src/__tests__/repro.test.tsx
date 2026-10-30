@@ -26,13 +26,13 @@ describe('reproduce upload crash', () => {
 
     render(<App />)
 
-    const input = screen.getByLabelText('VIDEO_URL')
+    const input = screen.getByLabelText('رابط الفيديو')
     fireEvent.change(input, { target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' } })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
 
     // انتظار جاهزية المشغّل
     await waitFor(() => {
-      expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument()
+      expect(screen.getByText(/وضع العرض/)).toBeInTheDocument()
     })
 
     // العثور على مدخل رفع ملف المسار (المصدر) عبر اسمه الميسّر

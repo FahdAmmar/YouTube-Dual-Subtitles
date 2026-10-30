@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 import { VitePWA } from 'vite-plugin-pwa'
 import { buildCsp } from './src/lib/csp/buildCsp'
@@ -8,7 +9,7 @@ import { normalizeBase } from './src/lib/deploy/normalizeBase'
 import { absolutizeSiteUrls } from './src/lib/deploy/absolutizeSiteUrls'
 import { resolveSiteUrl } from './src/lib/deploy/resolveSiteUrl'
 
-// "/" for a domain root; set BASE_PATH=/repo-name/ for GitHub Pages project sites. Read once so every URL agrees.
+// "/" for a domain root; set BASE_PATH=/sub-path/ to serve the app below the domain root. Read once so every URL agrees.
 const base = normalizeBase(process.env.BASE_PATH)
 
 // SITE_URL, or on Vercel the address Vercel provides for the build (see resolveSiteUrl)
@@ -47,12 +48,15 @@ export default defineConfig({
   base,
   plugins: [
     react(),
+    tailwindcss(),
     siteMetadata(),
     contentSecurityPolicy(),
     VitePWA({
-      // تحديث تلقائي صامت للنسخة الجديدة في الخلفية — مشروع بحجمنا لا
-      // يحتاج واجهة "نسخة جديدة متوفرة، أعد التحميل؟" إضافية
-      registerType: 'autoUpdate',
+      // A new version waits until the learner accepts it (PwaUpdatePrompt). Switching silently would swap the
+      // files under a page that is still open, and its lazily loaded panels could then request chunks that no
+      // longer exist. Registration is done by that component (useRegisterSW), so no script is injected.
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'مترجم يوتيوب المزدوج',

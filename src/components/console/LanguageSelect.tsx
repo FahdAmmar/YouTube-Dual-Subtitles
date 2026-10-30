@@ -15,7 +15,7 @@ interface LanguageSelectProps {
 const AUTO_SENTINEL = 'auto'
 
 const SELECT_CLASSES =
-  'h-7 min-w-0 max-w-[10.5rem] flex-1 rounded-sm border border-border bg-surface px-1.5 font-mono text-[11px] text-text-secondary transition-colors hover:border-console focus:border-console focus:outline-none focus-visible:ring-2 focus-visible:ring-console'
+  'h-7 min-w-0 max-w-42 flex-1 rounded-sm border border-border bg-surface px-1.5 font-mono text-xs text-text-secondary transition-colors hover:border-console focus:border-console focus:outline-hidden focus-visible:ring-2 focus-visible:ring-console'
 
 /**
  * قائمة اختيار لغة مسار ترجمة واحد، مصغّرة لتُوضَع داخل صف رفع الملف في

@@ -3,6 +3,7 @@ import { ThemeProvider } from '@/context/ThemeContext'
 import { SubtitleSettingsProvider } from '@/context/SubtitleSettingsContext'
 import { AppShell } from '@/components/layout/AppShell'
 import { ErrorBoundary } from '@/components/system/ErrorBoundary'
+import { PwaUpdatePrompt } from '@/components/system/PwaUpdatePrompt'
 
 /** Loaded after the first paint; `strict` makes any accidental full `motion.*` import throw instead of re-bundling it */
 const loadMotionFeatures = () => import('@/lib/motion/domAnimationFeatures').then((module) => module.default)
@@ -22,6 +23,7 @@ export default function App() {
           <ThemeProvider>
             <SubtitleSettingsProvider>
               <AppShell />
+              <PwaUpdatePrompt />
             </SubtitleSettingsProvider>
           </ThemeProvider>
         </MotionConfig>

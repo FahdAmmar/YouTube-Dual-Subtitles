@@ -1,11 +1,16 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
       "Bash(npm run dev)",
-      "Bash(npm run build)",
-      "Bash(npm test)",
+      "Bash(npm run typecheck)",
       "Bash(npm run lint)",
-      "Bash(npm run test:watch)"
+      "Bash(npm test)",
+      "Bash(npm run test:watch)",
+      "Bash(npm run build)",
+      "Bash(npm run e2e)",
+      "Bash(npm run e2e:screens)",
+      "Bash(npx vitest run *)"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -20,7 +25,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/validate-bash.sh"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/validate-bash.mjs\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-files.mjs\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-md-length.mjs\""
           }
         ]
       }

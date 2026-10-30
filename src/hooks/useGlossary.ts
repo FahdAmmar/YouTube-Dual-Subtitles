@@ -4,6 +4,7 @@ import {
   saveGlossaryEntry,
   deleteGlossaryEntry,
   makeGlossaryEntryId,
+  updateGlossaryNote,
 } from '@/lib/utils/glossaryStore'
 import { applyGrade } from '@/lib/utils/spacedRepetition'
 import { addReview } from '@/lib/utils/reviewStatsStore'
@@ -14,6 +15,10 @@ export interface UseGlossaryResult {
   /** يحفظ كلمة جديدة، أو يستبدل مُدخلاً سابقاً لنفس الكلمة/اللغة إن وُجد (بلا تكرار) */
   addEntry: (entry: Omit<GlossaryEntry, 'id' | 'addedAt'>) => void
   removeEntry: (id: string) => void
+  /** Puts a removed word back exactly as it was (id, date added and review progress included) — the undo of removeEntry */
+  restoreEntry: (entry: GlossaryEntry) => void
+  /** Sets the learner's note on a saved word; blank text clears it */
+  setNote: (id: string, note: string) => void
   /** Records a review answer and schedules the word's next review */
   gradeEntry: (id: string, grade: ReviewGrade) => void
   /** هل هذه الكلمة محفوظة أصلاً؟ يُستخدم لتبديل حالة زر "أضف/أُضيفت" في بطاقة التعريف */
@@ -48,6 +53,16 @@ export function useGlossary(): UseGlossaryResult {
     setEntries(getGlossaryEntries())
   }
 
+  function restoreEntry(entry: GlossaryEntry) {
+    saveGlossaryEntry(entry)
+    setEntries(getGlossaryEntries())
+  }
+
+  function setNote(id: string, note: string) {
+    updateGlossaryNote(id, note)
+    setEntries(getGlossaryEntries())
+  }
+
   function gradeEntry(id: string, grade: ReviewGrade) {
     const entry = entries.find((candidate) => candidate.id === id)
     if (!entry) return
@@ -65,5 +80,5 @@ export function useGlossary(): UseGlossaryResult {
     setEntries(getGlossaryEntries())
   }
 
-  return { entries, addEntry, removeEntry, gradeEntry, hasEntry, refresh }
+  return { entries, addEntry, removeEntry, restoreEntry, setNote, gradeEntry, hasEntry, refresh }
 }

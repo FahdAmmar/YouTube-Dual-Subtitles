@@ -29,7 +29,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               'w-full appearance-none rounded-md border border-border bg-surface-elevated',
               'py-2.5 ps-3 pe-9 text-[15px] text-text-primary',
               'transition-colors duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console',
               className,
             )}
             {...props}
@@ -38,7 +38,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </select>
           <ChevronDown
             size={16}
-            className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-text-muted"
+            className="pointer-events-none absolute inset-e-3 top-1/2 -translate-y-1/2 text-text-muted"
             aria-hidden="true"
           />
         </div>

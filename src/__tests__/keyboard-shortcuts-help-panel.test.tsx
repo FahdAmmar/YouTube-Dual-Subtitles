@@ -10,11 +10,11 @@ beforeEach(() => {
 
 async function loadVideo() {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 }
 
 describe('keyboard shortcuts help panel', () => {
@@ -22,8 +22,10 @@ describe('keyboard shortcuts help panel', () => {
     const user = userEvent.setup()
     await loadVideo()
 
-    const openButton = screen.getByLabelText('عرض اختصارات لوحة المفاتيح')
-    await user.click(openButton)
+    // The shortcuts entry lives in the console's "more options" menu
+    const menuTrigger = screen.getByRole('button', { name: 'المزيد من الخيارات' })
+    await user.click(menuTrigger)
+    await user.click(screen.getByRole('menuitem', { name: 'عرض اختصارات لوحة المفاتيح' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'اختصارات لوحة المفاتيح' })
     await waitFor(() => expect(dialog).toHaveFocus())
@@ -36,7 +38,7 @@ describe('keyboard shortcuts help panel', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'اختصارات لوحة المفاتيح' })).not.toBeInTheDocument()
     })
-    expect(openButton).toHaveFocus()
+    expect(menuTrigger).toHaveFocus()
   })
 
   it('opens via the "?" shortcut and closes on Escape', async () => {

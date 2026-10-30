@@ -25,4 +25,6 @@ export interface SubtitleDisplaySettings {
   subtitleWidthPercent: number
   /** تباعد الأسطر داخل صندوق الترجمة (مضاعِف line-height، النطاق: 1.1–2) */
   subtitleLineHeight: number
+  /** When on, the interface accent color follows the foreign-language subtitle color; off keeps the fixed brand accent */
+  adaptiveAccent: boolean
 }

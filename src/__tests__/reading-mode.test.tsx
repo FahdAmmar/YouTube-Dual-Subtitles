@@ -44,11 +44,11 @@ Second sentence here
 
 async function openReadingMode({ withSubtitles = true, atTime }: { withSubtitles?: boolean; atTime?: number } = {}) {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
   if (withSubtitles) {
     fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), { target: { files: [file('ar.srt', SOURCE_SRT)] } })
@@ -122,11 +122,18 @@ describe('reading mode', () => {
     expect(activePlayer!.getCurrentTime()).toBe(0)
   })
 
-  it('seeks to a line when its card is clicked', async () => {
+  it('seeks to a line when the text of its card is clicked', async () => {
     const view = await openReadingMode()
     const secondCard = view.querySelectorAll('article')[1]!
-    // The card's button is named by the sentence it contains (the label must include the visible text, WCAG 2.5.3)
-    fireEvent.click(within(secondCard as HTMLElement).getByRole('button', { name: /جملة ثانية/ }))
+    // The text area is a click target for the mouse only; it holds the word buttons, so it is not a button itself
+    fireEvent.click(secondCard.querySelector('[role="presentation"]')!)
+    expect(activePlayer!.getCurrentTime()).toBe(6)
+  })
+
+  it('seeks to a line with the keyboard-reachable play button of its card', async () => {
+    const view = await openReadingMode()
+    const secondCard = view.querySelectorAll('article')[1]!
+    fireEvent.click(within(secondCard as HTMLElement).getByRole('button', { name: 'تشغيل من هذا المقطع' }))
     expect(activePlayer!.getCurrentTime()).toBe(6)
   })
 
@@ -214,7 +221,7 @@ describe('reading mode', () => {
   it('keeps the original line number when a search leaves a later line', async () => {
     const view = await openReadingMode()
     fireEvent.change(within(view).getByRole('searchbox', { name: 'بحث في النص' }), { target: { value: 'second' } })
-    fireEvent.click(within(view.querySelector('article') as HTMLElement).getByRole('button', { name: /جملة ثانية/ }))
+    fireEvent.click(within(view.querySelector('article') as HTMLElement).getByRole('button', { name: 'تشغيل من هذا المقطع' }))
     expect(activePlayer!.getCurrentTime()).toBe(6)
   })
 })
@@ -223,18 +230,25 @@ describe('reading mode scrolling', () => {
   // jsdom has no layout, so this guards the call pattern behind a real bug: a "back to top" effect ran
   // on first render, right after the centring, and left the list scrolled to the top.
   // The virtualizer makes one scrollTo({ top: 0 }) of its own on mount, so a second one means the bug is back.
+  // Only scrolls of elements inside the reading view count: the transcript list of the console stays mounted
+  // (hidden) behind it and has a virtualizer of its own with the same mount-time scroll.
   it('only returns to the top when the search changes, never when the view opens', async () => {
     const scrollTo = vi.fn()
     const original = Element.prototype.scrollTo
     Element.prototype.scrollTo = scrollTo as never
-    const topResets = () => scrollTo.mock.calls.filter(([arg]) => JSON.stringify(arg) === '{"top":0}').length
+    let view: HTMLElement | undefined
+    const topResets = () =>
+      scrollTo.mock.calls.filter(
+        ([arg], index) => JSON.stringify(arg) === '{"top":0}' && view?.contains(scrollTo.mock.contexts[index] as Node),
+      ).length
     try {
-      const view = await openReadingMode({ atTime: 7 })
-      await waitFor(() => expect(view.querySelector('article[data-status="active"]')).not.toBeNull())
+      const opened = await openReadingMode({ atTime: 7 })
+      view = opened
+      await waitFor(() => expect(opened.querySelector('article[data-status="active"]')).not.toBeNull())
       expect(topResets()).toBeLessThanOrEqual(1)
       const afterOpening = topResets()
 
-      fireEvent.change(within(view).getByRole('searchbox', { name: 'بحث في النص' }), { target: { value: 'second' } })
+      fireEvent.change(within(opened).getByRole('searchbox', { name: 'بحث في النص' }), { target: { value: 'second' } })
       expect(topResets()).toBe(afterOpening + 1)
     } finally {
       Element.prototype.scrollTo = original
@@ -252,11 +266,11 @@ Welcome<00:00:07.000><c> to</c><00:00:08.000><c> today</c>
 
   it('follows the timings in the file instead of estimating', async () => {
     render(<App />)
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
     fireEvent.change(screen.getByLabelText('رفع ملف ترجمة الإنجليزية'), {
       target: { files: [file('en.vtt', TIMED_VTT)] },
     })

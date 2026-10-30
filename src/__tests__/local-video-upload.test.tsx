@@ -24,13 +24,13 @@ describe('local video file upload', () => {
     render(<App />)
 
     // التبديل إلى تبويب "ملف من جهازي"
-    fireEvent.click(screen.getByRole('radio', { name: '[ ملف من جهازي ]' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'ملف من جهازي' }))
 
     const fileInput = screen.getByLabelText('اختيار ملف فيديو محلي') as HTMLInputElement
     fireEvent.change(fileInput, { target: { files: [makeVideoFile('clip.mp4', 'video/mp4')] } })
 
     // ينتقل التطبيق مباشرة لمرحلة المشاهدة (لا شاشة انتظار وسيطة)
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     const video = document.querySelector('video') as HTMLVideoElement
     expect(video).toBeInTheDocument()
@@ -62,14 +62,14 @@ describe('local video file upload', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     render(<App />)
-    fireEvent.click(screen.getByRole('radio', { name: '[ ملف من جهازي ]' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'ملف من جهازي' }))
 
     const fileInput = screen.getByLabelText('اختيار ملف فيديو محلي') as HTMLInputElement
     fireEvent.change(fileInput, { target: { files: [makeVideoFile('notes.txt', 'text/plain')] } })
 
     expect(await screen.findByRole('alert')).toHaveTextContent('صيغة الملف غير مدعومة')
     // يبقى في شاشة الاختيار — لم ينتقل لمرحلة المشاهدة
-    expect(screen.queryByText(/DISPLAY_MODE/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/وضع العرض/)).not.toBeInTheDocument()
 
     errorSpy.mockRestore()
   })
@@ -79,17 +79,17 @@ describe('local video file upload', () => {
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL')
 
     render(<App />)
-    fireEvent.click(screen.getByRole('radio', { name: '[ ملف من جهازي ]' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'ملف من جهازي' }))
     fireEvent.change(screen.getByLabelText('اختيار ملف فيديو محلي'), {
       target: { files: [makeVideoFile('clip.mp4', 'video/mp4')] },
     })
 
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
     const video = document.querySelector('video') as HTMLVideoElement
     const objectUrl = video.src
     simulateVideoReady(video)
 
-    const backButton = await screen.findByRole('button', { name: /CHANGE_VIDEO/ })
+    const backButton = await screen.findByRole('button', { name: /تغيير الفيديو/ })
     fireEvent.click(backButton)
 
     expect(revokeSpy).toHaveBeenCalledWith(objectUrl)

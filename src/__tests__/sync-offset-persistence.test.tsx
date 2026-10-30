@@ -20,9 +20,9 @@ afterEach(() => {
 
 async function loadVideoAndUploadSourceSubtitle(fileName: string) {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), { target: { value: VIDEO_URL } })
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), { target: { value: VIDEO_URL } })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
   await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), {
     target: { files: [makeFile(fileName, SOURCE_SRT)] },
@@ -75,9 +75,9 @@ describe('sync offset persistence', () => {
     const BILINGUAL_SRT = `1\n00:00:01,000 --> 00:00:04,000\nمرحباً\nHello\n`
 
     render(<App />)
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), { target: { value: VIDEO_URL } })
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), { target: { value: VIDEO_URL } })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
     // ملف ثنائي واحد يُغذّي المسارين معاً — بنفس اسم الملف تماماً لكليهما
     await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة ثنائي اللغة'), {
@@ -96,9 +96,9 @@ describe('sync offset persistence', () => {
 
     cleanup()
     render(<App />)
-    fireEvent.change(screen.getByLabelText('VIDEO_URL'), { target: { value: VIDEO_URL } })
+    fireEvent.change(screen.getByLabelText('رابط الفيديو'), { target: { value: VIDEO_URL } })
     fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-    await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
     await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة ثنائي اللغة'), {
       target: { files: [makeFile('dual.srt', BILINGUAL_SRT)] },
     })

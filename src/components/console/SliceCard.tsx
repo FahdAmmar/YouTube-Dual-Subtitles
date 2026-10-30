@@ -1,4 +1,5 @@
-import { forwardRef, memo, useState, type MouseEvent } from 'react'
+import { memo, useState, type MouseEvent } from 'react'
+import { useClockSelector } from '@/hooks/usePlayerTime'
 import { Star, Volume2 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { getVisibleTracks } from '@/lib/subtitles/visibleTracks'
@@ -23,11 +24,35 @@ interface SliceCardProps {
   /** رمز لغة المسار المرجعي — يُستخدم للنطق فقط عند غياب نص الترجمة الأجنبية في هذا المقطع */
   sourceLang?: string
   /**
-   * نسبة التقدّم (0–100) داخل المقطع النشط حالياً فقط — غير محدَّدة لبقية
-   * البطاقات دوماً. تغذّي مؤشر الإبراز الحي أسفل البطاقة (انظر التعليق
-   * أسفل مكوّن التصدير) دون التأثير على أي بطاقة أخرى
+   * قارئ الوقت الحالي للمشغّل. تستخدمه البطاقة النشطة وحدها لرسم مؤشر التقدّم الحي أسفلها بمكوّن فرعي صغير
+   * يشترك في الساعة المشتركة بنفسه، فلا تُعاد رسم القائمة ولا بقية البطاقات عند كل نبضة وقت
    */
-  activeProgressPercent?: number
+  getCurrentTime?: () => number
+}
+
+/** Progress (0–100, one decimal) of the playing line, so the bar re-renders only when it visibly moves */
+function progressPercent(time: number, start: number, end: number): number {
+  const percent = ((time - start) / Math.max(end - start, 0.001)) * 100
+  return Math.round(Math.min(100, Math.max(0, percent)) * 10) / 10
+}
+
+function ActiveProgress({ start, end, getCurrentTime }: { start: number; end: number; getCurrentTime: () => number }) {
+  const percent = useClockSelector(getCurrentTime, (time) => progressPercent(time, start, end))
+  return (
+    <div
+      className="h-0.5 w-full overflow-hidden rounded-full bg-console/15"
+      role="progressbar"
+      aria-label="تقدّم قراءة المقطع الحالي"
+      aria-valuenow={Math.round(percent)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
+      <div
+        className="h-full rounded-full bg-console transition-[width] duration-150 ease-linear"
+        style={{ width: `${percent}%` }}
+      />
+    </div>
+  )
 }
 
 /** تنسيق الثواني إلى "دقائق:ثواني" لعرضها كرقم تسلسلي زمني صغير بجانب كل مقطع */
@@ -40,32 +65,27 @@ function formatTimestamp(seconds: number): string {
 /**
  * بطاقة مقطع واحد داخل قائمة النص المتزامن (Transcript)
  *
- * تستخدم forwardRef لأن القائمة الأم (TranscriptList) تحتاج مرجعاً مباشراً
- * للبطاقة النشطة حالياً لتنفيذ التمرير التلقائي (scrollIntoView) إليها —
- * هذا ما يحقق متطلب "قراءة النص السابق والتالي" بوضوح: الشريط النشط يبقى
- * مرئياً دوماً وسط سياق المقاطع المجاورة له بدل الاختفاء خارج نطاق الرؤية
+ * التمرير التلقائي إلى البطاقة النشطة تتولاه القائمة الأم (TranscriptList) عبر virtualizer
+ * بالفهرس، فلا تحتاج البطاقة مرجعاً (ref)، وقد لا تكون البطاقة النشطة مرسومة أصلاً
  *
  * التراتبية البصرية (مطابقة لـ SubtitleOverlay فوق الفيديو): نص الترجمة
  * الأجنبية هو المحتوى الأساسي المُتابَع أثناء القراءة، فيُعرض بخط عريض
  * وحجم أكبر؛ بينما النص العربي مرجعي مساند بحجم أصغر — إضافة إلى أن هذا
  * يمنح "قسم النص" ككل حضوراً أوضح وأكبر مقارنة بالتصميم السابق
  */
-function SliceCardImpl(
-  {
-    slice,
-    index,
-    isActive,
-    viewMode,
-    isTranslationRevealed = false,
-    isBookmarked = false,
-    onToggleBookmark,
-    onSeek,
-    translationLang,
-    sourceLang,
-    activeProgressPercent,
-  }: SliceCardProps,
-  ref: React.ForwardedRef<HTMLDivElement>,
-) {
+function SliceCardImpl({
+  slice,
+  index,
+  isActive,
+  viewMode,
+  isTranslationRevealed = false,
+  isBookmarked = false,
+  onToggleBookmark,
+  onSeek,
+  translationLang,
+  sourceLang,
+  getCurrentTime,
+}: SliceCardProps) {
   const visibleTracks = getVisibleTracks(viewMode, isTranslationRevealed)
   const showSource = visibleTracks.source && slice.sourceText
   const showTranslation = visibleTracks.translation && slice.translationText
@@ -93,7 +113,7 @@ function SliceCardImpl(
   }
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
         type="button"
         onClick={() => onSeek(slice.start)}
@@ -108,13 +128,13 @@ function SliceCardImpl(
         <div className="flex items-center gap-2 pe-14">
           <span
             className={cn(
-              'font-mono text-[10px] tracking-wider',
+              'font-mono text-xs',
               isActive ? 'text-console' : 'text-text-muted',
             )}
           >
-            SEG_{String(index + 1).padStart(3, '0')}
+            #{index + 1}
           </span>
-          <span className="font-mono text-[10px] text-text-muted">{formatTimestamp(slice.start)}</span>
+          <span className="font-mono text-xs text-text-muted">{formatTimestamp(slice.start)}</span>
         </div>
 
         {/* النص العربي المرجعي — أصغر وأخف وزناً، ليتوازن بصرياً مع النص الأجنبي الأساسي أدناه */}
@@ -122,7 +142,7 @@ function SliceCardImpl(
           <p
             dir="auto"
             className={cn(
-              'text-[13px] italic leading-snug',
+              'text-[13px] leading-snug',
               isActive ? 'text-text-secondary' : 'text-text-muted',
             )}
           >
@@ -131,7 +151,7 @@ function SliceCardImpl(
         )}
 
         {isTranslationHidden && (
-          <p className="font-mono text-[11px] tracking-wide text-text-muted">
+          <p className="text-xs text-text-muted">
             ••• الترجمة مخفية
           </p>
         )}
@@ -168,20 +188,8 @@ function SliceCardImpl(
         {/* مؤشر الإبراز الحي: يعرض تقدّم القراءة داخل المقطع النشط لحظياً،
             فيُترجم خاصية "الإبراز" من مجرد تلوين ثابت إلى مؤشر تفاعلي دقيق
             يعكس اللحظة الفعلية ضمن نافذة المقطع الزمنية بأكملها */}
-        {isActive && typeof activeProgressPercent === 'number' && (
-          <div
-            className="h-0.5 w-full overflow-hidden rounded-full bg-console/15"
-            role="progressbar"
-            aria-label="تقدّم قراءة المقطع الحالي"
-            aria-valuenow={Math.round(activeProgressPercent)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <div
-              className="h-full rounded-full bg-console transition-[width] duration-150 ease-linear"
-              style={{ width: `${activeProgressPercent}%` }}
-            />
-          </div>
+        {isActive && getCurrentTime && (
+          <ActiveProgress start={slice.start} end={slice.end} getCurrentTime={getCurrentTime} />
         )}
       </button>
 
@@ -197,7 +205,7 @@ function SliceCardImpl(
           aria-pressed={isBookmarked}
           aria-label={isBookmarked ? 'إزالة هذا المقطع من المفضلة' : 'إضافة هذا المقطع إلى المفضلة'}
           className={cn(
-            'absolute end-9 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-opacity duration-150 hover:opacity-100 hover:text-console focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console',
+            'absolute inset-e-9 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-opacity duration-150 hover:opacity-100 hover:text-console focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console',
             isBookmarked ? 'text-console opacity-100' : 'text-text-muted opacity-70',
           )}
         >
@@ -210,7 +218,7 @@ function SliceCardImpl(
           type="button"
           onClick={() => speakText(speakableText, speakableLang)}
           aria-label="نطق نص هذا المقطع بصوت الجهاز"
-          className="absolute end-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-text-muted opacity-70 transition-opacity duration-150 hover:opacity-100 hover:text-console focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="absolute inset-e-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-text-muted opacity-70 transition-opacity duration-150 hover:opacity-100 hover:text-console focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
           <Volume2 size={12} aria-hidden="true" />
         </button>
@@ -244,6 +252,6 @@ function SliceCardImpl(
  * إعادة رسم البطاقات غير المتأثرة تلقائياً (المقارنة الافتراضية الضحلة
  * كافية لأن slice/onSeek يحافظان على نفس المرجع بين نبضات الوقت المتتالية)
  */
-export const SliceCard = memo(forwardRef(SliceCardImpl))
+export const SliceCard = memo(SliceCardImpl)
 
 SliceCard.displayName = 'SliceCard'

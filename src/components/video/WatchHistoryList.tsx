@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Clock, FileVideo, Captions, X } from 'lucide-react'
 import { useWatchHistoryEntries } from '@/hooks/useWatchHistory'
 import { formatRelativeTime } from '@/lib/utils/formatRelativeTime'
@@ -17,6 +18,9 @@ interface WatchHistoryListProps {
   onSelectLocal: (fileName: string) => void
 }
 
+/** The confirm step times out so a stray tap on "clear all" is never left armed */
+const CLEAR_CONFIRM_TIMEOUT_MS = 4000
+
 /**
  * سجل مشاهدات بسيط يعمل بلا أي خادم — كل بياناته من useWatchHistory
  * (localStorage)، ولا يُعرَض إطلاقاً إن كان السجل فارغاً (لا حاجة لحالة
@@ -24,6 +28,18 @@ interface WatchHistoryListProps {
  */
 export function WatchHistoryList({ onSelectYoutube, onSelectVimeo, onSelectLocal }: WatchHistoryListProps) {
   const { entries, removeEntry, clearHistory } = useWatchHistoryEntries()
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false)
+
+  useEffect(() => {
+    if (!isConfirmingClear) return
+    const timeoutId = window.setTimeout(() => setIsConfirmingClear(false), CLEAR_CONFIRM_TIMEOUT_MS)
+    return () => window.clearTimeout(timeoutId)
+  }, [isConfirmingClear])
+
+  function handleConfirmClear() {
+    clearHistory()
+    setIsConfirmingClear(false)
+  }
 
   if (entries.length === 0) return null
 
@@ -44,17 +60,36 @@ export function WatchHistoryList({ onSelectYoutube, onSelectVimeo, onSelectLocal
   return (
     <div className="mb-4 flex w-full flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-wide text-text-muted">
+        <span className="flex items-center gap-1.5 text-xs text-text-muted">
           <Clock size={12} aria-hidden="true" />
           متابعة المشاهدة
         </span>
-        <button
-          type="button"
-          onClick={clearHistory}
-          className="rounded-sm font-mono text-[10px] text-text-muted transition-colors hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
-        >
-          مسح الكل
-        </button>
+        {isConfirmingClear ? (
+          <span role="group" aria-label="تأكيد مسح السجل" className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleConfirmClear}
+              className="touch-hit rounded-sm px-2 py-1 text-xs font-medium text-error transition-colors hover:bg-error/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
+            >
+              تأكيد مسح الكل
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsConfirmingClear(false)}
+              className="touch-hit rounded-sm px-2 py-1 text-xs text-text-muted transition-colors hover:text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
+            >
+              إلغاء
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsConfirmingClear(true)}
+            className="touch-hit rounded-sm px-2 py-1 text-xs text-text-muted transition-colors hover:text-error focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
+          >
+            مسح الكل
+          </button>
+        )}
       </div>
 
       <ul className="flex flex-col gap-1.5">
@@ -69,7 +104,7 @@ export function WatchHistoryList({ onSelectYoutube, onSelectVimeo, onSelectLocal
               <button
                 type="button"
                 onClick={() => handleSelect(entry.source)}
-                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-sm p-0.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-sm p-0.5 text-start focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
               >
                 {entry.thumbnailUrl ? (
                   <img
@@ -86,7 +121,7 @@ export function WatchHistoryList({ onSelectYoutube, onSelectVimeo, onSelectLocal
 
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="truncate text-[13px] font-medium text-text-primary">{entry.displayName}</span>
-                  <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                  <span className="flex items-center gap-1.5 text-xs text-text-muted">
                     <span>{formatRelativeTime(entry.lastWatchedAt)}</span>
                     {hasRememberedSubtitles && <Captions size={11} aria-hidden="true" />}
                   </span>

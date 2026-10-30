@@ -19,6 +19,8 @@ export interface GlossaryEntry {
   addedAt: number
   /** Where the word was met, so a review can show it in its real sentence. Absent for older entries. */
   context?: GlossaryContext
+  /** The learner's own note about the word. Absent when there is none. */
+  note?: string
   /** Spaced-repetition state. Absent means the word was never reviewed. */
   review?: GlossaryReview
 }

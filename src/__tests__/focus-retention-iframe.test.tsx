@@ -9,11 +9,14 @@ beforeEach(() => {
 
 async function renderWithVideoLoaded() {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
+  // The player becomes ready a moment after the screen mounts (the watch screen is loaded on demand), and the
+  // controls and shortcuts only exist once it is
+  await screen.findByRole('button', { name: 'تشغيل' })
 }
 
 describe('keyboard shortcuts keep responding after the YouTube iframe steals focus', () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { STORAGE_KEYS } from '@/constants/theme.constants'
 import { getVideoKey } from '@/lib/utils/videoKey'
 import { getSubtitleContent, deleteSubtitleContentForVideo, type SubtitleTrackId } from '@/lib/utils/subtitleContentStore'
@@ -157,10 +157,12 @@ export function useWatchHistoryEntries(): {
  * الملف رُفع قبل إضافة هذه الميزة)، لا يفعل شيئاً بصمت — يبقى تذكير
  * SourceFileRow النصي (اسم الملف فقط) كخطة بديلة واضحة للمستخدم.
  *
- * التبعيات الكاملة (بما فيها اسم الملف الحالي لكل مسار) آمنة تماماً هنا:
- * فور نجاح الاستعادة يصبح اسم الملف الحالي معروفاً، فيعيد هذا الأثر
- * التشغيل تلقائياً لكن دالة restore الداخلية تتجاهل الاستعادة فوراً طالما
- * يوجد اسم ملف حالي بالفعل (currentFileName) — لا حلقة تكرار ولا استعادة مزدوجة
+ * فور نجاح الاستعادة يصبح اسم الملف الحالي معروفاً، فيعيد هذا الأثر التشغيل.
+ * قراءة IndexedDB غير متزامنة، فلا يكفي فحص اسم الملف لحظة بدء الأثر وحده:
+ * (1) تُسجَّل كل محاولة استعادة لتُنفَّذ مرة واحدة فقط لكل ملف — وإلا بدأ
+ *     المسار المنتظر استعادة ثانية تُصفّر الإزاحة التي أعادتها الأولى للتو؛
+ * (2) يُعاد فحص اسم الملف الحالي بعد انتهاء القراءة، فلا تستبدل الاستعادة
+ *     ملفاً رفعه المستخدم في الأثناء
  */
 export function useAutoRestoreSubtitles(
   videoSource: VideoSource | null,
@@ -170,6 +172,22 @@ export function useAutoRestoreSubtitles(
   uploadSourceFile: (file: File) => Promise<boolean>,
   uploadTranslationFile: (file: File) => Promise<boolean>,
 ): void {
+  // The IndexedDB read finishes some time after the effect below started, and the file names it was given are from
+  // that moment. These refs hold the names as they are now, so a restore that arrives after the person (or the other
+  // restore) has already loaded a file into the track does not replace it. They are refreshed in an effect declared
+  // first, which React runs before the restore effect
+  const currentFileNamesRef = useRef<Record<SubtitleTrackId, string | null>>({
+    source: sourceFileName,
+    translation: translationFileName,
+  })
+  useEffect(() => {
+    currentFileNamesRef.current = { source: sourceFileName, translation: translationFileName }
+  }, [sourceFileName, translationFileName])
+  // Each stored file is restored at most once. The effect re-runs whenever a track gets its file, and without this
+  // the track that is still waiting would be restored a second time, which also resets the offset the first restore
+  // had just brought back
+  const attemptedRestoresRef = useRef<Set<string>>(new Set())
+
   useEffect(() => {
     if (!videoSource || !historyEntry) return
     const videoKey = getVideoKey(videoSource)
@@ -181,8 +199,13 @@ export function useAutoRestoreSubtitles(
       uploadFile: (file: File) => Promise<boolean>,
     ) {
       if (!rememberedFileName || currentFileName) return
+      const attemptKey = `${videoKey}::${trackId}::${rememberedFileName}`
+      if (attemptedRestoresRef.current.has(attemptKey)) return
+      attemptedRestoresRef.current.add(attemptKey)
+
       const content = await getSubtitleContent(videoKey, trackId, rememberedFileName)
       if (!content) return
+      if (currentFileNamesRef.current[trackId]) return
       await uploadFile(new File([content], rememberedFileName))
     }
 

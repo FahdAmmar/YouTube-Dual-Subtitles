@@ -26,7 +26,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
           type="range"
           className={cn(
             'h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border accent-console',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
             className,
           )}
           {...props}

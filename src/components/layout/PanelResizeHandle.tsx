@@ -46,7 +46,7 @@ export function PanelResizeHandle({
       onKeyDown={onKeyDown}
       onDoubleClick={onDoubleClick}
       className={cn(
-        'group relative hidden w-2 shrink-0 cursor-col-resize touch-none select-none items-stretch justify-center outline-none lg:flex',
+        'group relative hidden w-2 shrink-0 cursor-col-resize touch-none select-none items-stretch justify-center outline-hidden lg:flex',
         className,
       )}
     >

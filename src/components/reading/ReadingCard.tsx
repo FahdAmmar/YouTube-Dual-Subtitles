@@ -1,6 +1,9 @@
 import { memo, useMemo, useState } from 'react'
-import { Copy, Star, Volume2 } from 'lucide-react'
+import { Copy, Play, Star, Volume2 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { buttonKeyHandlers } from '@/lib/utils/buttonKeys'
+import { useSavedWords } from '@/context/SavedWordsContext'
+import { SAVED_WORD_CLASSES } from '@/components/subtitles/ClickableWords'
 import { buildWordTimeline, getActiveWordIndex, getActiveWordIndexAt, getSpeechProgress } from '@/lib/subtitles/wordTiming'
 import { getVisibleTracks } from '@/lib/subtitles/visibleTracks'
 import { stripSurroundingPunctuation } from '@/lib/utils/wordTokenize'
@@ -89,28 +92,39 @@ interface WordsProps {
 function Words({ text, clock, timings, highlightColor, variant, onWordClick }: WordsProps) {
   const timeline = useMemo(() => buildWordTimeline(text), [text])
   const activeIndex = getActiveIndex(timeline, timings, clock)
+  const { isSaved } = useSavedWords()
 
   return (
     <>
       {timeline.tokens.map((token, position) => {
         if (token.wordIndex === -1) return token.text
         const isCurrent = token.wordIndex === activeIndex
+        // Only lines that can be looked up are marked: those are the ones the learner saves words from
+        const saved = onWordClick !== undefined && isSaved(token.text)
+        const lookup = onWordClick ? () => onWordClick(token.text) : undefined
         return (
           <span
             key={position}
+            // A word that opens a meaning is a button for keyboard and screen-reader users too. It stays a span
+            // (not a <button>) so bidirectional text keeps flowing as one run
+            {...(lookup ? { role: 'button', tabIndex: 0, ...buttonKeyHandlers(lookup) } : {})}
+            aria-label={saved ? `${token.text}، محفوظة في المفردات` : undefined}
+            data-saved={saved ? 'true' : undefined}
             data-word-state={clock === null ? undefined : isCurrent ? 'current' : token.wordIndex < activeIndex ? 'read' : 'upcoming'}
             onClick={
-              onWordClick
+              lookup
                 ? (event) => {
                     // A word click opens its meaning; it must not also move the video
                     event.stopPropagation()
-                    onWordClick(token.text)
+                    lookup()
                   }
                 : undefined
             }
             className={cn(
               '-mx-0.5 rounded px-0.5 transition-[opacity,background-color] duration-150 motion-reduce:transition-none',
-              onWordClick && 'cursor-pointer hover:bg-console/15',
+              onWordClick &&
+                'cursor-pointer hover:bg-console/15 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console',
+              saved && SAVED_WORD_CLASSES,
               clock !== null && variant === 'lead' && token.wordIndex > activeIndex && 'opacity-75',
               clock !== null && variant === 'support' && token.wordIndex <= activeIndex && 'text-text-primary',
             )}
@@ -167,7 +181,7 @@ function Texts(props: TextsProps) {
         </p>
       )}
       {props.hiddenNotice && (
-        <p className="font-mono text-[11px] tracking-wide text-text-secondary">••• الترجمة مخفية</p>
+        <p className="text-xs text-text-secondary">••• الترجمة مخفية</p>
       )}
       {props.secondaryText && (
         <p
@@ -183,7 +197,7 @@ function Texts(props: TextsProps) {
               clock={props.clock}
               variant="support"
               timings={props.secondaryWords}
-              highlightColor="rgb(var(--color-text-secondary))"
+              highlightColor="rgb(var(--rgb-text-secondary))"
             />
           )}
         </p>
@@ -200,7 +214,7 @@ function ActiveTexts(props: Omit<TextsProps, 'clock'> & { start: number; end: nu
 }
 
 const ACTION_BUTTON =
-  'flex h-8 w-8 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-bg/60 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console'
+  'flex h-8 w-8 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-bg/60 hover:text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console'
 
 function ReadingCardComponent(props: ReadingCardProps) {
   const { slice, status, isSwapped } = props
@@ -277,17 +291,9 @@ function ReadingCardComponent(props: ReadingCardProps) {
       )}
 
       <div className="min-w-0 flex-1">
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={seek}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter') return
-            event.preventDefault()
-            props.onSeek(slice)
-          }}
-          className="flex cursor-pointer select-text flex-col gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-console"
-        >
+        {/* A click on the text moves the video for mouse and touch. It holds the word buttons, so it cannot be a button
+            itself; keyboard users get the "play from this line" button in the action group instead */}
+        <div role="presentation" onClick={seek} className="flex cursor-pointer select-text flex-col gap-2 rounded-md">
           {isActive ? (
             <ActiveTexts
               {...textsProps}
@@ -318,10 +324,13 @@ function ReadingCardComponent(props: ReadingCardProps) {
       <div
         className={cn(
           // Touch screens have no hover, so the actions stay visible there instead of being unreachable
-          'absolute -top-[18px] end-3 flex gap-0.5 rounded-full border border-border bg-surface-elevated p-0.5 opacity-0 shadow-soft transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-75',
+          'absolute top-[-18px] inset-e-3 flex gap-0.5 rounded-full border border-border bg-surface-elevated p-0.5 opacity-0 shadow-soft transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-75',
           isActive && 'opacity-100',
         )}
       >
+        <button type="button" aria-label="تشغيل من هذا المقطع" onClick={() => props.onSeek(slice)} className={ACTION_BUTTON}>
+          <Play size={14} aria-hidden="true" />
+        </button>
         {canSpeak && (
           <button
             type="button"

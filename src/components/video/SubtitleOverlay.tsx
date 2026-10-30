@@ -1,19 +1,25 @@
 import { type RefObject } from 'react'
-import { usePlayerTime } from '@/hooks/usePlayerTime'
-import { useActiveCue } from '@/hooks/useActiveCue'
+import { useClockSelector } from '@/hooks/usePlayerTime'
+import { useElementWidth } from '@/hooks/useElementWidth'
 import { useSubtitleSettings } from '@/context/SubtitleSettingsContext'
 import { cn } from '@/lib/utils/cn'
 import { findActiveCue } from '@/lib/subtitles/findActiveCue'
 import { getVisibleTracks } from '@/lib/subtitles/visibleTracks'
 import { SubtitleLine } from '@/components/subtitles/SubtitleLine'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
-import type { LineOffset, SubtitleLayout, SubtitleLine as SubtitleLineId, SubtitlePlacement } from '@/lib/subtitles/subtitleLayout'
+import {
+  getSubtitleFontScale,
+  type LineOffset,
+  type SubtitleLayout,
+  type SubtitleLine as SubtitleLineId,
+  type SubtitlePlacement,
+} from '@/lib/subtitles/subtitleLayout'
 import type { SubtitleTrackState, WordSelection } from '@/types/subtitle.types'
 import type { ViewMode } from '@/types/theme.types'
 
-/** Default spot of the subtitle block per region. `bottom-[4.5rem]` clears the control bar; `top-16` clears the top bar. */
+/** Default spot of the subtitle block per region. `bottom-18` clears the control bar; `top-16` clears the top bar. */
 const PLACEMENT_CLASSES: Record<SubtitlePlacement, string> = {
-  bottom: 'bottom-[4.5rem]',
+  bottom: 'bottom-18',
   middle: 'top-1/2 -translate-y-1/2',
   top: 'top-16',
 }
@@ -22,7 +28,6 @@ interface SubtitleOverlayProps {
   sourceTrack: SubtitleTrackState
   translationTrack: SubtitleTrackState
   getCurrentTime: () => number
-  isPlaying: boolean
   viewMode: ViewMode
   /** Recall mode: paired segments and the revealed one, to know if the playing segment is revealed */
   slices: PairedSlice[]
@@ -40,13 +45,13 @@ interface SubtitleOverlayProps {
  * Burned-in dual subtitles. The translation (the language being learned) is large and bold; the source is a
  * smaller reference line. Each line drags independently inside the video and the whole block can jump between
  * top / middle / bottom (SubtitleQuickControls). The empty area stays pointer-events-none so the video and the
- * control bar below stay clickable. Shares high-frequency time updates with VideoControlBar only (usePlayerTime).
+ * control bar below stay clickable. It subscribes to the shared clock with selectors, so it renders when a cue changes
+ * and not on every tick (see useClockSelector).
  */
 export function SubtitleOverlay({
   sourceTrack,
   translationTrack,
   getCurrentTime,
-  isPlaying,
   viewMode,
   slices,
   revealedIndex,
@@ -57,12 +62,20 @@ export function SubtitleOverlay({
   onWordSelect,
 }: SubtitleOverlayProps) {
   const { settings } = useSubtitleSettings()
-  const currentTime = usePlayerTime(getCurrentTime, isPlaying)
+  // The chosen sizes are pixels; scaling them with the stage keeps a long line from filling a phone-sized video
+  const fontScale = getSubtitleFontScale(useElementWidth(stageRef))
 
-  const activeSource = useActiveCue(sourceTrack.cues, currentTime - sourceTrack.syncOffsetSeconds)
-  const activeTranslation = useActiveCue(translationTrack.cues, currentTime - translationTrack.syncOffsetSeconds)
+  // Each selector returns an existing cue (or a number), so this re-renders only when a cue starts or ends,
+  // not on every clock tick
+  const activeSource = useClockSelector(getCurrentTime, (time) =>
+    findActiveCue(sourceTrack.cues, time - sourceTrack.syncOffsetSeconds),
+  )
+  const activeTranslation = useClockSelector(getCurrentTime, (time) =>
+    findActiveCue(translationTrack.cues, time - translationTrack.syncOffsetSeconds),
+  )
+  const activeSliceIndex = useClockSelector(getCurrentTime, (time) => findActiveCue(slices, time)?.originalIndex ?? -1)
 
-  const isRevealed = revealedIndex !== null && findActiveCue(slices, currentTime)?.originalIndex === revealedIndex
+  const isRevealed = revealedIndex !== null && activeSliceIndex === revealedIndex
   const visibleTracks = getVisibleTracks(viewMode, isRevealed)
   const showSource = visibleTracks.source && activeSource
   const showTranslation = visibleTracks.translation && activeTranslation
@@ -73,6 +86,7 @@ export function SubtitleOverlay({
   const commonLineProps = {
     maxWidthPercent: settings.subtitleWidthPercent,
     lineHeight: settings.subtitleLineHeight,
+    showBackdrop: settings.showBackdrop,
     stageRef,
     onOffsetChange: onLineOffsetChange,
   }
@@ -83,7 +97,7 @@ export function SubtitleOverlay({
         <SubtitleLine
           line="source"
           text={activeSource.text}
-          fontSize={settings.trackA.fontSize}
+          fontSize={settings.trackA.fontSize * fontScale}
           color={settings.trackA.color}
           offset={layout.source}
           {...commonLineProps}
@@ -94,7 +108,7 @@ export function SubtitleOverlay({
         <SubtitleLine
           line="translation"
           text={activeTranslation.text}
-          fontSize={settings.trackB.fontSize}
+          fontSize={settings.trackB.fontSize * fontScale}
           color={settings.trackB.color}
           offset={layout.translation}
           onWordClick={(word) =>
@@ -112,7 +126,7 @@ export function SubtitleOverlay({
         <button
           type="button"
           onClick={onToggleReveal}
-          className="pointer-events-auto rounded-md bg-black/70 px-3 py-1.5 text-sm font-medium text-white/85 transition-colors hover:bg-black/85 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-console"
+          className="pointer-events-auto rounded-md bg-black/70 px-3 py-1.5 text-sm font-medium text-white/85 transition-colors hover:bg-black/85 hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-console"
         >
           اكشف الترجمة (R)
         </button>

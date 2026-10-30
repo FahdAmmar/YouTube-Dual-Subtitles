@@ -22,11 +22,11 @@ const TRANSLATION_SRT = `1\n00:00:01,000 --> 00:00:04,000\nWelcome\n\n2\n00:00:0
 
 async function loadPlayingVideoWithSubtitles() {
   render(<App />)
-  fireEvent.change(screen.getByLabelText('VIDEO_URL'), {
+  fireEvent.change(screen.getByLabelText('رابط الفيديو'), {
     target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   })
   fireEvent.click(screen.getByRole('button', { name: /تشغيل/ }))
-  await waitFor(() => expect(screen.getByText(/DISPLAY_MODE/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/وضع العرض/)).toBeInTheDocument())
 
   await fireEvent.change(screen.getByLabelText('رفع ملف ترجمة العربية'), {
     target: { files: [makeFile('ar.srt', SOURCE_SRT)] },

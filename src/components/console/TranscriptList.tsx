@@ -1,15 +1,29 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { usePlayerTime } from '@/hooks/usePlayerTime'
+import { measureElement, observeElementRect, useVirtualizer } from '@tanstack/react-virtual'
+import { useClockSelector } from '@/hooks/usePlayerTime'
 import { makeBookmarkId } from '@/lib/utils/bookmarkStore'
 import { findActiveCue } from '@/lib/subtitles/findActiveCue'
 import { SliceCard } from './SliceCard'
+import { EmptyTranscriptState } from './EmptyTranscriptState'
 import type { PairedSlice } from '@/lib/subtitles/pairCues'
 import type { ViewMode } from '@/types/theme.types'
+
+/** A typical card is two short lines plus padding; the real height is measured once a card is on screen */
+const ESTIMATED_SLICE_HEIGHT_PX = 84
+/** Cards kept rendered beyond the visible ones, so a fast scroll never shows an empty gap */
+const OVERSCAN_SLICES = 8
+/**
+ * Where nothing has a size (jsdom, or a panel hidden by CSS) the virtualizer would render nothing at all.
+ * Two guards, both replaced by the real sizes as soon as there are any:
+ * a container with no height is treated as a normal screen, and a card measured at 0px keeps its estimated height.
+ * The second one matters as much as the first: if cards were recorded at 0px, every card would "fit" in the
+ * screen and all of them would be rendered, which is exactly what the virtual list exists to avoid
+ */
+const FALLBACK_VIEWPORT_PX = 800
 
 interface TranscriptListProps {
   slices: PairedSlice[]
   getCurrentTime: () => number
-  isPlaying: boolean
   viewMode: ViewMode
   /** originalIndex of the segment revealed in recall mode, or null */
   revealedIndex: number | null
@@ -39,13 +53,16 @@ interface TranscriptListProps {
  * "قراءة النص السابق والتالي" — القارئ يرى السياق كاملاً وليس السطر
  * الحالي فقط، خلافاً للترجمة المُطبَّقة فوق الفيديو التي تعرض سطراً واحداً)
  *
- * ملاحظة أداء: يشترك هذا المكوّن في تحديثات الوقت عبر usePlayerTime
- * بمعزل عن بقية الشجرة، تماماً مثل SubtitleOverlay و VideoControlBar
+ * ملاحظة أداء: يشترك هذا المكوّن في الساعة المشتركة عبر useClockSelector، فيُعاد رسمه عند تغيّر المقطع النشط
+ * فقط (مرة كل بضع ثوانٍ) لا عند كل نبضة وقت (5 مرات في الثانية)
+ *
+ * القائمة افتراضية (virtualized): لا يوجد في الـ DOM إلا المقاطع الظاهرة وما حولها مهما طال الفيديو.
+ * قبل ذلك كانت كل المقاطع تُرسم دفعة واحدة (≈27 عقدة DOM لكل مقطع، أي أكثر من 80 ألف عقدة
+ * عند 3000 مقطع) وهو ما تمنعه قاعدة performance.md في وضع القراءة أيضاً
  */
 export function TranscriptList({
   slices,
   getCurrentTime,
-  isPlaying,
   viewMode,
   revealedIndex,
   bookmarkedIds,
@@ -56,8 +73,9 @@ export function TranscriptList({
   sourceLang,
   isSearchActive,
 }: TranscriptListProps) {
-  const currentTime = usePlayerTime(getCurrentTime, isPlaying)
-  const activeSlice = useMemo(() => findActiveCue(slices, currentTime), [slices, currentTime])
+  // Re-renders when the active slice changes, not on every clock tick; the live progress bar of the active card
+  // subscribes to the clock by itself (see SliceCard), so the list is not walked five times a second
+  const activeSlice = useClockSelector(getCurrentTime, (time) => findActiveCue(slices, time))
 
   // Hashed once per slice list, not on every playback tick
   const bookmarkIdBySliceId = useMemo(
@@ -65,98 +83,90 @@ export function TranscriptList({
     [slices],
   )
 
-  const activeItemRef = useRef<HTMLDivElement>(null)
   const listContainerRef = useRef<HTMLDivElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: slices.length,
+    getScrollElement: () => listContainerRef.current,
+    estimateSize: () => ESTIMATED_SLICE_HEIGHT_PX,
+    overscan: OVERSCAN_SLICES,
+    getItemKey: (index) => slices[index]?.id ?? index,
+    initialRect: { width: 0, height: FALLBACK_VIEWPORT_PX },
+    measureElement: (element, entry, instance) => {
+      const measured = measureElement(element, entry, instance)
+      return measured > 0 ? measured : ESTIMATED_SLICE_HEIGHT_PX
+    },
+    observeElementRect: (instance, report) =>
+      observeElementRect(instance, (rect) =>
+        report(rect.height > 0 ? rect : { width: rect.width, height: FALLBACK_VIEWPORT_PX }),
+      ),
+  })
+
+  // Position of the active slice in the list; it only changes when the active slice does, not on every tick
+  const activeIndex = useMemo(() => (activeSlice ? slices.indexOf(activeSlice) : -1), [slices, activeSlice])
 
   useEffect(() => {
     // تمرير سلس للمقطع النشط إلى منتصف منطقة الرؤية، فقط عند تغيّره فعلياً
     // (وليس عند كل نبضة وقت) لتفادي "قفزات" تمرير مزعجة أثناء المشاهدة
     //
-    // إصلاح خطأ حرج ثانٍ (Bug Fix): الاستدعاء المباشر لـ scrollIntoView كان
-    // غير محمي — الشرط ?. يتحقق فقط من أن activeItemRef.current ليس null،
-    // لكنه لا يتحقق من أن الدالة scrollIntoView نفسها متاحة وصالحة فعلياً
-    // كدالة قابلة للاستدعاء. في بعض بيئات التشغيل (متصفحات مضمّنة داخل
-    // تطبيقات أخرى، أطر iframe معاينة مقيّدة، أو تطبيقات ويب تفاعلية خفيفة
-    // الوزن) قد لا تُنفَّذ هذه الواجهة بالكامل. وبما أن هذا الاستدعاء يقع
-    // داخل useEffect، فإن أي استثناء ينتج عنه يصل مباشرة إلى ErrorBoundary
-    // الجذري ويستبدل الصفحة كاملة بشاشة الخطأ العامة — واللحظة التي يحدث
-    // فيها هذا لأول مرة هي بالتحديد لحظة ظهور أول مقطع "نشط" بعد رفع ملف
-    // ترجمة وبدء التشغيل، ما يفسّر ظهور الخطأ بعد رفع الملفات تحديداً.
-    // التحقق من النوع + التغليف بـ try/catch (بنفس نمط الحماية المُتّبع في
-    // useLocalStorage وuseFullscreen) يمنع توقف التطبيق مهما كانت البيئة
-    const target = activeItemRef.current
-    if (isSearchActive) return
-    if (target && typeof target.scrollIntoView === 'function') {
-      requestAnimationFrame(() => {
-        try {
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        } catch {
-          // تجاهل بأمان
-        }
-      })
-    }
-  }, [activeSlice?.id, isSearchActive])
+    // الحارس typeof ... === 'function' + try/catch يبقيان: في بيئات لا تُنفَّذ فيها واجهة التمرير بالكامل
+    // (متصفحات مضمّنة، إطارات معاينة مقيّدة، jsdom) كان أي استثناء هنا يصل إلى ErrorBoundary الجذري
+    // ويستبدل الصفحة بشاشة الخطأ. وبما أن المقطع النشط قد لا يكون مرسوماً أصلاً (قائمة افتراضية)،
+    // نطلب من virtualizer نفسه التمرير إليه بدل scrollIntoView على عنصر قد لا يوجد
+    if (isSearchActive || activeIndex < 0) return
+    const container = listContainerRef.current
+    if (!container || typeof container.scrollTo !== 'function') return
+    const frame = requestAnimationFrame(() => {
+      try {
+        virtualizer.scrollToIndex(activeIndex, { align: 'center', behavior: 'smooth' })
+      } catch {
+        // تجاهل بأمان
+      }
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [activeIndex, isSearchActive, virtualizer])
 
   if (slices.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 text-center">
-        <p className="font-mono text-xs leading-relaxed text-text-muted">
-          {isSearchActive ? (
-            <>
-              [ NO_MATCHES ]
-              <br />
-              لا يوجد مقطع يطابق عبارة البحث
-            </>
-          ) : isBookmarksOnly ? (
-            <>
-              [ NO_BOOKMARKS ]
-              <br />
-              لم تحفظ أي جملة بعد — اضغط B أثناء التشغيل أو النجمة على أي مقطع
-            </>
-          ) : (
-            <>
-              [ NO_TRANSCRIPT_DATA ]
-              <br />
-              ارفع ملف ترجمة واحداً على الأقل لعرض النص هنا
-            </>
-          )}
-        </p>
+        <EmptyTranscriptState reason={isSearchActive ? 'no-matches' : isBookmarksOnly ? 'no-bookmarks' : 'no-subtitles'} />
       </div>
     )
   }
 
   return (
-    <div ref={listContainerRef} className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
-      {slices.map((slice) => {
-        const isActive = activeSlice?.id === slice.id
-        // نسبة التقدّم داخل المقطع النشط فقط — تبقى undefined لكل البطاقات
-        // الأخرى (قيمة مستقرة بين عمليات إعادة الرسم) حتى لا تُبطل فائدة
-        // React.memo في SliceCard لأي بطاقة غير نشطة
-        const activeProgressPercent = isActive
-          ? Math.min(
-              100,
-              Math.max(0, ((currentTime - slice.start) / Math.max(slice.end - slice.start, 0.001)) * 100),
-            )
-          : undefined
+    <div ref={listContainerRef} className="flex-1 overflow-y-auto px-2 py-2">
+      <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+        {virtualizer.getVirtualItems().map((item) => {
+          const slice = slices[item.index]
+          if (!slice) return null
+          const isActive = activeSlice?.id === slice.id
 
-        return (
-          <SliceCard
-            key={slice.id}
-            ref={isActive ? activeItemRef : undefined}
-            slice={slice}
-            index={slice.originalIndex}
-            isActive={isActive}
-            viewMode={viewMode}
-            isTranslationRevealed={isActive && slice.originalIndex === revealedIndex}
-            isBookmarked={bookmarkedIds.has(bookmarkIdBySliceId.get(slice.id) ?? '')}
-            onToggleBookmark={onToggleBookmark}
-            onSeek={onSeek}
-            translationLang={translationLang}
-            sourceLang={sourceLang}
-            activeProgressPercent={activeProgressPercent}
-          />
-        )
-      })}
+          return (
+            <div
+              key={item.key}
+              data-index={item.index}
+              ref={virtualizer.measureElement}
+              className="absolute inset-x-0 top-0 pb-0.5"
+              style={{ transform: `translateY(${item.start}px)` }}
+            >
+              <SliceCard
+                slice={slice}
+                index={slice.originalIndex}
+                isActive={isActive}
+                viewMode={viewMode}
+                isTranslationRevealed={isActive && slice.originalIndex === revealedIndex}
+                isBookmarked={bookmarkedIds.has(bookmarkIdBySliceId.get(slice.id) ?? '')}
+                onToggleBookmark={onToggleBookmark}
+                onSeek={onSeek}
+                translationLang={translationLang}
+                sourceLang={sourceLang}
+                getCurrentTime={getCurrentTime}
+              />
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

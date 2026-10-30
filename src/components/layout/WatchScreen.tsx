@@ -1,0 +1,394 @@
+import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
+import { Header } from './Header'
+import { BackgroundFX } from './BackgroundFX'
+import { PanelResizeHandle } from './PanelResizeHandle'
+import { VideoStage } from '@/components/video/VideoStage'
+import { MobileActiveCaption } from '@/components/video/MobileActiveCaption'
+import { ConsolePanel } from '@/components/console/ConsolePanel'
+import { DropOverlay } from '@/components/system/DropOverlay'
+import { VideoKeyProvider } from '@/context/VideoKeyContext'
+import { SavedWordsProvider } from '@/context/SavedWordsContext'
+import { useSubtitleFileDrop } from '@/hooks/useSubtitleFileDrop'
+import { useVideoPlayer } from '@/hooks/useVideoPlayer'
+import { useSubtitleTrack } from '@/hooks/useSubtitleTrack'
+import { useResizableSidebarWidth } from '@/hooks/useResizableSidebarWidth'
+import { useSidebarPosition, getSidebarFlexOrderClasses } from '@/hooks/useSidebarPosition'
+import { useVideoProgress } from '@/hooks/useVideoProgress'
+import { useSyncOffsetPersistence } from '@/hooks/useSyncOffsetPersistence'
+import { useRecordWatchHistory, useAutoRestoreSubtitles, getHistoryEntryByKey } from '@/hooks/useWatchHistory'
+import { useSubtitleUploadHandlers } from '@/hooks/useSubtitleUploadHandlers'
+import { useTranslationReveal } from '@/hooks/useTranslationReveal'
+import { useBookmarks } from '@/hooks/useBookmarks'
+import { useWatchTimeTracker } from '@/hooks/useWatchTimeTracker'
+import { makeBookmarkId } from '@/lib/utils/bookmarkStore'
+import { findActiveCue } from '@/lib/subtitles/findActiveCue'
+import { pairCuesIntoSlices, type PairedSlice } from '@/lib/subtitles/pairCues'
+import { getVideoKey } from '@/lib/utils/videoKey'
+import { retimeCues, toSyncedFileName } from '@/lib/subtitles/twoPointSync'
+import { cuesToSrt } from '@/lib/subtitles/serializeSRT'
+import { saveSubtitleContent } from '@/lib/utils/subtitleContentStore'
+import { YT_PLAYER_STATE } from '@/types/youtube.types'
+import type { VideoSource } from '@/types/video.types'
+import type { ViewMode } from '@/types/theme.types'
+
+// تحميل كسول (Code Splitting) للوحة إعدادات حجم/لون الترجمة: لا يحتاجها
+// معظم المستخدمين فور فتح الصفحة، فتحميلها عند الطلب فقط يقلّل حجم الحزمة الأولية
+// Loaded on first use: most sessions never open reading mode
+const ReadingView = lazy(() =>
+  import('@/components/reading/ReadingView').then((module) => ({
+    default: module.ReadingView,
+  })),
+)
+const SettingsPanel = lazy(() =>
+  import('@/components/settings/SettingsPanel').then((module) => ({
+    default: module.SettingsPanel,
+  })),
+)
+// Same deferral for the two rarely opened panels: they stay mounted (their open/close
+// state and exit animations keep working) but their code reaches the browser after the
+// first paint instead of blocking it
+const GlossaryPanel = lazy(() =>
+  import('@/components/console/GlossaryPanel').then((module) => ({
+    default: module.GlossaryPanel,
+  })),
+)
+const KeyboardShortcutsPanel = lazy(() =>
+  import('@/components/video/KeyboardShortcutsPanel').then((module) => ({
+    default: module.KeyboardShortcutsPanel,
+  })),
+)
+
+const NORMAL_MAIN_CLASSES =
+  'sticky top-0 z-20 flex flex-col bg-bg p-3 sm:p-5 lg:static lg:z-auto lg:flex-1 lg:min-w-0 lg:overflow-y-auto'
+// Docked: full width on top for phones, a large card beside the transcript from lg up (always over 200x200, as the YouTube embed rules require)
+const MINI_PLAYER_CLASSES =
+  'fixed inset-x-0 top-0 z-35 bg-black lg:inset-x-auto lg:inset-s-6 lg:top-18 lg:w-(--reading-video-width) lg:overflow-hidden lg:rounded-xl lg:shadow-elevated'
+// Kept mounted and playing, but visually out of the way (local files only)
+const HIDDEN_PLAYER_CLASSES = 'pointer-events-none fixed bottom-0 inset-s-0 h-px w-px overflow-hidden opacity-0'
+
+function getMainClassName(isReadingMode: boolean, hasMiniPlayer: boolean, videoOrderClass: string): string {
+  if (!isReadingMode) return `${NORMAL_MAIN_CLASSES} ${videoOrderClass}`
+  return hasMiniPlayer ? MINI_PLAYER_CLASSES : HIDDEN_PLAYER_CLASSES
+}
+
+interface WatchScreenProps {
+  videoSource: VideoSource
+  /** Back to the video picker. The shell owns the source, so it also releases a local file's object URL */
+  onChangeVideo: () => void
+}
+
+/**
+ * شاشة المشاهدة: تخطيط لوحة التحكم الكامل بعد اختيار الفيديو (الفيديو + لوحة الكونسول الجانبية)
+ *
+ * تُحمَّل كسولاً (code splitting): الصفحة الأولى (اختيار الفيديو) لا تحتاج مشغّلات الفيديو ولا قائمة النص ولا
+ * القاموس ولا الـ virtualizer، فلا تُنقل إلى الزائر قبل أن يختار فيديو. ولأن الشاشة تُفكَّك عند العودة للصفحة
+ * الأولى فحالتها كلها (مساري الترجمة، العلامات، الوضع...) تُصفَّر تلقائياً دون استدعاء reset يدوي
+ *
+ * تخطيط استجابي:
+ *    - الشاشات الكبيرة (lg+): عمودان جنباً إلى جنب بارتفاع الشاشة كاملاً
+ *      مع تمرير داخلي مستقل لكل منطقة، ومقبض سحب بينهما لتغيير عرض
+ *      اللوحة الجانبية (useResizableSidebarWidth + PanelResizeHandle)،
+ *      وإمكانية تبديل جانب اللوحة الجانبية بالكامل (useSidebarPosition)
+ *    - الجوال: الفيديو "مثبّت" (sticky) أعلى الصفحة فيبقى مرئياً دوماً،
+ *      يليه مباشرة شريط مدمج بلا تمرير (MobileActiveCaption) يعرض السطر
+ *      الحالي فقط، ثم لوحة الكونسول الكاملة بتمرير صفحة طبيعي أسفل ذلك
+ */
+export function WatchScreen({ videoSource, onChangeVideo }: WatchScreenProps) {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false)
+  const [isGlossaryOpen, setIsGlossaryOpen] = useState(false)
+  const [isReadingMode, setIsReadingMode] = useState(false)
+  const [isLocalVideoHidden, setIsLocalVideoHidden] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('both')
+  // مرجع مشترك بين VideoStage (اختصار "/") وConsolePanel (الحقل الفعلي) —
+  // مكوّنان شقيقان، فلا سبيل لتنسيق التركيز بينهما إلا برفع المرجع لهذا المستوى
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  const player = useVideoPlayer(videoSource)
+  useVideoProgress(videoSource, player)
+  // اللغة الابتدائية المسارين: عربية أصلاً وإنجليزية ترجمةً — ويمكن للمستخدم
+  // تغيير كل مسار من قائمة اللغات المدعومة (المسارين أعلى من الكشف التلقائي)
+  const sourceTrack = useSubtitleTrack('ar', 'العربية', 'source')
+  const translationTrack = useSubtitleTrack('en', 'الإنجليزية', 'translation')
+  useSyncOffsetPersistence(
+    'source',
+    videoSource,
+    sourceTrack.track.fileName,
+    sourceTrack.track.syncOffsetSeconds,
+    sourceTrack.setSyncOffset,
+    sourceTrack.loadCount,
+  )
+  useSyncOffsetPersistence(
+    'translation',
+    videoSource,
+    translationTrack.track.fileName,
+    translationTrack.track.syncOffsetSeconds,
+    translationTrack.setSyncOffset,
+    translationTrack.loadCount,
+  )
+  useRecordWatchHistory(videoSource, player.videoTitle, sourceTrack.track.fileName, translationTrack.track.fileName)
+  // تذكير ملفات الترجمة لهذا الفيديو تحديداً: يُقرأ مرة واحدة فقط لحظة
+  // تحميل الفيديو (وليس بشكل حيّ)، فيبقى يعكس آخر زيارة سابقة طوال هذه
+  // الجلسة، حتى بعد أن يكتب useRecordWatchHistory أعلاه فوقه لاحقاً
+  const historyEntry = useMemo(() => getHistoryEntryByKey(getVideoKey(videoSource)), [videoSource])
+  // استعادة محتوى ملفات الترجمة تلقائياً (إن وُجد محفوظاً فعلياً في
+  // IndexedDB) — بلا أي تدخّل من المستخدم؛ إن لم يكن المحتوى محفوظاً
+  // (متصفح قديم، أو أول رفع كان قبل إضافة هذه الميزة) يبقى تذكير
+  // SourceFileRow النصي كخطة بديلة صامتة
+  useAutoRestoreSubtitles(
+    videoSource,
+    historyEntry,
+    sourceTrack.track.fileName,
+    translationTrack.track.fileName,
+    sourceTrack.uploadFile,
+    translationTrack.uploadFile,
+  )
+  const sidebarPosition = useSidebarPosition()
+  const sidebar = useResizableSidebarWidth(sidebarPosition.position)
+
+  // كائنات اختيار اللغة تُبنى مجدداً فقط إذا تغيّر الاختيار الصريح أو مؤشر
+  // الدالة المستقرة — تمهيداً لتمريرها إلى لوحة التحكم بأقل إعادة رسم ممكنة
+  const sourceLanguageControls = useMemo(
+    () => ({ explicitCode: sourceTrack.explicitLanguageCode, onSelect: sourceTrack.selectLanguage }),
+    [sourceTrack.explicitLanguageCode, sourceTrack.selectLanguage],
+  )
+  const translationLanguageControls = useMemo(
+    () => ({ explicitCode: translationTrack.explicitLanguageCode, onSelect: translationTrack.selectLanguage }),
+    [translationTrack.explicitLanguageCode, translationTrack.selectLanguage],
+  )
+
+  const { onUploadSource, onUploadTranslation, onUploadBilingual, bilingualUpload } = useSubtitleUploadHandlers(
+    videoSource,
+    sourceTrack,
+    translationTrack,
+  )
+
+  /** Replaces a track's cues with ones mapped onto the video's timeline, and keeps them for the next visit */
+  function retimeTrack(trackId: 'source' | 'translation', trackHook: typeof sourceTrack, scale: number, offset: number) {
+    const { cues, fileName } = trackHook.track
+    if (!fileName) return
+    const retimed = retimeCues(cues, scale, offset)
+    const syncedFileName = toSyncedFileName(fileName)
+    trackHook.loadCues(retimed, syncedFileName)
+    if (videoSource) {
+      void saveSubtitleContent(getVideoKey(videoSource), trackId, syncedFileName, cuesToSrt(retimed))
+    }
+  }
+
+  const { isDragging: isDraggingFile } = useSubtitleFileDrop({
+    isEnabled: videoSource !== null,
+    isSourceLoaded: sourceTrack.track.status === 'ready',
+    onUploadSource: (file) => void onUploadSource(file),
+    onUploadTranslation: (file) => void onUploadTranslation(file),
+  })
+
+  // اتجاه الصفحة الفعلي (مضبوط في index.html) — يُقرأ مباشرة لأنه لا
+  // يتغيّر ديناميكياً في هذا التطبيق، فلا حاجة لحالة React أو مستمع أحداث
+  const documentDirection = document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr'
+  const flexOrder = getSidebarFlexOrderClasses(sidebarPosition.position, documentDirection)
+
+  const handleChangeVideo = onChangeVideo
+
+  // إعادة بناء قائمة المقاطع الموحّدة فقط عند تغيّر المدخلات الفعلية
+  // (المقاطع الخام أو الإزاحة الزمنية)، وليس عند كل نبضة وقت أو تفاعل آخر
+  const slices = useMemo(
+    () =>
+      pairCuesIntoSlices(
+        sourceTrack.track.cues,
+        translationTrack.track.cues,
+        sourceTrack.track.syncOffsetSeconds,
+        translationTrack.track.syncOffsetSeconds,
+      ),
+    [
+      sourceTrack.track.cues,
+      translationTrack.track.cues,
+      sourceTrack.track.syncOffsetSeconds,
+      translationTrack.track.syncOffsetSeconds,
+    ],
+  )
+
+  const { revealedIndex, toggleReveal } = useTranslationReveal(slices, player.getCurrentTime, viewMode)
+
+  const videoKey = useMemo(() => (videoSource ? getVideoKey(videoSource) : null), [videoSource])
+  const { bookmarkedIds, toggleBookmark } = useBookmarks(videoKey)
+  const handleToggleSliceBookmark = useCallback(
+    (slice: PairedSlice) => void toggleBookmark(makeBookmarkId(slice)),
+    [toggleBookmark],
+  )
+  const { getCurrentTime } = player
+  const handleToggleActiveBookmark = useCallback((): boolean | null => {
+    const active = findActiveCue(slices, getCurrentTime())
+    return active ? toggleBookmark(makeBookmarkId(active)) : null
+  }, [slices, getCurrentTime, toggleBookmark])
+
+  const isPlaying = player.playerState === YT_PLAYER_STATE.PLAYING
+  useWatchTimeTracker(isPlaying)
+
+  const toggleReadingMode = useCallback(() => setIsReadingMode((previous) => !previous), [])
+  // YouTube and Vimeo terms forbid hiding the player or playing only its audio,
+  // so those sources stay visible in a docked mini player; local files can be hidden
+  const canHideVideo = videoSource.type === 'local'
+  const hasMiniPlayer = !(canHideVideo && isLocalVideoHidden)
+  const readingTitle = player.videoTitle ?? (videoSource.type === 'local' ? videoSource.fileName : 'وضع القراءة')
+
+  // على الجوال (أقل من lg): الفيديو "مثبّت" أعلى الصفحة (sticky) فيبقى
+  // مرئياً دوماً مهما حدث تمرير أدناه، ومباشرة تحته شريط مدمج (بلا أي
+  // تمرير) يعرض فقط السطر المطابق للحظة الحالية — بدل القائمة الكاملة
+  // القابلة للتمرير التي كانت تسحب تمرير الصفحة معها وتُخفي الفيديو. لوحة
+  // الكونسول الكاملة (رفع/تنزيل/القائمة الكاملة) تتدفق بعدها بتمرير صفحة
+  // طبيعي، دون أي خطر على ظهور الفيديو بفضل تثبيته. ترتيب DOM هنا ثابت
+  // دوماً بغض النظر عن sidebarPosition — التبديل البصري يتم فقط عبر
+  // أصناف lg:order-* (flexOrder)، فيبقى ترتيب الجوال الطبيعي (فيديو ثم
+  // شريط مدمج ثم لوحة الكونسول) غير متأثر بتفضيل سطح المكتب إطلاقاً
+  //
+  // على الشاشات الكبيرة (lg+): عمودان جنباً إلى جنب بارتفاع الشاشة كاملاً،
+  // مع مقبض سحب بينهما (PanelResizeHandle) يتيح تغيير عرض اللوحة الجانبية
+  return (
+    <VideoKeyProvider value={videoKey}>
+    <SavedWordsProvider languageCode={translationTrack.track.languageCode}>
+    <div className="relative flex flex-col bg-bg lg:h-screen lg:overflow-hidden">
+      <BackgroundFX />
+      <Header onGoHome={handleChangeVideo} />
+
+      <div ref={sidebar.containerRef} className="flex flex-1 flex-col lg:min-h-0 lg:flex-row">
+        <main
+          className={getMainClassName(isReadingMode, hasMiniPlayer, flexOrder.video)}
+        >
+          <VideoStage
+            player={player}
+            sourceTrack={sourceTrack.track}
+            translationTrack={translationTrack.track}
+            viewMode={viewMode}
+            onChangeVideo={handleChangeVideo}
+            onOpenShortcutsHelp={() => setIsShortcutsHelpOpen(true)}
+            onFocusSearch={() => searchInputRef.current?.focus()}
+            slices={slices}
+            revealedIndex={revealedIndex}
+            onToggleReveal={toggleReveal}
+            onToggleActiveBookmark={handleToggleActiveBookmark}
+            onToggleReadingMode={toggleReadingMode}
+            onViewModeChange={setViewMode}
+            isCompact={isReadingMode}
+          />
+        </main>
+
+        {/* في وضع القراءة تبقى هذه العناصر مُركَّبة (لا تضيع حالتها) لكنها مخفية */}
+        <div className={isReadingMode ? 'hidden' : 'contents'}>
+        {/* شريط الجوال المدمج — جزء من الكتلة المثبّتة تحديداً لأنه يلي
+            <main> مباشرة في نفس تدفق sticky؛ lg:hidden يمنع أي أثر على
+            تخطيط الشاشات الكبيرة (ولا يحتاج أصناف order لأنه بلا عرض أصلاً هناك) */}
+        <MobileActiveCaption
+          slices={slices}
+          getCurrentTime={player.getCurrentTime}
+          viewMode={viewMode}
+          revealedIndex={revealedIndex}
+          onToggleReveal={toggleReveal}
+        />
+
+        <PanelResizeHandle
+          width={sidebar.width}
+          minWidth={sidebar.minWidth}
+          maxWidth={sidebar.maxWidth}
+          isDragging={sidebar.isDragging}
+          onPointerDown={sidebar.onHandlePointerDown}
+          onKeyDown={sidebar.onHandleKeyDown}
+          onDoubleClick={sidebar.onHandleDoubleClick}
+          className={flexOrder.handle}
+        />
+
+        <div
+          className={`flex flex-col border-t border-border lg:h-auto lg:w-(--sidebar-width) lg:shrink-0 lg:border-t-0 lg:border-border ${flexOrder.sidebar} ${flexOrder.sidebarBorderClass}`}
+          style={{ '--sidebar-width': `${sidebar.width}px` } as React.CSSProperties}
+        >
+          <ConsolePanel
+            sourceTrack={sourceTrack.track}
+            translationTrack={translationTrack.track}
+            sourceControls={sourceTrack}
+            translationControls={translationTrack}
+            sourceLanguageControls={sourceLanguageControls}
+            translationLanguageControls={translationLanguageControls}
+            onUploadSource={onUploadSource}
+            onUploadTranslation={onUploadTranslation}
+            bilingualUpload={bilingualUpload}
+            onUploadBilingual={onUploadBilingual}
+            slices={slices}
+            viewMode={viewMode}
+            revealedIndex={revealedIndex}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={handleToggleSliceBookmark}
+            onViewModeChange={setViewMode}
+            getCurrentTime={player.getCurrentTime}
+            onSeek={player.seekTo}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenShortcutsHelp={() => setIsShortcutsHelpOpen(true)}
+            onOpenGlossary={() => setIsGlossaryOpen(true)}
+            onOpenReading={() => setIsReadingMode(true)}
+            onRetimeSource={(scale, offset) => retimeTrack('source', sourceTrack, scale, offset)}
+            onRetimeTranslation={(scale, offset) => retimeTrack('translation', translationTrack, scale, offset)}
+            sidebarPosition={sidebarPosition.position}
+            onToggleSidebarPosition={sidebarPosition.toggle}
+            rememberedSourceFileName={historyEntry?.subtitleFileNames.source}
+            rememberedTranslationFileName={historyEntry?.subtitleFileNames.translation}
+            searchInputRef={searchInputRef}
+          />
+        </div>
+        </div>
+      </div>
+
+      {/* غطاء شفاف بكامل الشاشة أثناء السحب فقط: يمنع إطار الفيديو
+          (iframe من domain مختلف تماماً) من "ابتلاع" أحداث الفأرة أثناء
+          مرور المؤشر فوقه، وهي مشكلة معروفة عند بناء لوحات قابلة لتغيير
+          الحجم بجوار أي iframe خارجي */}
+      {sidebar.isDragging && (
+        <div className="fixed inset-0 z-50 cursor-col-resize" aria-hidden="true" />
+      )}
+
+      <DropOverlay isVisible={isDraggingFile} />
+
+      {isReadingMode && (
+        <Suspense fallback={null}>
+        <ReadingView
+          player={player}
+          slices={slices}
+          title={readingTitle}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          revealedIndex={revealedIndex}
+          bookmarkedIds={bookmarkedIds}
+          onToggleBookmark={handleToggleSliceBookmark}
+          sourceLanguageCode={sourceTrack.track.languageCode}
+          translationLanguageCode={translationTrack.track.languageCode}
+          isVideoVisible={hasMiniPlayer}
+          canHideVideo={canHideVideo}
+          onToggleVideoHidden={() => setIsLocalVideoHidden((previous) => !previous)}
+          onClose={() => setIsReadingMode(false)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+        </Suspense>
+      )}
+
+      <Suspense fallback={null}>
+        <SettingsPanel
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          trackA={sourceTrack.track}
+          trackB={translationTrack.track}
+        />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <KeyboardShortcutsPanel isOpen={isShortcutsHelpOpen} onClose={() => setIsShortcutsHelpOpen(false)} />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <GlossaryPanel
+          isOpen={isGlossaryOpen}
+          onClose={() => setIsGlossaryOpen(false)}
+          onSeekToTime={(seconds) => player.seekTo(seconds)}
+        />
+      </Suspense>
+    </div>
+    </SavedWordsProvider>
+    </VideoKeyProvider>
+  )
+}
